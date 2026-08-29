@@ -6,16 +6,12 @@ import { toast } from '../lib/toast.js';
 
 function brand(tag) {
   return el('div', { class: 'auth-brand' }, [
-    el('div', { html: markSvg(), style: { display: 'inline-flex' } }),
+    el('div', { class: 'brand-logo-chip' }, el('img', { src: './brand/reframax-logo.png', alt: 'Reframax', class: 'auth-brand-logo' })),
     el('div', {}, [
       el('div', { class: 'auth-brand-word' }, 'CRONOS'),
       el('div', { class: 'auth-brand-tag' }, tag)
     ])
   ]);
-}
-
-function markSvg() {
-  return `<svg width="42" height="42" viewBox="0 0 56 56" fill="none"><circle cx="28" cy="28" r="24" stroke="url(#ag)" stroke-width="2.5"/><path d="M28 14v14l9 6" stroke="url(#ag)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><defs><linearGradient id="ag" x1="4" y1="4" x2="52" y2="52" gradientUnits="userSpaceOnUse"><stop stop-color="#ff8a3d"/><stop offset="1" stop-color="#ffb454"/></linearGradient></defs></svg>`;
 }
 
 export function renderLogin(root, { onSwitch }) {

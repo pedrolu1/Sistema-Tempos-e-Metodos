@@ -39,7 +39,13 @@ export function mountMobileApp(root, { profile }) {
   );
 
   const shell = el('div', { class: 'mobile-shell' }, [
-    el('div', { class: 'mobile-topbar' }, [topTitle, el('button', { class: 'btn btn-icon btn-ghost btn-sm', title: 'Sair', onclick: () => logoutUser() }, el('span', { html: icon.logout(16) }))]),
+    el('div', { class: 'mobile-topbar' }, [
+      el('div', { style: { display: 'flex', alignItems: 'center', gap: '11px' } }, [
+        el('div', { class: 'brand-logo-chip sm' }, el('img', { src: './brand/reframax-logo.png', alt: 'Reframax', class: 'mobile-topbar-logo' })),
+        topTitle
+      ]),
+      el('button', { class: 'btn btn-icon btn-ghost btn-sm', title: 'Sair', onclick: () => logoutUser() }, el('span', { html: icon.logout(16) }))
+    ]),
     banner,
     content,
     el('div', { class: 'mobile-nav' }, [
