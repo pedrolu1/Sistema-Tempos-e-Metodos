@@ -2,6 +2,9 @@ import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
+  // caminho relativo: o mesmo build funciona tanto na raiz de um domínio
+  // (Vercel/Netlify) quanto num subcaminho (ex.: GitHub Pages de projeto)
+  base: './',
   build: {
     target: 'es2020',
     sourcemap: false,
@@ -26,8 +29,8 @@ export default defineConfig({
         background_color: '#0b0c0f',
         display: 'standalone',
         orientation: 'portrait-primary',
-        start_url: '/',
-        scope: '/',
+        start_url: '.',
+        scope: '.',
         icons: [
           { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },

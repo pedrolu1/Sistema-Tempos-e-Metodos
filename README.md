@@ -92,17 +92,50 @@ precisa ser liberado manualmente, uma única vez:
 ## 5. Publicar (deploy)
 
 O projeto já vem com configuração pronta para os principais provedores —
-escolha um:
+escolha um. Em qualquer um deles, o app usa roteamento por hash (`#/...`),
+então não é necessário configurar rewrites de SPA, e o build já usa caminhos
+relativos (`base: './'`), então funciona tanto na raiz de um domínio quanto
+num subcaminho (GitHub Pages de projeto).
 
-- **Vercel:** importe o repositório em [vercel.com/new](https://vercel.com/new).
-  O `vercel.json` já define build e output. Adicione as variáveis `VITE_FIREBASE_*`
-  em *Project Settings → Environment Variables* com os mesmos valores do `.env`.
-- **Netlify:** importe o repositório — `netlify.toml` já define o build. Adicione
-  as mesmas variáveis de ambiente em *Site settings → Environment variables*.
-- **Firebase Hosting:** `firebase deploy --only hosting` (depois de `npm run build`).
+### GitHub Pages (já configurado — só falta ligar)
 
-Em qualquer um dos três, o app usa roteamento por hash (`#/...`), então não é
-necessário configurar rewrites de SPA.
+O repositório já inclui `.github/workflows/deploy.yml`: a cada push em `main`
+(ou na branch `claude/industrial-time-methods-system-2sgf0q`), o GitHub Actions
+builda o projeto e publica o resultado no GitHub Pages automaticamente. Faltam
+dois passos únicos, que só o dono do repositório consegue fazer (não há API
+para isso):
+
+1. **Ativar o Pages:** em `Settings → Pages`, em "Build and deployment →
+   Source", selecione **GitHub Actions**. Sem isso o workflow roda mas o
+   último passo (publicar) falha.
+2. **Adicionar as credenciais do Firebase como secrets:** em
+   `Settings → Secrets and variables → Actions → New repository secret`,
+   crie um secret para cada uma destas chaves (os mesmos valores do seu
+   `.env`, veja o passo 1 e 2 deste README):
+   `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`,
+   `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_STORAGE_BUCKET`,
+   `VITE_FIREBASE_MESSAGING_SENDER_ID`, `VITE_FIREBASE_APP_ID`.
+
+Depois de configurar os dois itens acima, vá em `Actions → Deploy CRONOS →
+Run workflow` para disparar manualmente (ou dê qualquer novo push). O link
+final aparece em `Settings → Pages` e no resumo da execução do workflow.
+Sem os secrets, o site sobe do mesmo jeito, só que mostrando a tela de
+"Configuração pendente" até você preenchê-los.
+
+### Vercel
+
+Importe o repositório em [vercel.com/new](https://vercel.com/new). O
+`vercel.json` já define build e output. Adicione as variáveis `VITE_FIREBASE_*`
+em *Project Settings → Environment Variables* com os mesmos valores do `.env`.
+
+### Netlify
+
+Importe o repositório — `netlify.toml` já define o build. Adicione as mesmas
+variáveis de ambiente em *Site settings → Environment variables*.
+
+### Firebase Hosting
+
+`firebase deploy --only hosting` (depois de `npm run build`).
 
 ## Estrutura do projeto
 
