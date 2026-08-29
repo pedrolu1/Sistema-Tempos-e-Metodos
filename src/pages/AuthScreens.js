@@ -4,13 +4,10 @@ import { icon } from '../utils/icons.js';
 import { loginUser, registerUser, friendlyAuthError, logoutUser, isMatriculaValida } from '../lib/auth.js';
 import { toast } from '../lib/toast.js';
 
-function brand(tag) {
+function brand() {
   return el('div', { class: 'auth-brand' }, [
-    el('div', { class: 'brand-logo-chip' }, el('img', { src: './brand/reframax-logo.png', alt: 'Reframax', class: 'auth-brand-logo' })),
-    el('div', {}, [
-      el('div', { class: 'auth-brand-word' }, 'CRONOS'),
-      el('div', { class: 'auth-brand-tag' }, tag)
-    ])
+    el('div', { class: 'brand-word brand-word-lg' }, 'REFRAMAX'),
+    el('div', { class: 'brand-tag brand-tag-lg' }, 'Tempos & Métodos')
   ]);
 }
 
@@ -66,7 +63,7 @@ export function renderLogin(root, { onSwitch }) {
   mount(root, [
     el('div', { class: 'auth-screen' }, [
       el('div', { class: 'auth-card' }, [
-        brand('Tempos & Métodos'),
+        brand(),
         form,
         el('div', { class: 'auth-switch' }, [
           'Ainda não tem conta? ',
@@ -131,7 +128,7 @@ export function renderRegister(root, { onSwitch }) {
   mount(root, [
     el('div', { class: 'auth-screen' }, [
       el('div', { class: 'auth-card' }, [
-        brand('Criar novo acesso'),
+        brand(),
         form,
         el('div', { class: 'auth-switch' }, [
           'Já tem conta? ',
@@ -147,7 +144,7 @@ export function renderStatusScreen(root, { status, nome }) {
   mount(root, [
     el('div', { class: 'auth-screen' }, [
       el('div', { class: 'auth-card' }, [
-        brand('Tempos & Métodos'),
+        brand(),
         el('div', { class: 'auth-pending' }, [
           el('div', { html: icon.clock(38), style: { color: isDenied ? 'var(--danger-500)' : 'var(--accent-400)' } }),
           el('h3', {}, isDenied ? 'Acesso não autorizado' : `Olá, ${nome?.split(' ')[0] || ''}!`),

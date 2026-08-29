@@ -26,7 +26,7 @@ function renderMisconfigured() {
           el(
             'p',
             { style: { color: 'var(--text-2)', fontSize: '13.5px' } },
-            'O CRONOS ainda não está conectado a um projeto Firebase. Copie ".env.example" para ".env", preencha com as credenciais do seu projeto e reinicie o servidor. Veja o README para o passo a passo completo.'
+            'O REFRAMAX ainda não está conectado a um projeto Firebase. Copie ".env.example" para ".env", preencha com as credenciais do seu projeto e reinicie o servidor. Veja o README para o passo a passo completo.'
           )
         ])
       ])

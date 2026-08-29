@@ -53,8 +53,8 @@ export function mountAdminApp(root, { profile }) {
   const shell = el('div', { class: 'desktop-shell' }, [
     el('aside', { class: 'desktop-sidebar' }, [
       el('div', { class: 'sidebar-brand' }, [
-        el('div', { class: 'brand-logo-chip sm' }, el('img', { src: './brand/reframax-logo.png', alt: 'Reframax', class: 'sidebar-brand-logo' })),
-        el('div', { class: 'sidebar-brand-word' }, ['CRONOS', el('small', {}, 'Administrador')])
+        el('div', { class: 'brand-word brand-word-md' }, 'REFRAMAX'),
+        el('div', { class: 'brand-tag brand-tag-md' }, 'Tempos & Métodos')
       ]),
       nav,
       el('div', { class: 'sidebar-footer' }, [

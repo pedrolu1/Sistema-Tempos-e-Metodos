@@ -22,8 +22,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icons/*.png'],
       manifest: {
-        name: 'CRONOS — Tempos & Métodos',
-        short_name: 'CRONOS',
+        name: 'REFRAMAX — Tempos & Métodos',
+        short_name: 'REFRAMAX',
         description: 'Lançamento, gestão e análise de Tempos e Métodos industriais.',
         theme_color: '#0b0c0f',
         background_color: '#0b0c0f',

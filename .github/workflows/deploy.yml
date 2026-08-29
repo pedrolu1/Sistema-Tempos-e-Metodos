@@ -1,4 +1,4 @@
-name: Deploy CRONOS
+name: Deploy REFRAMAX
 
 on:
   push:

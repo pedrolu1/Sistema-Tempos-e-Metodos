@@ -40,8 +40,12 @@ export function mountMobileApp(root, { profile }) {
 
   const shell = el('div', { class: 'mobile-shell' }, [
     el('div', { class: 'mobile-topbar' }, [
-      el('div', { style: { display: 'flex', alignItems: 'center', gap: '11px' } }, [
-        el('div', { class: 'brand-logo-chip sm' }, el('img', { src: './brand/reframax-logo.png', alt: 'Reframax', class: 'mobile-topbar-logo' })),
+      el('div', { style: { display: 'flex', alignItems: 'center', gap: '12px' } }, [
+        el('div', {}, [
+          el('div', { class: 'brand-word brand-word-sm' }, 'REFRAMAX'),
+          el('div', { class: 'brand-tag brand-tag-sm' }, 'Tempos & Métodos')
+        ]),
+        el('div', { style: { width: '1px', height: '26px', background: 'var(--border)' } }),
         topTitle
       ]),
       el('button', { class: 'btn btn-icon btn-ghost btn-sm', title: 'Sair', onclick: () => logoutUser() }, el('span', { html: icon.logout(16) }))

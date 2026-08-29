@@ -1,4 +1,4 @@
-# CRONOS — Tempos & Métodos
+# REFRAMAX — Tempos & Métodos
 
 Sistema de lançamento, gestão e análise de dados de Tempos e Métodos industriais.
 Um único app web (PWA) que funciona como **aplicativo mobile instalável** para
@@ -27,7 +27,7 @@ aprova acessos, acompanha o dashboard e exporta relatórios.
    **produção** (as regras de segurança do projeto já vêm prontas em
    `firestore.rules`) e a região mais próxima de você.
 4. Ainda no console, vá em **Configurações do projeto → Geral → Seus apps** e
-   clique em **Adicionar app → Web** (ícone `</>`). Dê um nome (ex.: "CRONOS
+   clique em **Adicionar app → Web** (ícone `</>`). Dê um nome (ex.: "REFRAMAX
    Web") e copie o objeto `firebaseConfig` gerado.
 
 ## 2. Configurar o projeto localmente
@@ -116,7 +116,7 @@ para isso):
    `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_STORAGE_BUCKET`,
    `VITE_FIREBASE_MESSAGING_SENDER_ID`, `VITE_FIREBASE_APP_ID`.
 
-Depois de configurar os dois itens acima, vá em `Actions → Deploy CRONOS →
+Depois de configurar os dois itens acima, vá em `Actions → Deploy REFRAMAX →
 Run workflow` para disparar manualmente (ou dê qualquer novo push). O link
 final aparece em `Settings → Pages` e no resumo da execução do workflow.
 Sem os secrets, o site sobe do mesmo jeito, só que mostrando a tela de

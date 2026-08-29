@@ -21,7 +21,7 @@ function stamp() {
   return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}-${String(d.getHours()).padStart(2, '0')}${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
-export async function exportExcel(rows, filename = `cronos-lancamentos-${stamp()}.xlsx`) {
+export async function exportExcel(rows, filename = `reframax-lancamentos-${stamp()}.xlsx`) {
   const XLSX = await import('xlsx');
   const data = rows.map((r) => Object.fromEntries(COLUMNS.map((c) => [c.label, c.map(r)])));
   const sheet = XLSX.utils.json_to_sheet(data);
@@ -31,12 +31,12 @@ export async function exportExcel(rows, filename = `cronos-lancamentos-${stamp()
   XLSX.writeFile(wb, filename);
 }
 
-export async function exportPDF(rows, filename = `cronos-lancamentos-${stamp()}.pdf`, meta = {}) {
+export async function exportPDF(rows, filename = `reframax-lancamentos-${stamp()}.pdf`, meta = {}) {
   const [{ jsPDF }, { default: autoTable }] = await Promise.all([import('jspdf'), import('jspdf-autotable')]);
   const docPdf = new jsPDF({ orientation: 'landscape', unit: 'pt' });
   docPdf.setFontSize(15);
   docPdf.setTextColor(20, 20, 24);
-  docPdf.text('CRONOS — Relatório de Tempos e Métodos', 40, 42);
+  docPdf.text('REFRAMAX — Relatório de Tempos e Métodos', 40, 42);
   docPdf.setFontSize(9.5);
   docPdf.setTextColor(110, 110, 118);
   const sub = meta.periodo ? `Período: ${meta.periodo} · Gerado em ${new Date().toLocaleString('pt-BR')}` : `Gerado em ${new Date().toLocaleString('pt-BR')}`;
@@ -55,7 +55,7 @@ export async function exportPDF(rows, filename = `cronos-lancamentos-${stamp()}.
   docPdf.save(filename);
 }
 
-export async function exportWord(rows, filename = `cronos-lancamentos-${stamp()}.docx`, meta = {}) {
+export async function exportWord(rows, filename = `reframax-lancamentos-${stamp()}.docx`, meta = {}) {
   const [{ Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun, HeadingLevel, WidthType, AlignmentType }, { saveAs }] = await Promise.all([
     import('docx'),
     import('file-saver')
@@ -89,7 +89,7 @@ export async function exportWord(rows, filename = `cronos-lancamentos-${stamp()}
     sections: [
       {
         children: [
-          new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun({ text: 'CRONOS — Relatório de Tempos e Métodos', bold: true })] }),
+          new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun({ text: 'REFRAMAX — Relatório de Tempos e Métodos', bold: true })] }),
           new Paragraph({
             spacing: { after: 220 },
             children: [

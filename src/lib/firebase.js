@@ -39,7 +39,7 @@ if (firebaseConfigured) {
 } else {
   // eslint-disable-next-line no-console
   console.warn(
-    '[CRONOS] Firebase não configurado. Copie .env.example para .env e preencha as credenciais do seu projeto.'
+    '[REFRAMAX] Firebase não configurado. Copie .env.example para .env e preencha as credenciais do seu projeto.'
   );
 }
 

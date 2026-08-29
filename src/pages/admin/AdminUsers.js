@@ -30,7 +30,7 @@ export function renderUsersPage(ctx) {
   const body = el('div');
   const node = cardWithHeader({
     title: 'Controle de acesso',
-    subtitle: 'Aprove ou negue solicitações de acesso ao CRONOS',
+    subtitle: 'Aprove ou negue solicitações de acesso ao REFRAMAX',
     actions: [tabs],
     children: [body]
   });

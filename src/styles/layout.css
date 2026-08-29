@@ -13,20 +13,34 @@
   flex-direction: column;
   gap: 26px;
 }
-.auth-brand { display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; }
-.brand-logo-chip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: #fdfdfc;
-  border-radius: var(--r-md);
-  box-shadow: var(--shadow-sm);
-  padding: 14px 20px;
+.auth-brand { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; }
+
+/* ---- marca tipográfica REFRAMAX — usada no login, no boot splash, na
+   sidebar do admin e no topo do app mobile, em tamanhos diferentes ---- */
+.brand-word {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: 1;
+  background: var(--accent-grad);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
 }
-.brand-logo-chip.sm { padding: 7px 11px; border-radius: var(--r-sm); }
-.auth-brand-logo { width: 150px; height: auto; display: block; }
-.auth-brand-word { font-family: var(--font-display); font-size: 22px; font-weight: 700; letter-spacing: 0.14em; }
-.auth-brand-tag { font-size: 13px; color: var(--text-2); }
+.brand-tag {
+  display: block;
+  font-family: var(--font-body);
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+.brand-word-lg { font-size: 32px; letter-spacing: 0.16em; }
+.brand-tag-lg { font-size: 11.5px; letter-spacing: 0.32em; margin-left: 0.32em; }
+.brand-word-md { font-size: 18px; letter-spacing: 0.13em; }
+.brand-tag-md { font-size: 9.5px; letter-spacing: 0.24em; margin-left: 0.24em; margin-top: 2px; }
+.brand-word-sm { font-size: 14px; letter-spacing: 0.1em; }
+.brand-tag-sm { font-size: 8px; letter-spacing: 0.16em; margin-left: 0.16em; margin-top: 1px; }
 .auth-form { display: flex; flex-direction: column; gap: 16px; }
 .auth-switch { text-align: center; font-size: 13.5px; color: var(--text-2); }
 .auth-switch button { color: var(--accent-400); font-weight: 700; background: none; border: none; cursor: pointer; font-size: inherit; }
@@ -54,7 +68,6 @@
   backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--border-soft);
 }
-.mobile-topbar-logo { width: 76px; height: auto; flex-shrink: 0; }
 .mobile-topbar-title { font-family: var(--font-display); font-size: 16px; font-weight: 700; letter-spacing: 0.03em; }
 .mobile-topbar-title small { display: block; font-family: var(--font-body); font-weight: 500; font-size: 11.5px; color: var(--text-2); letter-spacing: normal; margin-top: 1px; }
 
@@ -156,10 +169,7 @@
   top: 0;
   height: 100vh;
 }
-.sidebar-brand { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 4px 8px 12px; }
-.sidebar-brand-logo { width: 128px; height: auto; }
-.sidebar-brand-word { font-family: var(--font-display); font-weight: 700; letter-spacing: 0.10em; font-size: 13px; color: var(--text-2); }
-.sidebar-brand-word small { display: block; font-family: var(--font-body); font-weight: 500; font-size: 10.5px; color: var(--text-2); letter-spacing: 0.04em; }
+.sidebar-brand { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 6px 8px 16px; }
 
 .sidebar-nav { display: flex; flex-direction: column; gap: 3px; flex: 1; overflow-y: auto; }
 .sidebar-link {
