@@ -55,7 +55,7 @@ export function renderUsersPage(ctx) {
 
     const wrap = el('div', { class: 'table-wrap' });
     const table = el('table', { class: 'data-table' }, [
-      el('thead', {}, el('tr', {}, [el('th', {}, 'Usuário'), el('th', {}, 'E-mail'), el('th', {}, 'Papel'), el('th', {}, 'Status'), el('th', {}, 'Ações')])),
+      el('thead', {}, el('tr', {}, [el('th', {}, 'Usuário'), el('th', {}, 'Matrícula'), el('th', {}, 'Papel'), el('th', {}, 'Status'), el('th', {}, 'Ações')])),
       el(
         'tbody',
         {},
@@ -67,7 +67,7 @@ export function renderUsersPage(ctx) {
                 u.nomeCompleto || '—'
               ])
             ]),
-            el('td', {}, u.email || '—'),
+            el('td', { class: 'mono' }, u.matricula || '—'),
             el('td', {}, roleSelect(u)),
             el('td', {}, badge(STATUS_LABEL[u.status] || u.status, STATUS_TONE[u.status] || 'neutral', true)),
             el('td', {}, actionsFor(u))

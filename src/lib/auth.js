@@ -10,15 +10,29 @@ import { auth, db } from './firebase.js';
 
 const USERS = 'usuarios';
 
+// O Firebase Auth só sabe autenticar por e-mail/senha — como o login aqui é
+// por matrícula, cada matrícula vira um e-mail sintético interno (nunca
+// mostrado na UI). Isso também garante matrícula única "de graça": o próprio
+// Firebase rejeita criar duas contas com o mesmo e-mail sintético.
+const MATRICULA_EMAIL_DOMAIN = 'matricula.cronos-tm.internal';
+
+export function isMatriculaValida(matricula) {
+  return /^\d{6}$/.test(String(matricula || '').trim());
+}
+
+function matriculaParaEmail(matricula) {
+  return `${String(matricula).trim()}@${MATRICULA_EMAIL_DOMAIN}`;
+}
+
 export function friendlyAuthError(err) {
   const code = err?.code || '';
   const map = {
-    'auth/invalid-email': 'E-mail inválido.',
+    'auth/invalid-email': 'Matrícula inválida.',
     'auth/user-disabled': 'Esta conta foi desativada.',
-    'auth/user-not-found': 'E-mail ou senha incorretos.',
-    'auth/wrong-password': 'E-mail ou senha incorretos.',
-    'auth/invalid-credential': 'E-mail ou senha incorretos.',
-    'auth/email-already-in-use': 'Já existe uma conta com este e-mail.',
+    'auth/user-not-found': 'Matrícula ou senha incorretos.',
+    'auth/wrong-password': 'Matrícula ou senha incorretos.',
+    'auth/invalid-credential': 'Matrícula ou senha incorretos.',
+    'auth/email-already-in-use': 'Essa matrícula já está cadastrada.',
     'auth/weak-password': 'A senha precisa ter pelo menos 6 caracteres.',
     'auth/network-request-failed': 'Sem conexão — verifique sua internet.',
     'auth/too-many-requests': 'Muitas tentativas. Aguarde alguns minutos.'
@@ -26,12 +40,15 @@ export function friendlyAuthError(err) {
   return map[code] || 'Não foi possível concluir. Tente novamente.';
 }
 
-export async function registerUser({ nomeCompleto, email, password }) {
-  const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
+export async function registerUser({ nomeCompleto, matricula, password }) {
+  if (!isMatriculaValida(matricula)) {
+    throw Object.assign(new Error('matricula-invalida'), { code: 'auth/invalid-email' });
+  }
+  const cred = await createUserWithEmailAndPassword(auth, matriculaParaEmail(matricula), password);
   await updateProfile(cred.user, { displayName: nomeCompleto.trim() });
   await setDoc(doc(db, USERS, cred.user.uid), {
     nomeCompleto: nomeCompleto.trim(),
-    email: email.trim().toLowerCase(),
+    matricula: String(matricula).trim(),
     role: 'lider',
     status: 'pendente',
     createdAt: serverTimestamp()
@@ -39,8 +56,11 @@ export async function registerUser({ nomeCompleto, email, password }) {
   return cred.user;
 }
 
-export function loginUser({ email, password }) {
-  return signInWithEmailAndPassword(auth, email.trim(), password);
+export function loginUser({ matricula, password }) {
+  if (!isMatriculaValida(matricula)) {
+    return Promise.reject(Object.assign(new Error('matricula-invalida'), { code: 'auth/invalid-email' }));
+  }
+  return signInWithEmailAndPassword(auth, matriculaParaEmail(matricula), password);
 }
 
 export function logoutUser() {
