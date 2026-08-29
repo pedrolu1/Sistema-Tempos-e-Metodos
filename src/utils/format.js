@@ -1,0 +1,61 @@
+export function todayISO() {
+  const d = new Date();
+  const tz = d.getTimezoneOffset();
+  return new Date(d.getTime() - tz * 60000).toISOString().slice(0, 10);
+}
+
+export function nowHHMM() {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+/** Duração em minutos entre dois horários HH:MM, assumindo virada de turno se término < início. */
+export function durationMinutes(horaInicio, horaTermino) {
+  if (!horaInicio || !horaTermino) return 0;
+  const [h1, m1] = horaInicio.split(':').map(Number);
+  const [h2, m2] = horaTermino.split(':').map(Number);
+  let mins = h2 * 60 + m2 - (h1 * 60 + m1);
+  if (mins < 0) mins += 24 * 60;
+  return mins;
+}
+
+export function formatMinutes(totalMinutes) {
+  const mins = Math.max(0, Math.round(totalMinutes));
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (h === 0) return `${m}min`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${String(m).padStart(2, '0')}min`;
+}
+
+export function formatDateBR(iso) {
+  if (!iso) return '—';
+  const [y, m, d] = iso.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+export function formatDateLong(iso) {
+  if (!iso) return '—';
+  const d = new Date(`${iso}T12:00:00`);
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+export function initials(name) {
+  if (!name) return '?';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+export function weekdayShort(iso) {
+  const d = new Date(`${iso}T12:00:00`);
+  return d.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
+}
+
+export function debounce(fn, wait = 250) {
+  let t;
+  return (...args) => {
+    clearTimeout(t);
+    t = setTimeout(() => fn(...args), wait);
+  };
+}

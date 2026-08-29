@@ -1,0 +1,68 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function meDoc() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
+    }
+
+    function isAprovado() {
+      return isSignedIn() && meDoc().status == 'aprovado';
+    }
+
+    function isAdmin() {
+      return isSignedIn() && meDoc().status == 'aprovado' && meDoc().role == 'admin';
+    }
+
+    // ---------------------------------------------------------------
+    // usuarios — cada pessoa lê o próprio perfil (para saber se já foi
+    // aprovada); só o admin lê a lista inteira, aprova, nega ou muda papéis.
+    // Ninguém além do admin pode alterar o próprio status/role depois de
+    // criado — é isso que impede autoaprovação.
+    // ---------------------------------------------------------------
+    match /usuarios/{uid} {
+      allow get: if isSignedIn() && (request.auth.uid == uid || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isSignedIn()
+        && request.auth.uid == uid
+        && request.resource.data.status == 'pendente'
+        && request.resource.data.role == 'lider';
+      allow update, delete: if isAdmin();
+    }
+
+    // ---------------------------------------------------------------
+    // colaboradores / atividades — catálogo de apoio ao lançamento.
+    // Leitura para qualquer usuário aprovado; escrita só pelo admin.
+    // ---------------------------------------------------------------
+    match /colaboradores/{id} {
+      allow read: if isAprovado();
+      allow write: if isAdmin();
+    }
+
+    match /atividades/{id} {
+      allow read: if isAprovado();
+      allow write: if isAdmin();
+    }
+
+    // ---------------------------------------------------------------
+    // lancamentos — cada líder cria e mantém seus próprios apontamentos;
+    // o admin tem acesso total. A trava de "não editar no mobile após
+    // sincronizar" é uma regra de produto (UI), não desta camada: aqui
+    // o dono do registro pode alterá-lo a qualquer momento pelo mesmo
+    // motivo que ele pôde criá-lo — a UI do app mobile é quem esconde os
+    // controles de edição assim que o servidor confirma o documento.
+    // ---------------------------------------------------------------
+    match /lancamentos/{id} {
+      allow read: if isAprovado() && (isAdmin() || resource.data.criadoPorUid == request.auth.uid);
+      allow create: if isAprovado()
+        && request.resource.data.criadoPorUid == request.auth.uid;
+      allow update, delete: if isAprovado()
+        && (isAdmin() || resource.data.criadoPorUid == request.auth.uid);
+    }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "name": "cronos-tm",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Sistema de lançamento, gerenciamento e análise de dados de Tempos e Métodos industriais.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@fontsource/space-grotesk": "^5.1.0",
+    "@fontsource/manrope": "^5.1.0",
+    "@fontsource/ibm-plex-mono": "^5.1.0",
+    "firebase": "^11.0.2",
+    "xlsx": "^0.18.5",
+    "jspdf": "^2.5.2",
+    "jspdf-autotable": "^3.8.4",
+    "docx": "^9.1.0",
+    "file-saver": "^2.0.5"
+  },
+  "devDependencies": {
+    "vite": "^6.0.1",
+    "vite-plugin-pwa": "^0.21.1"
+  }
+}
