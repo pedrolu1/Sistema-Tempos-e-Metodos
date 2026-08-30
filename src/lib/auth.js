@@ -7,6 +7,7 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc, updateDoc, onSnapshot, serverTimestamp, getDoc, collection, query, where } from 'firebase/firestore';
 import { auth, db } from './firebase.js';
+import { reportSnapshotError } from './errors.js';
 
 const USERS = 'usuarios';
 
@@ -24,6 +25,23 @@ function matriculaParaEmail(matricula) {
   return `${String(matricula).trim()}@${MATRICULA_EMAIL_DOMAIN}`;
 }
 
+/**
+ * O SDK do Firebase Auth às vezes não rejeita rápido quando o projeto está
+ * mal configurado (ex.: Authentication nunca foi ativado no console) — a
+ * chamada fica pendurada em vez de dar erro. Isso trava o botão "Entrar"/
+ * "Solicitar acesso" num spinner infinito, sem nenhuma mensagem, dando a
+ * impressão de que "não funciona". Este timeout garante que o usuário
+ * sempre recebe uma resposta em alguns segundos.
+ */
+function withTimeout(promise, ms = 20000) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(Object.assign(new Error('timeout'), { code: 'auth/timeout' })), ms)
+    )
+  ]);
+}
+
 export function friendlyAuthError(err) {
   const code = err?.code || '';
   const map = {
@@ -35,7 +53,10 @@ export function friendlyAuthError(err) {
     'auth/email-already-in-use': 'Essa matrícula já está cadastrada.',
     'auth/weak-password': 'A senha precisa ter pelo menos 6 caracteres.',
     'auth/network-request-failed': 'Sem conexão — verifique sua internet.',
-    'auth/too-many-requests': 'Muitas tentativas. Aguarde alguns minutos.'
+    'auth/too-many-requests': 'Muitas tentativas. Aguarde alguns minutos.',
+    'auth/timeout': 'O servidor demorou demais para responder. Verifique sua conexão e tente novamente.',
+    'auth/configuration-not-found': 'O login por e-mail/senha ainda não foi ativado no Firebase deste projeto (peça ao administrador para checar Authentication no console do Firebase).',
+    'auth/operation-not-allowed': 'O login por e-mail/senha ainda não foi ativado no Firebase deste projeto (peça ao administrador para checar Authentication no console do Firebase).'
   };
   return map[code] || 'Não foi possível concluir. Tente novamente.';
 }
@@ -44,7 +65,7 @@ export async function registerUser({ nomeCompleto, matricula, password }) {
   if (!isMatriculaValida(matricula)) {
     throw Object.assign(new Error('matricula-invalida'), { code: 'auth/invalid-email' });
   }
-  const cred = await createUserWithEmailAndPassword(auth, matriculaParaEmail(matricula), password);
+  const cred = await withTimeout(createUserWithEmailAndPassword(auth, matriculaParaEmail(matricula), password));
   await updateProfile(cred.user, { displayName: nomeCompleto.trim() });
   await setDoc(doc(db, USERS, cred.user.uid), {
     nomeCompleto: nomeCompleto.trim(),
@@ -60,7 +81,7 @@ export function loginUser({ matricula, password }) {
   if (!isMatriculaValida(matricula)) {
     return Promise.reject(Object.assign(new Error('matricula-invalida'), { code: 'auth/invalid-email' }));
   }
-  return signInWithEmailAndPassword(auth, matriculaParaEmail(matricula), password);
+  return withTimeout(signInWithEmailAndPassword(auth, matriculaParaEmail(matricula), password));
 }
 
 export function logoutUser() {
@@ -105,11 +126,11 @@ export function observeSession(callback) {
 
 export function subscribeUsersByStatus(status, callback) {
   const q = query(collection(db, USERS), where('status', '==', status));
-  return onSnapshot(q, (snap) => callback(snap.docs.map((d) => ({ uid: d.id, ...d.data() }))));
+  return onSnapshot(q, (snap) => callback(snap.docs.map((d) => ({ uid: d.id, ...d.data() }))), reportSnapshotError('usuários'));
 }
 
 export function subscribeAllUsers(callback) {
-  return onSnapshot(collection(db, USERS), (snap) => callback(snap.docs.map((d) => ({ uid: d.id, ...d.data() }))));
+  return onSnapshot(collection(db, USERS), (snap) => callback(snap.docs.map((d) => ({ uid: d.id, ...d.data() }))), reportSnapshotError('usuários'));
 }
 
 export function setUserStatus(uid, status) {

@@ -10,12 +10,13 @@ import {
   serverTimestamp
 } from 'firebase/firestore';
 import { db } from './firebase.js';
+import { reportSnapshotError } from './errors.js';
 
 const COL = 'colaboradores';
 
 export function subscribeColaboradores(callback) {
   const q = query(collection(db, COL), orderBy('nomeCompleto', 'asc'));
-  return onSnapshot(q, (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))));
+  return onSnapshot(q, (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))), reportSnapshotError('colaboradores'));
 }
 
 export function addColaborador({ nomeCompleto, matricula, criadoPor }) {

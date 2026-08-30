@@ -13,6 +13,7 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase.js';
 import { durationMinutes } from '../utils/format.js';
+import { reportSnapshotError } from './errors.js';
 
 const COL = 'lancamentos';
 
@@ -83,11 +84,11 @@ export function subscribeMeusLancamentos(uid, callback) {
     orderBy('criadoEmLocal', 'desc'),
     fsLimit(300)
   );
-  return onSnapshot(q, { includeMetadataChanges: true }, (snap) => callback(mapSnapshot(snap)));
+  return onSnapshot(q, { includeMetadataChanges: true }, (snap) => callback(mapSnapshot(snap)), reportSnapshotError('meus lançamentos'));
 }
 
 /** Todos os lançamentos (admin / dashboard). */
 export function subscribeTodosLancamentos(callback, { max = 3000 } = {}) {
   const q = query(collection(db, COL), orderBy('criadoEmLocal', 'desc'), fsLimit(max));
-  return onSnapshot(q, { includeMetadataChanges: true }, (snap) => callback(mapSnapshot(snap)));
+  return onSnapshot(q, { includeMetadataChanges: true }, (snap) => callback(mapSnapshot(snap)), reportSnapshotError('lançamentos'));
 }

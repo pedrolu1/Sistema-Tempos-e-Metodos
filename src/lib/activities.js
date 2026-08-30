@@ -10,12 +10,13 @@ import {
   serverTimestamp
 } from 'firebase/firestore';
 import { db } from './firebase.js';
+import { reportSnapshotError } from './errors.js';
 
 const COL = 'atividades';
 
 export function subscribeAtividades(callback) {
   const q = query(collection(db, COL), orderBy('nome', 'asc'));
-  return onSnapshot(q, (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))));
+  return onSnapshot(q, (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))), reportSnapshotError('atividades'));
 }
 
 export function addAtividade({ nome, tipo, criadoPor }) {
