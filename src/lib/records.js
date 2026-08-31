@@ -29,6 +29,7 @@ function buildPayload(input) {
     horaTermino: input.horaTermino,
     duracaoMinutos: durationMinutes(input.horaInicio, input.horaTermino),
     tipoRegistro: input.tipoRegistro,
+    contrato: input.contrato || '',
     atividadeId: input.atividadeId,
     atividadeNome: input.atividadeNome,
     atividadeTipo: input.atividadeTipo,

@@ -13,6 +13,7 @@ export function renderLaunchPage({ colaboradores, atividades, profile }) {
 
   function buildForm() {
     let tipoRegistro = 'atividade';
+    let contratoId = '';
     let liderId = '';
     let colaboradoresIds = [];
     let submitting = false;
@@ -22,23 +23,75 @@ export function renderLaunchPage({ colaboradores, atividades, profile }) {
     const terminoInput = el('input', { class: 'input', type: 'time', required: true });
     const obsInput = el('textarea', { class: 'textarea', placeholder: 'Observações (opcional)' });
 
+    const contratoFieldWrap = el('div');
+    const contratoSelectWrap = el('div');
     const atividadeSelectWrap = el('div');
     const liderWrap = el('div');
     const colaboradoresWrap = el('div');
 
+    /** Contratos só existem entre as atividades produtivas — improdutividade não é filtrada por contrato. */
+    function contratosDisponiveis() {
+      return [...new Set(atividades.filter((a) => a.ativo !== false && a.tipo === 'produtiva' && a.contrato).map((a) => a.contrato))].sort();
+    }
+
+    function usaContrato() {
+      return tipoRegistro === 'atividade' && contratosDisponiveis().length > 0;
+    }
+
     function activeAtividades() {
-      return atividades.filter((a) => a.ativo !== false && a.tipo === (tipoRegistro === 'atividade' ? 'produtiva' : 'improdutiva'));
+      if (tipoRegistro === 'improdutividade') {
+        return atividades.filter((a) => a.ativo !== false && a.tipo === 'improdutiva');
+      }
+      const produtivas = atividades.filter((a) => a.ativo !== false && a.tipo === 'produtiva');
+      if (!usaContrato()) return produtivas;
+      if (!contratoId) return [];
+      return produtivas.filter((a) => a.contrato === contratoId);
+    }
+
+    function buildContratoSelect() {
+      if (!usaContrato()) {
+        mount(contratoFieldWrap, []);
+        return;
+      }
+      const contratos = contratosDisponiveis();
+      mount(contratoSelectWrap, [
+        el(
+          'select',
+          {
+            class: 'select',
+            required: true,
+            onchange: (e) => {
+              contratoId = e.target.value;
+              buildAtividadeSelect();
+            }
+          },
+          [
+            el('option', { value: '' }, 'Selecione o contrato…'),
+            ...contratos.map((c) => el('option', { value: c, selected: c === contratoId }, c))
+          ]
+        )
+      ]);
+      mount(contratoFieldWrap, [field({ label: 'Contrato', input: contratoSelectWrap })]);
     }
 
     function buildAtividadeSelect() {
       const opts = activeAtividades();
+      const semContratoEscolhido = usaContrato() && !contratoId;
       mount(atividadeSelectWrap, [
         el(
           'select',
-          { class: 'select', required: true },
+          { class: 'select', required: true, disabled: semContratoEscolhido },
           [
-            el('option', { value: '' }, opts.length ? `Selecione a ${tipoRegistro === 'atividade' ? 'atividade' : 'improdutividade'}…` : 'Nenhuma cadastrada — peça ao admin'),
-            ...opts.map((a) => el('option', { value: a.id }, a.nome))
+            el(
+              'option',
+              { value: '' },
+              semContratoEscolhido
+                ? 'Selecione o contrato primeiro…'
+                : opts.length
+                  ? `Selecione a ${tipoRegistro === 'atividade' ? 'atividade' : 'improdutividade'}…`
+                  : 'Nenhuma cadastrada — peça ao admin'
+            ),
+            ...opts.map((a) => el('option', { value: a.id }, a.codigo ? `${a.codigo} — ${a.nome}` : a.nome))
           ]
         )
       ]);
@@ -71,9 +124,12 @@ export function renderLaunchPage({ colaboradores, atividades, profile }) {
       ]);
     }
 
+    buildContratoSelect();
     buildAtividadeSelect();
     buildLider();
     buildColaboradores();
+
+    const atividadeLabel = document.createTextNode('Atividade em execução');
 
     const tipoTabs = segmented(
       [
@@ -83,7 +139,10 @@ export function renderLaunchPage({ colaboradores, atividades, profile }) {
       tipoRegistro,
       (val) => {
         tipoRegistro = val;
+        contratoId = '';
+        atividadeLabel.textContent = val === 'atividade' ? 'Atividade em execução' : 'Improdutividade em execução';
         Array.from(tipoTabs.children).forEach((btn, i) => btn.classList.toggle('active', i === (val === 'atividade' ? 0 : 1)));
+        buildContratoSelect();
         buildAtividadeSelect();
       }
     );
@@ -104,6 +163,10 @@ export function renderLaunchPage({ colaboradores, atividades, profile }) {
 
           if (!dataInput.value || !inicioInput.value || !terminoInput.value) {
             toast('Preencha data, horário de início e término.', 'error');
+            return;
+          }
+          if (usaContrato() && !contratoId) {
+            toast('Selecione o contrato.', 'error');
             return;
           }
           if (!atividadeId) {
@@ -131,6 +194,7 @@ export function renderLaunchPage({ colaboradores, atividades, profile }) {
               horaInicio: inicioInput.value,
               horaTermino: terminoInput.value,
               tipoRegistro,
+              contrato: usaContrato() ? contratoId : '',
               atividadeId,
               atividadeNome: atividade?.nome || '',
               atividadeTipo: atividade?.tipo || '',
@@ -161,7 +225,8 @@ export function renderLaunchPage({ colaboradores, atividades, profile }) {
           ])
         ]),
         el('div', { class: 'field' }, [el('label', { class: 'field-label' }, 'O que está sendo registrado?'), tipoTabs]),
-        field({ label: tipoRegistro === 'atividade' ? 'Atividade em execução' : 'Improdutividade em execução', input: atividadeSelectWrap }),
+        contratoFieldWrap,
+        field({ label: atividadeLabel, input: atividadeSelectWrap }),
         field({ label: 'Líder da atividade', input: liderWrap }),
         field({ label: 'Colaboradores', input: colaboradoresWrap }),
         field({ label: 'Observações', input: obsInput }),

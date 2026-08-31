@@ -104,20 +104,54 @@
   height: 100%;
 }
 .sync-fab {
-  width: 58px; height: 58px;
+  --fab-size: 60px;
+  width: var(--fab-size); height: var(--fab-size);
   border-radius: 50%;
-  border: none;
+  border: 1.5px solid transparent;
   cursor: pointer;
-  background: var(--accent-grad);
-  color: #1a1006;
   display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 10px 28px -8px var(--accent-glow);
-  transform: translateY(-14px);
-  transition: transform var(--dur-fast) var(--ease-spring), box-shadow var(--dur-med);
+  transform: translateY(-16px);
+  transition: transform var(--dur-fast) var(--ease-spring), box-shadow var(--dur-med) var(--ease-out),
+    background var(--dur-med) var(--ease-out), border-color var(--dur-med) var(--ease-out);
   position: relative;
 }
-.sync-fab:active { transform: translateY(-14px) scale(0.93); }
-.sync-fab.syncing svg { animation: spin 0.9s linear infinite; }
+.sync-fab:active { transform: translateY(-16px) scale(0.92); }
+
+/* estado ocioso — nada pendente: recolhido, neutro, quase invisível até precisar */
+.sync-fab.idle {
+  width: calc(var(--fab-size) - 10px);
+  height: calc(var(--fab-size) - 10px);
+  background: var(--bg-3);
+  border-color: var(--border-strong);
+  color: var(--text-2);
+  box-shadow: var(--shadow-sm);
+}
+.sync-fab.idle:hover { color: var(--accent-400); border-color: var(--accent-500); }
+
+/* estado pendente — chama atenção com o gradiente da marca + halo pulsante */
+.sync-fab.pending {
+  background: var(--accent-grad);
+  color: #1a1006;
+  box-shadow: 0 10px 28px -8px var(--accent-glow);
+}
+.sync-fab.pending::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 2px solid var(--accent-500);
+  opacity: 0;
+  animation: sync-pulse 2.2s ease-out infinite;
+}
+
+/* estado sincronizando — mesmo gradiente, ícone girando, halo em modo "carregando" */
+.sync-fab.syncing {
+  background: var(--accent-grad);
+  color: #1a1006;
+  box-shadow: 0 10px 28px -8px var(--accent-glow);
+}
+.sync-fab.syncing svg { animation: spin 0.85s linear infinite; }
+
 .sync-fab .sync-count {
   position: absolute;
   top: -4px; right: -4px;
@@ -130,6 +164,7 @@
   display: flex; align-items: center; justify-content: center;
   border: 2px solid var(--bg-0);
   padding: 0 3px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
 }
 .sync-fab-label {
   position: absolute;
@@ -137,9 +172,18 @@
   font-size: 10px;
   font-weight: 700;
   font-family: var(--font-display);
+  letter-spacing: 0.02em;
   color: var(--text-2);
-  transform: translateY(-14px);
+  transform: translateY(-16px);
   white-space: nowrap;
+  transition: color var(--dur-med) var(--ease-out);
+}
+.mobile-nav-sync.pending .sync-fab-label { color: var(--accent-400); }
+
+@keyframes sync-pulse {
+  0% { transform: scale(0.9); opacity: 0.55; }
+  70% { transform: scale(1.35); opacity: 0; }
+  100% { transform: scale(1.35); opacity: 0; }
 }
 
 .connectivity-banner {

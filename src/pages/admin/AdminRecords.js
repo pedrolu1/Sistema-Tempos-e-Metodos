@@ -218,6 +218,7 @@ export function renderRecordsPage(ctx) {
                 horaInicio: inicioInput.value,
                 horaTermino: terminoInput.value,
                 tipoRegistro,
+                contrato: l.contrato || '',
                 atividadeId,
                 atividadeNome: atividade?.nome || '',
                 atividadeTipo: atividade?.tipo || '',

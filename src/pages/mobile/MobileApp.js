@@ -27,16 +27,19 @@ export function mountMobileApp(root, { profile }) {
   const navHistorico = navItem(icon.list(22), 'Consultar', () => navigate('consultar'));
 
   const syncBadge = el('span', { class: 'sync-count', style: { display: 'none' } }, '0');
+  const syncIconSpan = el('span', { html: icon.check(22), style: { display: 'inline-flex' } });
   const syncBtn = el(
     'button',
     {
-      class: 'sync-fab',
+      class: 'sync-fab idle',
       type: 'button',
       title: 'Sincronizar agora',
       onclick: onSyncClick
     },
-    [el('span', { html: icon.sync(24), style: { display: 'inline-flex' } }), syncBadge]
+    [syncIconSpan, syncBadge]
   );
+  const syncLabel = el('span', { class: 'sync-fab-label' }, 'tudo certo');
+  const syncNavWrap = el('div', { class: 'mobile-nav-sync' }, [syncBtn, syncLabel]);
 
   const shell = el('div', { class: 'mobile-shell' }, [
     el('div', { class: 'mobile-topbar' }, [
@@ -52,36 +55,34 @@ export function mountMobileApp(root, { profile }) {
     ]),
     banner,
     content,
-    el('div', { class: 'mobile-nav' }, [
-      navLancar,
-      el('div', { class: 'mobile-nav-sync' }, [syncBtn, el('span', { class: 'sync-fab-label' }, 'sincronizar')]),
-      navHistorico
-    ])
+    el('div', { class: 'mobile-nav' }, [navLancar, syncNavWrap, navHistorico])
   ]);
 
   mount(root, [shell]);
 
   async function onSyncClick() {
     if (syncing) return;
-    syncing = true;
-    syncBtn.classList.add('syncing');
     const pending = state.lancamentos.filter((l) => !l._sincronizado).length;
     if (!isOnline()) {
       toast('Sem conexão agora. Os dados serão enviados automaticamente assim que a internet voltar.', 'info');
-      syncing = false;
-      syncBtn.classList.remove('syncing');
       return;
     }
+    if (pending === 0) {
+      toast('Tudo já está sincronizado.', 'ok');
+      return;
+    }
+    syncing = true;
+    applySyncVisual();
     try {
       const result = await syncNow();
       if (result.ok) {
-        toast(pending > 0 ? `${pending} lançamento(s) sincronizado(s) com sucesso.` : 'Tudo já está sincronizado.', 'ok');
+        toast(`${pending} lançamento(s) sincronizado(s) com sucesso.`, 'ok');
       }
     } catch {
       toast('Não foi possível sincronizar agora. Tentaremos automaticamente.', 'error');
     } finally {
       syncing = false;
-      syncBtn.classList.remove('syncing');
+      applySyncVisual();
     }
   }
 
@@ -99,10 +100,27 @@ export function mountMobileApp(root, { profile }) {
     topTitle.firstChild.textContent = page === 'consultar' ? 'Meus lançamentos' : 'Lançar';
   }
 
-  function updateSyncBadge() {
+  function applySyncVisual() {
     const pending = state.lancamentos.filter((l) => !l._sincronizado).length;
+    const state3 = syncing ? 'syncing' : pending > 0 ? 'pending' : 'idle';
+
+    syncBtn.classList.remove('idle', 'pending', 'syncing');
+    syncBtn.classList.add(state3);
+    syncNavWrap.classList.toggle('pending', state3 !== 'idle');
+
     syncBadge.style.display = pending > 0 ? 'flex' : 'none';
     syncBadge.textContent = String(pending);
+
+    if (state3 === 'syncing') {
+      syncIconSpan.innerHTML = icon.sync(22);
+      syncLabel.textContent = 'sincronizando…';
+    } else if (state3 === 'pending') {
+      syncIconSpan.innerHTML = icon.sync(24);
+      syncLabel.textContent = `${pending} pendente${pending > 1 ? 's' : ''}`;
+    } else {
+      syncIconSpan.innerHTML = icon.check(22);
+      syncLabel.textContent = 'tudo certo';
+    }
   }
 
   function renderPage() {
@@ -138,7 +156,7 @@ export function mountMobileApp(root, { profile }) {
   });
   const unsubLanc = subscribeMeusLancamentos(profile.uid, (list) => {
     state.lancamentos = list;
-    updateSyncBadge();
+    applySyncVisual();
     if (historyRefresh) historyRefresh(list);
     if (!state.loaded) {
       state.loaded = true;

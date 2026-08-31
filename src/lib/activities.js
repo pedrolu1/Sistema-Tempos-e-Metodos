@@ -19,10 +19,13 @@ export function subscribeAtividades(callback) {
   return onSnapshot(q, (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))), reportSnapshotError('atividades'));
 }
 
-export function addAtividade({ nome, tipo, criadoPor }) {
+export function addAtividade({ nome, tipo, criadoPor, contrato = '', codigo = '', local = '' }) {
   return addDoc(collection(db, COL), {
     nome: nome.trim(),
     tipo, // 'produtiva' | 'improdutiva'
+    contrato: contrato.trim(),
+    codigo: codigo.trim(),
+    local: local.trim(),
     ativo: true,
     criadoPor,
     criadoEm: serverTimestamp()
