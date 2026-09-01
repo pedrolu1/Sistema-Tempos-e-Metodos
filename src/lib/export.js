@@ -1,4 +1,4 @@
-import { formatDateBR, formatMinutes, formatEfetivo } from '../utils/format.js';
+import { formatDateBR, formatMinutes, formatEfetivo, classificacaoDoLancamento, CLASSIFICACAO_INFO } from '../utils/format.js';
 
 // As bibliotecas de exportação (xlsx/jsPDF/docx) só são carregadas quando o
 // usuário realmente exporta algo — mantém o bundle inicial leve para o app
@@ -9,6 +9,7 @@ const COLUMNS = [
   { key: 'horario', label: 'Horário', map: (r) => `${r.horaInicio}–${r.horaTermino}` },
   { key: 'duracao', label: 'Duração', map: (r) => formatMinutes(r.duracaoMinutos) },
   { key: 'tipo', label: 'Tipo', map: (r) => (r.tipoRegistro === 'improdutividade' ? 'Improdutividade' : 'Atividade') },
+  { key: 'classificacao', label: 'Classificação Lean', map: (r) => CLASSIFICACAO_INFO[classificacaoDoLancamento(r)].short },
   { key: 'atividadeNome', label: 'Descrição', map: (r) => r.atividadeNome || '' },
   { key: 'liderNome', label: 'Líder', map: (r) => r.liderNome || '' },
   { key: 'colaboradores', label: 'Colaboradores', map: (r) => (r.colaboradoresNomes || []).join(', ') },

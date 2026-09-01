@@ -149,6 +149,7 @@ export function renderHistoryPage({ lancamentos, atividades }) {
                 atividadeId,
                 atividadeNome: atividade?.nome || '',
                 atividadeTipo: atividade?.tipo || '',
+                classificacao: atividade?.classificacao || '',
                 liderId: l.liderId || '',
                 liderNome: l.liderNome || '',
                 colaboradoresIds: l.colaboradoresIds || [],

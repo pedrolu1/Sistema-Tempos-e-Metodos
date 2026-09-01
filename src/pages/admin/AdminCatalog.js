@@ -5,6 +5,16 @@ import { addAtividade, updateAtividade, deleteAtividade } from '../../lib/activi
 import { addColaborador, updateColaborador, deleteColaborador } from '../../lib/collaborators.js';
 import { toast } from '../../lib/toast.js';
 import { SEED_ATIVIDADES } from '../../data/seedAtividades.js';
+import { CLASSIFICACAO_INFO } from '../../utils/format.js';
+
+function classificacaoBadge(a) {
+  if (a.tipo !== 'produtiva') return el('span', { style: { color: 'var(--text-3)' } }, '—');
+  const info = CLASSIFICACAO_INFO[a.classificacao === 'VA' ? 'VA' : 'DN'];
+  return el('span', { style: { display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', fontWeight: '700', color: info.color } }, [
+    el('span', { style: { width: '8px', height: '8px', borderRadius: '50%', background: info.color, display: 'inline-block' } }),
+    info.short
+  ]);
+}
 
 export function renderCatalogPage(ctx) {
   let atividades = ctx.atividades;
@@ -68,9 +78,16 @@ export function renderCatalogPage(ctx) {
   }
 
   async function importarCatalogoPadrao() {
-    const codigosExistentes = new Set(atividades.filter((a) => a.codigo).map((a) => a.codigo));
-    const faltando = SEED_ATIVIDADES.filter((s) => !codigosExistentes.has(s.codigo));
-    if (faltando.length === 0) {
+    const porCodigo = new Map(atividades.filter((a) => a.codigo).map((a) => [a.codigo, a]));
+    const faltando = SEED_ATIVIDADES.filter((s) => !porCodigo.has(s.codigo));
+    // Backfill: quem já importou antes desta versão do catálogo ter ganhado a
+    // classificação VA/DN não tem esse campo salvo — completa sem mexer em
+    // mais nada (nome/contrato podem ter sido customizados pelo admin).
+    const paraClassificar = SEED_ATIVIDADES.filter((s) => {
+      const existente = porCodigo.get(s.codigo);
+      return existente && !existente.classificacao && s.classificacao;
+    });
+    if (faltando.length === 0 && paraClassificar.length === 0) {
       toast('O catálogo padrão já está todo importado.', 'info');
       return;
     }
@@ -80,7 +97,14 @@ export function renderCatalogPage(ctx) {
         // eslint-disable-next-line no-await-in-loop
         await addAtividade({ ...item, criadoPor: profile.uid });
       }
-      toast(`${faltando.length} etapa(s) importada(s) do catálogo padrão.`, 'ok');
+      for (const item of paraClassificar) {
+        // eslint-disable-next-line no-await-in-loop
+        await updateAtividade(porCodigo.get(item.codigo).id, { classificacao: item.classificacao });
+      }
+      const partes = [];
+      if (faltando.length) partes.push(`${faltando.length} etapa(s) importada(s)`);
+      if (paraClassificar.length) partes.push(`${paraClassificar.length} classificação(ões) VA/DN completada(s)`);
+      toast(`${partes.join(' · ')} do catálogo padrão.`, 'ok');
     } catch {
       toast('Falha ao importar — algumas etapas podem não ter sido criadas.', 'error');
     } finally {
@@ -111,7 +135,7 @@ export function renderCatalogPage(ctx) {
     const wrap = el('div', { class: 'table-wrap' });
     mount(wrap, [
       el('table', { class: 'data-table' }, [
-        el('thead', {}, el('tr', {}, [el('th', {}, 'Código'), el('th', {}, 'Nome'), el('th', {}, 'Contrato'), el('th', {}, 'Tipo'), el('th', {}, 'Situação'), el('th', {}, 'Ações')])),
+        el('thead', {}, el('tr', {}, [el('th', {}, 'Código'), el('th', {}, 'Nome'), el('th', {}, 'Contrato'), el('th', {}, 'Tipo'), el('th', {}, 'Lean'), el('th', {}, 'Situação'), el('th', {}, 'Ações')])),
         el(
           'tbody',
           {},
@@ -121,6 +145,7 @@ export function renderCatalogPage(ctx) {
               el('td', { class: 'strong' }, a.nome),
               el('td', {}, a.contrato || '—'),
               el('td', {}, badge(a.tipo === 'produtiva' ? 'Atividade' : 'Improdutividade', a.tipo === 'produtiva' ? 'info' : 'danger')),
+              el('td', {}, classificacaoBadge(a)),
               el('td', {}, switchToggle(a.ativo !== false, (val) => updateAtividade(a.id, { ativo: val }))),
               el('td', {}, rowActions(() => openAtividadeModal(a), () => removeItem(() => deleteAtividade(a.id), 'Atividade removida.')))
             ])
@@ -206,12 +231,42 @@ export function renderCatalogPage(ctx) {
       el('option', { value: 'produtiva', selected: !item || item.tipo === 'produtiva' }, 'Atividade (produtiva)'),
       el('option', { value: 'improdutiva', selected: item?.tipo === 'improdutiva' }, 'Improdutividade')
     ]);
+    let classificacaoSelecionada = item?.classificacao === 'VA' ? 'VA' : 'DN';
+    const classificacaoFieldWrap = el('div');
+    const classificacaoTabs = segmented(
+      [
+        { value: 'VA', label: 'Valor Agregado (VA)' },
+        { value: 'DN', label: 'Desperdício Necessário (DN)' }
+      ],
+      classificacaoSelecionada,
+      (v) => {
+        classificacaoSelecionada = v;
+        Array.from(classificacaoTabs.children).forEach((b, i) => b.classList.toggle('active', ['VA', 'DN'][i] === v));
+      }
+    );
+    function buildClassificacaoField() {
+      if (tipoSelect.value !== 'produtiva') {
+        mount(classificacaoFieldWrap, []);
+        return;
+      }
+      mount(classificacaoFieldWrap, [
+        field({
+          label: 'Classificação Lean',
+          input: classificacaoTabs,
+          hint: 'VA transforma a peça (instalação, acabamento); DN é necessário mas não agrega valor por si só (acesso, demolição, limpeza, inspeção).'
+        })
+      ]);
+    }
+    tipoSelect.addEventListener('change', buildClassificacaoField);
+    buildClassificacaoField();
+
     const close = () => backdrop.remove();
     const backdrop = modal({
       title: item ? 'Editar item' : 'Novo item',
       body: [
         field({ label: 'Nome', input: nomeInput }),
         field({ label: 'Tipo', input: tipoSelect }),
+        classificacaoFieldWrap,
         el('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' } }, [
           field({ label: 'Código', input: codigoInput }),
           field({ label: 'Local', input: localInput })
@@ -229,6 +284,7 @@ export function renderCatalogPage(ctx) {
             const payload = {
               nome: nomeInput.value.trim(),
               tipo: tipoSelect.value,
+              classificacao: tipoSelect.value === 'produtiva' ? classificacaoSelecionada : '',
               codigo: codigoInput.value.trim(),
               contrato: contratoInput.value.trim(),
               local: localInput.value.trim()

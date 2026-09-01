@@ -211,6 +211,73 @@ export function stackedTrend({ data, seriesA, seriesB, onSelect, activeKey }) {
   ]);
 }
 
+/**
+ * Colunas empilhadas de N séries (usado pra VA/DN/DNN) — mesma linguagem
+ * visual do stackedTrend, generalizada em vez de fixar exatamente 2 campos.
+ * `series`: [{ key, label, color }]; cada ponto de `data` traz um valor por
+ * `key` além de `label`/`fullLabel`.
+ */
+export function stackedTrendN({ data, series, onSelect, activeKey }) {
+  const W = 640;
+  const H = 220;
+  const padL = 40;
+  const padB = 26;
+  const padT = 10;
+  const innerW = W - padL - 12;
+  const innerH = H - padT - padB;
+  const totalOf = (d) => series.reduce((s, ser) => s + (d[ser.key] || 0), 0);
+  const max = Math.max(...data.map(totalOf), 1);
+  const niceMax = niceCeil(max);
+  const bandW = innerW / data.length;
+  const barW = Math.min(24, bandW * 0.55);
+
+  const gridLines = [0, 0.25, 0.5, 0.75, 1].map((t) => {
+    const y = padT + innerH * (1 - t);
+    return svg('g', {}, [
+      svg('line', { x1: padL, x2: W - 6, y1: y, y2: y, stroke: 'var(--chart-grid)', 'stroke-width': '1' }),
+      svg('text', { x: padL - 8, y: y + 4, 'text-anchor': 'end', fill: 'var(--text-3)', 'font-size': '10' }, formatMinutes(niceMax * t))
+    ]);
+  });
+
+  const bars = data.map((d) => {
+    const idx = data.indexOf(d);
+    const cx = padL + bandW * idx + bandW / 2;
+    const yBase = padT + innerH;
+    const isActive = !activeKey || activeKey === d.key;
+    let cursor = 0;
+
+    const segments = series.map((ser, i) => {
+      const val = d[ser.key] || 0;
+      const h = innerH * (val / niceMax);
+      const gap = i > 0 && val > 0 ? 2 : 0;
+      cursor += gap;
+      const y = yBase - cursor - h;
+      cursor += h;
+      return val > 0 ? svg('rect', { x: cx - barW / 2, y, width: barW, height: Math.max(h, 0), rx: '4', fill: ser.color }) : null;
+    });
+
+    const group = svg('g', { style: `cursor:${onSelect ? 'pointer' : 'default'}; opacity:${isActive ? 1 : 0.35}; transition: opacity 160ms ease;` }, [
+      ...segments,
+      svg('rect', { x: cx - barW / 2 - 4, y: padT, width: barW + 8, height: innerH, fill: 'transparent' }),
+      svg('text', { x: cx, y: H - 8, 'text-anchor': 'middle', fill: 'var(--text-3)', 'font-size': '10' }, d.label)
+    ]);
+    group.addEventListener('mouseenter', (e) =>
+      showTooltip(e, [[d.fullLabel || d.label, ''], ...series.map((ser) => [ser.label, formatMinutes(d[ser.key] || 0), ser.color])])
+    );
+    group.addEventListener('mousemove', moveTooltip);
+    group.addEventListener('mouseleave', hideTooltip);
+    if (onSelect) group.addEventListener('click', () => onSelect(d.key));
+    return group;
+  });
+
+  const chart = svg('svg', { viewBox: `0 0 ${W} ${H}`, width: '100%', height: H, style: 'display:block; overflow: visible;' }, [...gridLines, ...bars]);
+
+  return el('div', { style: { display: 'flex', flexDirection: 'column', gap: '14px' } }, [
+    chart,
+    el('div', { style: { display: 'flex', gap: '18px', fontSize: '12px', color: 'var(--text-2)', flexWrap: 'wrap' } }, series.map((ser) => legendKey(ser.color, ser.label)))
+  ]);
+}
+
 function legendKey(color, label) {
   return el('span', { style: { display: 'inline-flex', alignItems: 'center', gap: '7px' } }, [
     el('span', { style: { width: '10px', height: '10px', borderRadius: '3px', background: color, display: 'inline-block' } }),

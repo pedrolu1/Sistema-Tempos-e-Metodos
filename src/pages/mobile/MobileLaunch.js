@@ -159,6 +159,7 @@ export function renderLaunchPage({ atividades, profile }) {
               atividadeId,
               atividadeNome: atividade?.nome || '',
               atividadeTipo: atividade?.tipo || '',
+              classificacao: atividade?.classificacao || '',
               efetivo: efetivo.getValue(),
               observacoes: obsInput.value,
               criadoPorUid: profile.uid,

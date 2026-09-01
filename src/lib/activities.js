@@ -19,10 +19,13 @@ export function subscribeAtividades(callback) {
   return onSnapshot(q, (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))), reportSnapshotError('atividades'));
 }
 
-export function addAtividade({ nome, tipo, criadoPor, contrato = '', codigo = '', local = '' }) {
+export function addAtividade({ nome, tipo, criadoPor, contrato = '', codigo = '', local = '', classificacao = '' }) {
   return addDoc(collection(db, COL), {
     nome: nome.trim(),
     tipo, // 'produtiva' | 'improdutiva'
+    // classificação Lean — só faz sentido para 'produtiva' (VA ou DN);
+    // improdutividade é sempre DNN, então fica vazio/ignorado nesse caso.
+    classificacao: tipo === 'produtiva' && classificacao === 'VA' ? 'VA' : tipo === 'produtiva' ? 'DN' : '',
     contrato: contrato.trim(),
     codigo: codigo.trim(),
     local: local.trim(),

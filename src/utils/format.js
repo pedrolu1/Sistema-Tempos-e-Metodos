@@ -64,3 +64,24 @@ export function formatEfetivo(efetivo) {
   const partes = EFETIVO_CAMPOS.filter((c) => Number(efetivo?.[c.key]) > 0).map((c) => `${c.label}: ${efetivo[c.key]}`);
   return partes.length ? partes.join(' · ') : '—';
 }
+
+/**
+ * Classificação Lean de cada minuto apontado — VA (Valor Agregado), DN
+ * (Desperdício Necessário / semi valor agregado) ou DNN (Desperdício Não
+ * Necessário). Toda improdutividade é DNN por definição; dentro do que é
+ * "atividade" (produtiva), cada etapa do catálogo é marcada como VA ou DN
+ * pelo admin (ver Cadastros). Cor reaproveita as semânticas do sistema:
+ * verde = bom/valor, amarelo = atenção/necessário mas não ideal,
+ * vermelho = desperdício a eliminar.
+ */
+export const CLASSIFICACAO_INFO = {
+  VA: { label: 'Valor Agregado', short: 'VA', color: 'var(--ok-500)' },
+  DN: { label: 'Desperdício Necessário', short: 'DN', color: 'var(--warn-500)' },
+  DNN: { label: 'Desperdício Não Necessário', short: 'DNN', color: 'var(--danger-500)' }
+};
+
+/** Deriva a classificação de um lançamento: improdutividade é sempre DNN. */
+export function classificacaoDoLancamento(l) {
+  if (l.tipoRegistro === 'improdutividade') return 'DNN';
+  return l.classificacao === 'VA' ? 'VA' : 'DN';
+}

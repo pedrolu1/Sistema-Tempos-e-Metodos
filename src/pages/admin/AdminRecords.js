@@ -3,10 +3,19 @@ import { badge, button, emptyState, field, modal, cardWithHeader } from '../../c
 import { liderSelect, colaboradoresPicker } from '../../components/PeoplePicker.js';
 import { efetivoInputs } from '../../components/EfetivoInputs.js';
 import { icon } from '../../utils/icons.js';
-import { formatDateBR, formatMinutes, efetivoTotal, formatEfetivo } from '../../utils/format.js';
+import { formatDateBR, formatMinutes, efetivoTotal, formatEfetivo, classificacaoDoLancamento, CLASSIFICACAO_INFO } from '../../utils/format.js';
 import { updateLancamento, deleteLancamento } from '../../lib/records.js';
 import { exportExcel, exportPDF, exportWord } from '../../lib/export.js';
 import { toast } from '../../lib/toast.js';
+
+function leanBadge(l) {
+  const key = classificacaoDoLancamento(l);
+  const info = CLASSIFICACAO_INFO[key];
+  return el('span', { title: info.label, style: { display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', fontWeight: '700', color: info.color } }, [
+    el('span', { style: { width: '8px', height: '8px', borderRadius: '50%', background: info.color, display: 'inline-block' } }),
+    info.short
+  ]);
+}
 
 export function renderRecordsPage(ctx) {
   let lancamentos = ctx.lancamentos;
@@ -86,7 +95,7 @@ export function renderRecordsPage(ctx) {
           'thead',
           {},
           el('tr', {}, [
-            el('th', {}, 'Data'), el('th', {}, 'Horário'), el('th', {}, 'Duração'), el('th', {}, 'Tipo'),
+            el('th', {}, 'Data'), el('th', {}, 'Horário'), el('th', {}, 'Duração'), el('th', {}, 'Tipo'), el('th', {}, 'Lean'),
             el('th', {}, 'Descrição'), el('th', {}, 'Líder'), el('th', {}, 'Colaboradores'), el('th', {}, 'Efetivo'),
             el('th', {}, 'Lançado por'), el('th', {}, 'Status'), el('th', {}, 'Ações')
           ])
@@ -100,6 +109,7 @@ export function renderRecordsPage(ctx) {
               el('td', { class: 'mono' }, `${l.horaInicio}–${l.horaTermino}`),
               el('td', { class: 'mono' }, formatMinutes(l.duracaoMinutos)),
               el('td', {}, badge(l.tipoRegistro === 'improdutividade' ? 'Improd.' : 'Atividade', l.tipoRegistro === 'improdutividade' ? 'danger' : 'info')),
+              el('td', {}, leanBadge(l)),
               el('td', { class: 'strong' }, l.atividadeNome || '—'),
               el('td', {}, l.liderNome || '—'),
               el('td', {}, colabCell(l.colaboradoresNomes || [])),
@@ -226,6 +236,7 @@ export function renderRecordsPage(ctx) {
                 atividadeId,
                 atividadeNome: atividade?.nome || '',
                 atividadeTipo: atividade?.tipo || '',
+                classificacao: atividade?.classificacao || '',
                 liderId,
                 liderNome: lider?.nomeCompleto || '',
                 colaboradoresIds,

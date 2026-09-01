@@ -43,6 +43,10 @@ function buildPayload(input) {
     atividadeId: input.atividadeId,
     atividadeNome: input.atividadeNome,
     atividadeTipo: input.atividadeTipo,
+    // classificação Lean (VA/DN/DNN) herdada da atividade escolhida no momento
+    // do lançamento — improdutividade é sempre DNN, então só vale a pena
+    // gravar 'VA' explicitamente; qualquer outra coisa cai em DN por padrão.
+    classificacao: input.tipoRegistro === 'improdutividade' ? 'DNN' : input.classificacao === 'VA' ? 'VA' : 'DN',
     // líder da atividade — campo legado, não é mais coletado no app mobile
     // (removido do formulário); preservado aqui só para não quebrar registros
     // antigos e permitir que o admin ainda o edite pelo painel desktop.

@@ -1,9 +1,11 @@
 import { el, mount } from '../../utils/dom.js';
 import { cardWithHeader, button, segmented } from '../../components/ui.js';
-import { statTile, meter, rankingBars, stackedTrend } from '../../components/charts.js';
+import { statTile, meter, rankingBars, stackedTrend, stackedTrendN } from '../../components/charts.js';
 import { icon } from '../../utils/icons.js';
-import { formatMinutes, formatDateBR, todayISO } from '../../utils/format.js';
+import { formatMinutes, formatDateBR, todayISO, classificacaoDoLancamento, CLASSIFICACAO_INFO } from '../../utils/format.js';
 import { exportExcel, exportPDF, exportWord } from '../../lib/export.js';
+
+const CLASSIFICACAO_SERIES = ['VA', 'DN', 'DNN'].map((k) => ({ key: k, label: CLASSIFICACAO_INFO[k].label, color: CLASSIFICACAO_INFO[k].color }));
 
 const PRESETS = {
   hoje: 0,
@@ -24,7 +26,7 @@ export function renderDashboardPage(ctx) {
   let lancamentos = ctx.lancamentos;
   const state = {
     preset: '30d',
-    filters: { tipo: null, atividadeId: null, liderId: null }
+    filters: { tipo: null, atividadeId: null, liderId: null, classificacao: null }
   };
 
   const filterRow = el('div', { class: 'toolbar' });
@@ -32,6 +34,7 @@ export function renderDashboardPage(ctx) {
   const kpiRow = el('div', { class: 'grid grid-kpis' });
   const meterCard = el('div');
   const trendCard = el('div');
+  const leanCard = el('div');
   const atividadesCard = el('div');
   const improdCard = el('div');
   const lideresCard = el('div');
@@ -71,6 +74,7 @@ export function renderDashboardPage(ctx) {
     ]),
     kpiRow,
     el('div', { class: 'grid grid-charts' }, [trendCard, meterCard]),
+    leanCard,
     el('div', { class: 'grid grid-2' }, [atividadesCard, improdCard]),
     lideresCard
   ]);
@@ -94,6 +98,7 @@ export function renderDashboardPage(ctx) {
       if (!excludeDims.includes('tipo') && state.filters.tipo && l.tipoRegistro !== state.filters.tipo) return false;
       if (!excludeDims.includes('atividadeId') && state.filters.atividadeId && l.atividadeId !== state.filters.atividadeId) return false;
       if (!excludeDims.includes('liderId') && state.filters.liderId && l.liderId !== state.filters.liderId) return false;
+      if (!excludeDims.includes('classificacao') && state.filters.classificacao && classificacaoDoLancamento(l) !== state.filters.classificacao) return false;
       return true;
     });
   }
@@ -115,6 +120,9 @@ export function renderDashboardPage(ctx) {
     if (state.filters.liderId) {
       const item = lancamentos.find((l) => l.liderId === state.filters.liderId);
       chips.push(chip(`Líder: ${item?.liderNome || '—'}`, () => toggleFilter('liderId', state.filters.liderId)));
+    }
+    if (state.filters.classificacao) {
+      chips.push(chip(CLASSIFICACAO_INFO[state.filters.classificacao].label, () => toggleFilter('classificacao', state.filters.classificacao)));
     }
     mount(chipsRow, chips.length ? [el('span', { style: { fontSize: '11.5px', color: 'var(--text-3)' } }, 'Filtros ativos:'), ...chips] : []);
   }
@@ -203,6 +211,51 @@ export function renderDashboardPage(ctx) {
     ]);
   }
 
+  function paintLean() {
+    const full = dataset();
+    const byClass = { VA: 0, DN: 0, DNN: 0 };
+    full.forEach((l) => {
+      byClass[classificacaoDoLancamento(l)] += l.duracaoMinutos;
+    });
+
+    const tiles = CLASSIFICACAO_SERIES.map((s) =>
+      statTile({
+        label: s.label,
+        value: formatMinutes(byClass[s.key]),
+        iconHtml: s.key === 'VA' ? icon.bolt(16) : s.key === 'DN' ? icon.clock(16) : icon.alert(16),
+        tone: s.key === 'VA' ? 'ok' : s.key === 'DN' ? 'warn' : 'danger',
+        active: state.filters.classificacao === s.key,
+        onToggle: () => toggleFilter('classificacao', s.key)
+      })
+    );
+
+    const byDay = new Map();
+    full.forEach((l) => {
+      if (!byDay.has(l.data)) byDay.set(l.data, { VA: 0, DN: 0, DNN: 0 });
+      byDay.get(l.data)[classificacaoDoLancamento(l)] += l.duracaoMinutos;
+    });
+    const days = [...byDay.keys()].sort();
+    const trendData = days.map((d) => ({
+      key: d,
+      label: d.slice(8, 10) + '/' + d.slice(5, 7),
+      fullLabel: formatDateBR(d),
+      ...byDay.get(d)
+    }));
+
+    mount(leanCard, [
+      cardWithHeader({
+        title: 'Classificação Lean do tempo (VA / DN / DNN)',
+        subtitle: 'Valor Agregado x Desperdício Necessário x Desperdício Não Necessário — clique para filtrar',
+        children: [
+          el('div', { class: 'grid grid-kpis', style: { marginBottom: '18px' } }, tiles),
+          trendData.length
+            ? stackedTrendN({ data: trendData, series: CLASSIFICACAO_SERIES })
+            : el('div', { style: { padding: '32px 0', textAlign: 'center', color: 'var(--text-3)', fontSize: '13px' } }, 'Sem lançamentos no período selecionado.')
+        ]
+      })
+    ]);
+  }
+
   function aggregateBy(rows, key, nameKey) {
     const map = new Map();
     rows.forEach((l) => {
@@ -254,6 +307,7 @@ export function renderDashboardPage(ctx) {
     paintChips();
     paintKpis();
     paintTrend();
+    paintLean();
     paintAtividades();
     paintImprod();
     paintLideres();
