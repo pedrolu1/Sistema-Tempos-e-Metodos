@@ -1,13 +1,12 @@
 import { el, mount } from '../../utils/dom.js';
 import { badge, button, emptyState, field, modal } from '../../components/ui.js';
-import { colaboradoresPicker } from '../../components/PeoplePicker.js';
 import { efetivoInputs } from '../../components/EfetivoInputs.js';
 import { icon } from '../../utils/icons.js';
 import { formatDateBR, formatMinutes, weekdayShort, efetivoTotal, formatEfetivo } from '../../utils/format.js';
 import { updateLancamento, deleteLancamento } from '../../lib/records.js';
 import { toast } from '../../lib/toast.js';
 
-export function renderHistoryPage({ lancamentos, colaboradores, atividades }) {
+export function renderHistoryPage({ lancamentos, atividades }) {
   const root = el('div', { style: { display: 'flex', flexDirection: 'column', gap: '12px' } });
 
   function refresh(list) {
@@ -46,7 +45,6 @@ export function renderHistoryPage({ lancamentos, colaboradores, atividades }) {
       ]),
       el('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '14px', fontSize: '13px', color: 'var(--text-1)' } }, [
         rowInfo(icon.clock(14), `${l.horaInicio}–${l.horaTermino} (${formatMinutes(l.duracaoMinutos)})`),
-        rowInfo(icon.users(14), `${(l.colaboradoresNomes || []).length} colaborador(es)`),
         efetivoTotal(l.efetivo) > 0 ? el('span', { title: formatEfetivo(l.efetivo) }, rowInfo(icon.crew(14), `Efetivo: ${efetivoTotal(l.efetivo)}`)) : null
       ]),
       badge(isImprodutiva ? 'Improdutividade' : 'Atividade', isImprodutiva ? 'danger' : 'info'),
@@ -95,7 +93,6 @@ export function renderHistoryPage({ lancamentos, colaboradores, atividades }) {
   }
 
   function openEdit(l) {
-    let colaboradoresIds = [...(l.colaboradoresIds || [])];
     let tipoRegistro = l.tipoRegistro;
 
     const dataInput = el('input', { class: 'input', type: 'date', value: l.data });
@@ -104,7 +101,6 @@ export function renderHistoryPage({ lancamentos, colaboradores, atividades }) {
     const obsInput = el('textarea', { class: 'textarea', value: l.observacoes || '' });
 
     const atividadeWrap = el('div');
-    const colabWrap = el('div');
     const efetivo = efetivoInputs(l.efetivo || {});
 
     function buildAtividade() {
@@ -116,17 +112,7 @@ export function renderHistoryPage({ lancamentos, colaboradores, atividades }) {
         ])
       ]);
     }
-    function buildColab() {
-      mount(colabWrap, [
-        colaboradoresPicker({
-          options: colaboradores,
-          selected: colaboradoresIds,
-          onChange: (ids) => (colaboradoresIds = ids)
-        })
-      ]);
-    }
     buildAtividade();
-    buildColab();
 
     const close = () => backdrop.remove();
     const backdrop = modal({
@@ -138,7 +124,6 @@ export function renderHistoryPage({ lancamentos, colaboradores, atividades }) {
         ]),
         field({ label: 'Data', input: dataInput }),
         field({ label: tipoRegistro === 'atividade' ? 'Atividade' : 'Improdutividade', input: atividadeWrap }),
-        field({ label: 'Colaboradores', input: colabWrap }),
         field({ label: 'Efetivo utilizado', input: efetivo.node }),
         field({ label: 'Observações', input: obsInput })
       ],
@@ -150,7 +135,7 @@ export function renderHistoryPage({ lancamentos, colaboradores, atividades }) {
           onClick: async () => {
             const atividadeId = atividadeWrap.querySelector('select').value;
             const atividade = atividades.find((a) => a.id === atividadeId);
-            if (!atividadeId || colaboradoresIds.length === 0) {
+            if (!atividadeId) {
               toast('Preencha todos os campos obrigatórios.', 'error');
               return;
             }
@@ -166,8 +151,8 @@ export function renderHistoryPage({ lancamentos, colaboradores, atividades }) {
                 atividadeTipo: atividade?.tipo || '',
                 liderId: l.liderId || '',
                 liderNome: l.liderNome || '',
-                colaboradoresIds,
-                colaboradoresNomes: colaboradoresIds.map((id) => colaboradores.find((c) => c.id === id)?.nomeCompleto || ''),
+                colaboradoresIds: l.colaboradoresIds || [],
+                colaboradoresNomes: l.colaboradoresNomes || [],
                 efetivo: efetivo.getValue(),
                 observacoes: obsInput.value
               });

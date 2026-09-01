@@ -97,6 +97,53 @@
   padding-right: 34px;
 }
 
+/* ===================== Stepper (contador −/número/+) =====================
+   Usado nos campos de efetivo — toque em vez de teclado numérico, pensado
+   pra uso rápido em campo (inclusive com luvas). */
+.stepper {
+  display: flex;
+  align-items: stretch;
+  height: 48px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+}
+.stepper:focus-within { border-color: var(--accent-500); box-shadow: 0 0 0 4px var(--accent-glow); }
+.stepper-btn {
+  flex-shrink: 0;
+  width: 40px;
+  border: none;
+  background: var(--bg-3);
+  color: var(--text-1);
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+  user-select: none;
+}
+.stepper-btn:hover { background: var(--bg-4); color: var(--accent-400); }
+.stepper-btn:active { background: var(--accent-500); color: var(--on-accent); }
+.stepper input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-0);
+  text-align: center;
+  font-size: 15.5px;
+  font-weight: 700;
+  -moz-appearance: textfield;
+}
+.stepper input:focus { outline: none; }
+.stepper input::-webkit-outer-spin-button,
+.stepper input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
 .input-icon-wrap { position: relative; }
 .input-icon-wrap .input { padding-left: 40px; }
 .input-icon-wrap svg {

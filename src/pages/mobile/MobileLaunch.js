@@ -1,13 +1,16 @@
 import { el, mount } from '../../utils/dom.js';
 import { field, button, segmented, card } from '../../components/ui.js';
-import { colaboradoresPicker } from '../../components/PeoplePicker.js';
 import { efetivoInputs } from '../../components/EfetivoInputs.js';
 import { icon } from '../../utils/icons.js';
 import { todayISO, nowHHMM } from '../../utils/format.js';
 import { createLancamento } from '../../lib/records.js';
 import { toast } from '../../lib/toast.js';
 
-export function renderLaunchPage({ colaboradores, atividades, profile }) {
+function sectionTitle(text, first = false) {
+  return el('div', { class: 'section-title', style: { marginTop: first ? '0' : '4px' } }, text);
+}
+
+export function renderLaunchPage({ atividades, profile }) {
   const wrap = el('div', { style: { display: 'flex', flexDirection: 'column', gap: '18px' } });
   buildForm();
   return wrap;
@@ -15,7 +18,6 @@ export function renderLaunchPage({ colaboradores, atividades, profile }) {
   function buildForm() {
     let tipoRegistro = 'atividade';
     let contratoId = '';
-    let colaboradoresIds = [];
     let submitting = false;
 
     const dataInput = el('input', { class: 'input', type: 'date', value: todayISO(), required: true });
@@ -26,7 +28,6 @@ export function renderLaunchPage({ colaboradores, atividades, profile }) {
     const contratoFieldWrap = el('div');
     const contratoSelectWrap = el('div');
     const atividadeSelectWrap = el('div');
-    const colaboradoresWrap = el('div');
     const efetivo = efetivoInputs();
 
     /** Contratos só existem entre as atividades produtivas — improdutividade não é filtrada por contrato. */
@@ -97,21 +98,8 @@ export function renderLaunchPage({ colaboradores, atividades, profile }) {
       ]);
     }
 
-    function buildColaboradores() {
-      mount(colaboradoresWrap, [
-        colaboradoresPicker({
-          options: colaboradores.filter((c) => c.ativo !== false),
-          selected: colaboradoresIds,
-          onChange: (ids) => {
-            colaboradoresIds = ids;
-          }
-        })
-      ]);
-    }
-
     buildContratoSelect();
     buildAtividadeSelect();
-    buildColaboradores();
 
     const atividadeLabel = document.createTextNode('Atividade em execução');
 
@@ -136,7 +124,7 @@ export function renderLaunchPage({ colaboradores, atividades, profile }) {
     const form = el(
       'form',
       {
-        style: { display: 'flex', flexDirection: 'column', gap: '16px' },
+        style: { display: 'flex', flexDirection: 'column', gap: '14px' },
         onsubmit: async (e) => {
           e.preventDefault();
           if (submitting) return;
@@ -157,15 +145,9 @@ export function renderLaunchPage({ colaboradores, atividades, profile }) {
             toast(`Selecione a ${tipoRegistro === 'atividade' ? 'atividade' : 'improdutividade'}.`, 'error');
             return;
           }
-          if (colaboradoresIds.length === 0) {
-            toast('Selecione ao menos um colaborador.', 'error');
-            return;
-          }
 
           submitting = true;
           submitBtn.disabled = true;
-
-          const colaboradoresNomes = colaboradoresIds.map((id) => colaboradores.find((c) => c.id === id)?.nomeCompleto || '');
 
           try {
             await createLancamento({
@@ -177,8 +159,6 @@ export function renderLaunchPage({ colaboradores, atividades, profile }) {
               atividadeId,
               atividadeNome: atividade?.nome || '',
               atividadeTipo: atividade?.tipo || '',
-              colaboradoresIds,
-              colaboradoresNomes,
               efetivo: efetivo.getValue(),
               observacoes: obsInput.value,
               criadoPorUid: profile.uid,
@@ -195,19 +175,25 @@ export function renderLaunchPage({ colaboradores, atividades, profile }) {
         }
       },
       [
-        el('div', { class: 'grid', style: { gridTemplateColumns: '1fr', gap: '14px' } }, [
-          field({ label: 'Data', input: dataInput }),
-          el('div', { class: 'grid', style: { gridTemplateColumns: '1fr 1fr', gap: '14px' } }, [
-            field({ label: 'Início', input: inicioInput }),
-            field({ label: 'Término', input: terminoInput })
-          ])
+        sectionTitle('Quando', true),
+        field({ label: 'Data', input: dataInput }),
+        el('div', { class: 'grid', style: { gridTemplateColumns: '1fr 1fr', gap: '14px' } }, [
+          field({ label: 'Início', input: inicioInput }),
+          field({ label: 'Término', input: terminoInput })
         ]),
+
+        sectionTitle('Etapa'),
         el('div', { class: 'field' }, [el('label', { class: 'field-label' }, 'O que está sendo registrado?'), tipoTabs]),
         contratoFieldWrap,
         field({ label: atividadeLabel, input: atividadeSelectWrap }),
-        field({ label: 'Colaboradores', input: colaboradoresWrap }),
-        field({ label: 'Efetivo utilizado', input: efetivo.node, hint: 'Quantidade por função — deixe 0 quando não se aplicar.' }),
-        field({ label: 'Observações', input: obsInput }),
+
+        sectionTitle('Efetivo utilizado'),
+        efetivo.node,
+        el('div', { class: 'field-hint' }, 'Quantidade por função — deixe 0 quando não se aplicar.'),
+
+        sectionTitle('Observações'),
+        obsInput,
+
         submitBtn
       ]
     );

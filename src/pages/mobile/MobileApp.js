@@ -1,7 +1,6 @@
 import { el, mount } from '../../utils/dom.js';
 import { icon } from '../../utils/icons.js';
 import { navigate, currentRoute, onRouteChange } from '../../router.js';
-import { subscribeColaboradores } from '../../lib/collaborators.js';
 import { subscribeAtividades } from '../../lib/activities.js';
 import { subscribeMeusLancamentos } from '../../lib/records.js';
 import { syncNow, isOnline, onConnectivityChange } from '../../lib/sync.js';
@@ -12,10 +11,9 @@ import { renderHistoryPage } from './MobileHistory.js';
 
 export function mountMobileApp(root, { profile }) {
   const state = {
-    colaboradores: [],
     atividades: [],
     lancamentos: [],
-    loaded: { colaboradores: false, atividades: false, lancamentos: false },
+    loaded: { atividades: false, lancamentos: false },
     rendered: false
   };
   let historyRefresh = null;
@@ -138,7 +136,6 @@ export function mountMobileApp(root, { profile }) {
     if (active === 'lancar') {
       mount(content, [
         renderLaunchPage({
-          colaboradores: state.colaboradores,
           atividades: state.atividades,
           profile
         })
@@ -146,7 +143,6 @@ export function mountMobileApp(root, { profile }) {
     } else {
       const { node, refresh } = renderHistoryPage({
         lancamentos: state.lancamentos,
-        colaboradores: state.colaboradores,
         atividades: state.atividades
       });
       mount(content, [node]);
@@ -155,12 +151,12 @@ export function mountMobileApp(root, { profile }) {
   }
 
   /**
-   * As 3 assinaturas (colaboradores, atividades, lançamentos) resolvem em
-   * paralelo e em ordem imprevisível. Renderizar assim que a primeira
-   * responder — como o código fazia antes — corre o risco de montar a tela
-   * de Lançar com listas de atividades/colaboradores ainda vazias, e elas
-   * nunca mais são atualizadas depois (a tela só remonta ao trocar de aba).
-   * Por isso a primeira renderização só acontece quando as 3 já chegaram.
+   * As 2 assinaturas (atividades, lançamentos) resolvem em paralelo e em
+   * ordem imprevisível. Renderizar assim que a primeira responder — como o
+   * código fazia antes — corre o risco de montar a tela de Lançar com a
+   * lista de atividades ainda vazia, e ela nunca mais é atualizada depois
+   * (a tela só remonta ao trocar de aba). Por isso a primeira renderização
+   * só acontece quando as 2 já chegaram.
    */
   function allLoaded() {
     return Object.values(state.loaded).every(Boolean);
@@ -173,11 +169,6 @@ export function mountMobileApp(root, { profile }) {
     else renderPage();
   }
 
-  const unsubColab = subscribeColaboradores((list) => {
-    state.colaboradores = list;
-    state.loaded.colaboradores = true;
-    renderInitial();
-  });
   const unsubAtiv = subscribeAtividades((list) => {
     state.atividades = list;
     state.loaded.atividades = true;
@@ -197,7 +188,6 @@ export function mountMobileApp(root, { profile }) {
   banner.style.display = isOnline() ? 'none' : 'flex';
 
   return () => {
-    unsubColab();
     unsubAtiv();
     unsubLanc();
     unsubRoute();
