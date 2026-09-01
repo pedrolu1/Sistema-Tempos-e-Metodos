@@ -26,5 +26,6 @@ export const icon = {
   briefcase: (sz) => s('<rect x="3" y="7.5" width="18" height="12" rx="1.6"/><path d="M8 7.5V6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v1.5"/><path d="M3 12.5h18"/>', sz),
   arrowUp: (sz) => s('<path d="M12 19V5"/><path d="M6 11l6-6 6 6"/>', sz),
   arrowDown: (sz) => s('<path d="M12 5v14"/><path d="M18 13l-6 6-6-6"/>', sz),
-  bolt: (sz) => s('<path d="M13 2 4 14h6l-1 8 9-12h-6z"/>', sz)
+  bolt: (sz) => s('<path d="M13 2 4 14h6l-1 8 9-12h-6z"/>', sz),
+  crew: (sz) => s('<path d="M4 15.5a8 8 0 0 1 16 0"/><path d="M2 15.5h20"/><circle cx="12" cy="7" r="2.3"/>', sz)
 };

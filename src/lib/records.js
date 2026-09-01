@@ -12,10 +12,19 @@ import {
   serverTimestamp
 } from 'firebase/firestore';
 import { db } from './firebase.js';
-import { durationMinutes } from '../utils/format.js';
+import { durationMinutes, EFETIVO_CAMPOS } from '../utils/format.js';
 import { reportSnapshotError } from './errors.js';
 
 const COL = 'lancamentos';
+
+/** Garante inteiros não-negativos para as 5 categorias fixas de efetivo. */
+function sanitizeEfetivo(efetivo = {}) {
+  const out = {};
+  EFETIVO_CAMPOS.forEach((c) => {
+    out[c.key] = Math.max(0, Math.round(Number(efetivo[c.key]) || 0));
+  });
+  return out;
+}
 
 /**
  * Monta o payload de um lançamento. `criadoEmLocal` é um número (Date.now()),
@@ -30,6 +39,7 @@ function buildPayload(input) {
     duracaoMinutos: durationMinutes(input.horaInicio, input.horaTermino),
     tipoRegistro: input.tipoRegistro,
     contrato: input.contrato || '',
+    efetivo: sanitizeEfetivo(input.efetivo),
     atividadeId: input.atividadeId,
     atividadeNome: input.atividadeNome,
     atividadeTipo: input.atividadeTipo,

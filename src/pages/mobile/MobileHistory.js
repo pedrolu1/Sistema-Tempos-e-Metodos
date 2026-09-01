@@ -1,8 +1,9 @@
 import { el, mount } from '../../utils/dom.js';
 import { badge, button, emptyState, field, modal } from '../../components/ui.js';
 import { liderSelect, colaboradoresPicker } from '../../components/PeoplePicker.js';
+import { efetivoInputs } from '../../components/EfetivoInputs.js';
 import { icon } from '../../utils/icons.js';
-import { formatDateBR, formatMinutes, weekdayShort } from '../../utils/format.js';
+import { formatDateBR, formatMinutes, weekdayShort, efetivoTotal, formatEfetivo } from '../../utils/format.js';
 import { updateLancamento, deleteLancamento } from '../../lib/records.js';
 import { toast } from '../../lib/toast.js';
 
@@ -46,7 +47,8 @@ export function renderHistoryPage({ lancamentos, colaboradores, atividades }) {
       el('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '14px', fontSize: '13px', color: 'var(--text-1)' } }, [
         rowInfo(icon.clock(14), `${l.horaInicio}–${l.horaTermino} (${formatMinutes(l.duracaoMinutos)})`),
         rowInfo(icon.briefcase(14), l.liderNome || '—'),
-        rowInfo(icon.users(14), `${(l.colaboradoresNomes || []).length} colaborador(es)`)
+        rowInfo(icon.users(14), `${(l.colaboradoresNomes || []).length} colaborador(es)`),
+        efetivoTotal(l.efetivo) > 0 ? el('span', { title: formatEfetivo(l.efetivo) }, rowInfo(icon.crew(14), `Efetivo: ${efetivoTotal(l.efetivo)}`)) : null
       ]),
       badge(isImprodutiva ? 'Improdutividade' : 'Atividade', isImprodutiva ? 'danger' : 'info'),
       el('div', { style: { display: 'flex', gap: '8px', marginTop: '2px' } }, [
@@ -106,6 +108,7 @@ export function renderHistoryPage({ lancamentos, colaboradores, atividades }) {
     const atividadeWrap = el('div');
     const liderWrap = el('div');
     const colabWrap = el('div');
+    const efetivo = efetivoInputs(l.efetivo || {});
 
     function buildAtividade() {
       const opts = atividades.filter((a) => a.ativo !== false && a.tipo === (tipoRegistro === 'atividade' ? 'produtiva' : 'improdutiva'));
@@ -154,6 +157,7 @@ export function renderHistoryPage({ lancamentos, colaboradores, atividades }) {
         field({ label: tipoRegistro === 'atividade' ? 'Atividade' : 'Improdutividade', input: atividadeWrap }),
         field({ label: 'Líder da atividade', input: liderWrap }),
         field({ label: 'Colaboradores', input: colabWrap }),
+        field({ label: 'Efetivo utilizado', input: efetivo.node }),
         field({ label: 'Observações', input: obsInput })
       ],
       footer: [
@@ -183,6 +187,7 @@ export function renderHistoryPage({ lancamentos, colaboradores, atividades }) {
                 liderNome: lider?.nomeCompleto || '',
                 colaboradoresIds,
                 colaboradoresNomes: colaboradoresIds.map((id) => colaboradores.find((c) => c.id === id)?.nomeCompleto || ''),
+                efetivo: efetivo.getValue(),
                 observacoes: obsInput.value
               });
               toast('Lançamento atualizado.', 'ok');

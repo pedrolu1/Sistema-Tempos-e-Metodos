@@ -1,4 +1,4 @@
-import { formatDateBR, formatMinutes } from '../utils/format.js';
+import { formatDateBR, formatMinutes, formatEfetivo } from '../utils/format.js';
 
 // As bibliotecas de exportação (xlsx/jsPDF/docx) só são carregadas quando o
 // usuário realmente exporta algo — mantém o bundle inicial leve para o app
@@ -12,6 +12,7 @@ const COLUMNS = [
   { key: 'atividadeNome', label: 'Descrição', map: (r) => r.atividadeNome || '' },
   { key: 'liderNome', label: 'Líder', map: (r) => r.liderNome || '' },
   { key: 'colaboradores', label: 'Colaboradores', map: (r) => (r.colaboradoresNomes || []).join(', ') },
+  { key: 'efetivo', label: 'Efetivo utilizado', map: (r) => formatEfetivo(r.efetivo) },
   { key: 'criadoPorNome', label: 'Lançado por', map: (r) => r.criadoPorNome || '' },
   { key: 'status', label: 'Status', map: (r) => (r._sincronizado === false ? 'Pendente' : 'Sincronizado') }
 ];

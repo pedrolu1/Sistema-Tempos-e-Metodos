@@ -1,8 +1,9 @@
 import { el, mount } from '../../utils/dom.js';
 import { badge, button, emptyState, field, modal, cardWithHeader } from '../../components/ui.js';
 import { liderSelect, colaboradoresPicker } from '../../components/PeoplePicker.js';
+import { efetivoInputs } from '../../components/EfetivoInputs.js';
 import { icon } from '../../utils/icons.js';
-import { formatDateBR, formatMinutes } from '../../utils/format.js';
+import { formatDateBR, formatMinutes, efetivoTotal, formatEfetivo } from '../../utils/format.js';
 import { updateLancamento, deleteLancamento } from '../../lib/records.js';
 import { exportExcel, exportPDF, exportWord } from '../../lib/export.js';
 import { toast } from '../../lib/toast.js';
@@ -86,7 +87,7 @@ export function renderRecordsPage(ctx) {
           {},
           el('tr', {}, [
             el('th', {}, 'Data'), el('th', {}, 'Horário'), el('th', {}, 'Duração'), el('th', {}, 'Tipo'),
-            el('th', {}, 'Descrição'), el('th', {}, 'Líder'), el('th', {}, 'Colaboradores'),
+            el('th', {}, 'Descrição'), el('th', {}, 'Líder'), el('th', {}, 'Colaboradores'), el('th', {}, 'Efetivo'),
             el('th', {}, 'Lançado por'), el('th', {}, 'Status'), el('th', {}, 'Ações')
           ])
         ),
@@ -102,6 +103,7 @@ export function renderRecordsPage(ctx) {
               el('td', { class: 'strong' }, l.atividadeNome || '—'),
               el('td', {}, l.liderNome || '—'),
               el('td', {}, colabCell(l.colaboradoresNomes || [])),
+              el('td', { class: 'mono', title: formatEfetivo(l.efetivo) }, String(efetivoTotal(l.efetivo))),
               el('td', {}, l.criadoPorNome || '—'),
               el('td', {}, badge(l._sincronizado === false ? 'Pendente' : 'Sincronizado', l._sincronizado === false ? 'warn' : 'ok', true)),
               el('td', {}, el('div', { class: 'toolbar' }, [
@@ -165,6 +167,7 @@ export function renderRecordsPage(ctx) {
     const atividadeWrap = el('div');
     const liderWrap = el('div');
     const colabWrap = el('div');
+    const efetivo = efetivoInputs(l.efetivo || {});
 
     function buildAtividade() {
       const opts = atividades.filter((a) => a.tipo === (tipoRegistro === 'atividade' ? 'produtiva' : 'improdutiva'));
@@ -197,6 +200,7 @@ export function renderRecordsPage(ctx) {
         field({ label: 'Descrição', input: atividadeWrap }),
         field({ label: 'Líder da atividade', input: liderWrap }),
         field({ label: 'Colaboradores', input: colabWrap }),
+        field({ label: 'Efetivo utilizado', input: efetivo.node }),
         field({ label: 'Observações', input: obsInput })
       ],
       footer: [
@@ -226,6 +230,7 @@ export function renderRecordsPage(ctx) {
                 liderNome: lider?.nomeCompleto || '',
                 colaboradoresIds,
                 colaboradoresNomes: colaboradoresIds.map((id) => colaboradores.find((c) => c.id === id)?.nomeCompleto || ''),
+                efetivo: efetivo.getValue(),
                 observacoes: obsInput.value
               });
               toast('Lançamento atualizado.', 'ok');

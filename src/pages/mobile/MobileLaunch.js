@@ -1,6 +1,7 @@
 import { el, mount } from '../../utils/dom.js';
 import { field, button, segmented, card } from '../../components/ui.js';
 import { liderSelect, colaboradoresPicker } from '../../components/PeoplePicker.js';
+import { efetivoInputs } from '../../components/EfetivoInputs.js';
 import { icon } from '../../utils/icons.js';
 import { todayISO, nowHHMM } from '../../utils/format.js';
 import { createLancamento } from '../../lib/records.js';
@@ -28,6 +29,7 @@ export function renderLaunchPage({ colaboradores, atividades, profile }) {
     const atividadeSelectWrap = el('div');
     const liderWrap = el('div');
     const colaboradoresWrap = el('div');
+    const efetivo = efetivoInputs();
 
     /** Contratos só existem entre as atividades produtivas — improdutividade não é filtrada por contrato. */
     function contratosDisponiveis() {
@@ -202,6 +204,7 @@ export function renderLaunchPage({ colaboradores, atividades, profile }) {
               liderNome: lider?.nomeCompleto || '',
               colaboradoresIds,
               colaboradoresNomes,
+              efetivo: efetivo.getValue(),
               observacoes: obsInput.value,
               criadoPorUid: profile.uid,
               criadoPorNome: profile.nomeCompleto
@@ -229,6 +232,7 @@ export function renderLaunchPage({ colaboradores, atividades, profile }) {
         field({ label: atividadeLabel, input: atividadeSelectWrap }),
         field({ label: 'Líder da atividade', input: liderWrap }),
         field({ label: 'Colaboradores', input: colaboradoresWrap }),
+        field({ label: 'Efetivo utilizado', input: efetivo.node, hint: 'Quantidade por função — deixe 0 quando não se aplicar.' }),
         field({ label: 'Observações', input: obsInput }),
         submitBtn
       ]

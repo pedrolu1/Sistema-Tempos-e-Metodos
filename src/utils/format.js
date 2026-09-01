@@ -45,3 +45,22 @@ export function weekdayShort(iso) {
   const d = new Date(`${iso}T12:00:00`);
   return d.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
 }
+
+/** Categorias de efetivo (mão de obra + equipamento) apontadas em cada lançamento. */
+export const EFETIVO_CAMPOS = [
+  { key: 'mecanicos', label: 'Mecânicos' },
+  { key: 'refratarios', label: 'Refratários' },
+  { key: 'montadoresAndaime', label: 'Montadores de andaime' },
+  { key: 'operadoresMaquinas', label: 'Operadores de máquinas' },
+  { key: 'caminhaoMunk', label: 'Caminhão munk' }
+];
+
+export function efetivoTotal(efetivo) {
+  if (!efetivo) return 0;
+  return EFETIVO_CAMPOS.reduce((sum, c) => sum + (Number(efetivo[c.key]) || 0), 0);
+}
+
+export function formatEfetivo(efetivo) {
+  const partes = EFETIVO_CAMPOS.filter((c) => Number(efetivo?.[c.key]) > 0).map((c) => `${c.label}: ${efetivo[c.key]}`);
+  return partes.length ? partes.join(' · ') : '—';
+}
