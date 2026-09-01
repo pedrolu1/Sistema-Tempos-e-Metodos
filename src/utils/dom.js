@@ -63,9 +63,3 @@ export function mount(node, children) {
   appendChildren(node, children);
   return node;
 }
-
-export function frag(children) {
-  const f = document.createDocumentFragment();
-  appendChildren(f, children);
-  return f;
-}

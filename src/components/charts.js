@@ -1,4 +1,4 @@
-import { el, svg, mount } from '../utils/dom.js';
+import { el, svg } from '../utils/dom.js';
 import { formatMinutes } from '../utils/format.js';
 import { icon } from '../utils/icons.js';
 

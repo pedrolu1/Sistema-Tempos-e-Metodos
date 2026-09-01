@@ -256,17 +256,8 @@
   backdrop-filter: blur(14px);
 }
 .desktop-topbar h1 { font-size: 17px; }
-.desktop-topbar-actions { display: flex; align-items: center; gap: 10px; }
 
 .desktop-content { padding: 28px; display: flex; flex-direction: column; gap: 24px; flex: 1; }
-
-.mobile-only { display: block; }
-.desktop-only { display: none; }
-
-@media (min-width: 900px) {
-  .mobile-only { display: none !important; }
-  .desktop-only { display: block; }
-}
 
 .grid { display: grid; gap: 16px; }
 .grid-kpis { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }

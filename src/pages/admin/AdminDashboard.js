@@ -1,5 +1,5 @@
 import { el, mount } from '../../utils/dom.js';
-import { cardWithHeader, badge, button, segmented } from '../../components/ui.js';
+import { cardWithHeader, button, segmented } from '../../components/ui.js';
 import { statTile, meter, rankingBars, stackedTrend } from '../../components/charts.js';
 import { icon } from '../../utils/icons.js';
 import { formatMinutes, formatDateBR, todayISO } from '../../utils/format.js';

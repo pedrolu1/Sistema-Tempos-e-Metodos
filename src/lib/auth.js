@@ -5,7 +5,7 @@ import {
   onAuthStateChanged,
   updateProfile
 } from 'firebase/auth';
-import { doc, setDoc, updateDoc, onSnapshot, serverTimestamp, getDoc, collection, query, where } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, onSnapshot, serverTimestamp, collection } from 'firebase/firestore';
 import { auth, db } from './firebase.js';
 import { reportSnapshotError } from './errors.js';
 
@@ -88,11 +88,6 @@ export function logoutUser() {
   return fbSignOut(auth);
 }
 
-export async function fetchUserProfile(uid) {
-  const snap = await getDoc(doc(db, USERS, uid));
-  return snap.exists() ? { uid, ...snap.data() } : null;
-}
-
 /**
  * Observa autenticação + perfil (role/status) em tempo real — assim, quando o
  * admin aprova um acesso, a tela do usuário pendente atualiza sozinha.
@@ -122,11 +117,6 @@ export function observeSession(callback) {
     unsubAuth();
     if (unsubProfile) unsubProfile();
   };
-}
-
-export function subscribeUsersByStatus(status, callback) {
-  const q = query(collection(db, USERS), where('status', '==', status));
-  return onSnapshot(q, (snap) => callback(snap.docs.map((d) => ({ uid: d.id, ...d.data() }))), reportSnapshotError('usuários'));
 }
 
 export function subscribeAllUsers(callback) {

@@ -6,6 +6,33 @@ import { mountMobileApp } from './pages/mobile/MobileApp.js';
 import { mountAdminApp } from './pages/admin/AdminApp.js';
 import { firebaseConfigured } from './lib/firebase.js';
 
+// O service worker (PWA) atualiza sozinho em segundo plano (skipWaiting +
+// clientsClaim), mas isso só troca quem responde às próximas requisições —
+// a aba já aberta continua rodando o JS antigo até recarregar. Sem isto, o
+// app instalado no celular "trava" numa versão antiga até o usuário fechar
+// e abrir de novo manualmente. Recarrega uma única vez assim que o novo
+// service worker assume o controle da página.
+if ('serviceWorker' in navigator) {
+  let reloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (reloaded) return;
+    reloaded = true;
+    window.location.reload();
+  });
+
+  // o registro automático do plugin PWA só checa por atualização quando a
+  // página carrega — quem deixa o app aberto o turno inteiro nunca recebe
+  // versões novas. Reforça checando de novo sempre que a aba volta a ficar
+  // visível (ex.: usuário volta pro app) e a cada hora enquanto ativo.
+  navigator.serviceWorker.ready.then((reg) => {
+    const check = () => reg.update().catch(() => {});
+    setInterval(check, 60 * 60 * 1000);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') check();
+    });
+  });
+}
+
 const app = document.getElementById('app');
 let authMode = 'login';
 let cleanupApp = null;

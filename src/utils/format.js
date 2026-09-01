@@ -34,12 +34,6 @@ export function formatDateBR(iso) {
   return `${d}/${m}/${y}`;
 }
 
-export function formatDateLong(iso) {
-  if (!iso) return '—';
-  const d = new Date(`${iso}T12:00:00`);
-  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
-}
-
 export function initials(name) {
   if (!name) return '?';
   const parts = name.trim().split(/\s+/);
@@ -50,12 +44,4 @@ export function initials(name) {
 export function weekdayShort(iso) {
   const d = new Date(`${iso}T12:00:00`);
   return d.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
-}
-
-export function debounce(fn, wait = 250) {
-  let t;
-  return (...args) => {
-    clearTimeout(t);
-    t = setTimeout(() => fn(...args), wait);
-  };
 }
