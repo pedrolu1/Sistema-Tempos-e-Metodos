@@ -8,8 +8,8 @@ import { SEED_ATIVIDADES } from '../../data/seedAtividades.js';
 import { CLASSIFICACAO_INFO } from '../../utils/format.js';
 
 function classificacaoBadge(a) {
-  if (a.tipo !== 'produtiva') return el('span', { style: { color: 'var(--text-3)' } }, '—');
-  const info = CLASSIFICACAO_INFO[a.classificacao === 'VA' ? 'VA' : 'DN'];
+  const key = a.tipo === 'produtiva' ? (a.classificacao === 'VA' ? 'VA' : 'DN') : a.classificacao === 'DN' ? 'DN' : 'DNN';
+  const info = CLASSIFICACAO_INFO[key];
   return el('span', { style: { display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', fontWeight: '700', color: info.color } }, [
     el('span', { style: { width: '8px', height: '8px', borderRadius: '50%', background: info.color, display: 'inline-block' } }),
     info.short
@@ -231,31 +231,33 @@ export function renderCatalogPage(ctx) {
       el('option', { value: 'produtiva', selected: !item || item.tipo === 'produtiva' }, 'Atividade (produtiva)'),
       el('option', { value: 'improdutiva', selected: item?.tipo === 'improdutiva' }, 'Improdutividade')
     ]);
-    let classificacaoSelecionada = item?.classificacao === 'VA' ? 'VA' : 'DN';
+    let classificacaoSelecionada = item?.classificacao || (tipoSelect.value === 'produtiva' ? 'DN' : 'DNN');
     const classificacaoFieldWrap = el('div');
-    const classificacaoTabs = segmented(
-      [
-        { value: 'VA', label: 'Valor Agregado (VA)' },
-        { value: 'DN', label: 'Desperdício Necessário (DN)' }
-      ],
-      classificacaoSelecionada,
-      (v) => {
-        classificacaoSelecionada = v;
-        Array.from(classificacaoTabs.children).forEach((b, i) => b.classList.toggle('active', ['VA', 'DN'][i] === v));
-      }
-    );
+    function classificacaoOptions() {
+      return tipoSelect.value === 'produtiva'
+        ? [
+            { value: 'VA', label: 'Valor Agregado (VA)' },
+            { value: 'DN', label: 'Desperdício Necessário (DN)' }
+          ]
+        : [
+            { value: 'DN', label: 'Necessária (DN)' },
+            { value: 'DNN', label: 'Não necessária (DNN)' }
+          ];
+    }
     function buildClassificacaoField() {
-      if (tipoSelect.value !== 'produtiva') {
-        mount(classificacaoFieldWrap, []);
-        return;
+      const opts = classificacaoOptions();
+      if (!opts.some((o) => o.value === classificacaoSelecionada)) {
+        classificacaoSelecionada = tipoSelect.value === 'produtiva' ? 'DN' : 'DNN';
       }
-      mount(classificacaoFieldWrap, [
-        field({
-          label: 'Classificação Lean',
-          input: classificacaoTabs,
-          hint: 'VA transforma a peça (instalação, acabamento); DN é necessário mas não agrega valor por si só (acesso, demolição, limpeza, inspeção).'
-        })
-      ]);
+      const tabs = segmented(opts, classificacaoSelecionada, (v) => {
+        classificacaoSelecionada = v;
+        Array.from(tabs.children).forEach((b, i) => b.classList.toggle('active', opts[i].value === v));
+      });
+      const hint =
+        tipoSelect.value === 'produtiva'
+          ? 'VA transforma a peça (instalação, acabamento); DN é necessário mas não agrega valor por si só (acesso, demolição, limpeza, inspeção).'
+          : 'DN é uma parada necessária/inevitável (chuva, intervalo, DDS, troca de turno); DNN é desperdício evitável (falta de material, defeito de equipamento, atraso).';
+      mount(classificacaoFieldWrap, [field({ label: 'Classificação Lean', input: tabs, hint })]);
     }
     tipoSelect.addEventListener('change', buildClassificacaoField);
     buildClassificacaoField();
@@ -284,7 +286,7 @@ export function renderCatalogPage(ctx) {
             const payload = {
               nome: nomeInput.value.trim(),
               tipo: tipoSelect.value,
-              classificacao: tipoSelect.value === 'produtiva' ? classificacaoSelecionada : '',
+              classificacao: classificacaoSelecionada,
               codigo: codigoInput.value.trim(),
               contrato: contratoInput.value.trim(),
               local: localInput.value.trim()

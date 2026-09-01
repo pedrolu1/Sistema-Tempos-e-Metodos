@@ -23,9 +23,12 @@ export function addAtividade({ nome, tipo, criadoPor, contrato = '', codigo = ''
   return addDoc(collection(db, COL), {
     nome: nome.trim(),
     tipo, // 'produtiva' | 'improdutiva'
-    // classificação Lean — só faz sentido para 'produtiva' (VA ou DN);
-    // improdutividade é sempre DNN, então fica vazio/ignorado nesse caso.
-    classificacao: tipo === 'produtiva' && classificacao === 'VA' ? 'VA' : tipo === 'produtiva' ? 'DN' : '',
+    // classificação Lean: produtiva é VA ou DN; improdutividade é DN
+    // (parada necessária/inevitável) ou DNN (desperdício evitável).
+    classificacao:
+      tipo === 'produtiva'
+        ? classificacao === 'VA' ? 'VA' : 'DN'
+        : classificacao === 'DN' ? 'DN' : 'DNN',
     contrato: contrato.trim(),
     codigo: codigo.trim(),
     local: local.trim(),

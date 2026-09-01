@@ -80,8 +80,18 @@ export const CLASSIFICACAO_INFO = {
   DNN: { label: 'Desperdício Não Necessário', short: 'DNN', color: 'var(--danger-500)' }
 };
 
-/** Deriva a classificação de um lançamento: improdutividade é sempre DNN. */
+/**
+ * Deriva a classificação de um lançamento a partir do que foi salvo nele
+ * (herdado da atividade escolhida no momento do lançamento). Atividade
+ * (produtiva) é VA ou DN; improdutividade é DN (parada necessária/
+ * inevitável — chuva, intervalo, troca de turno) ou DNN (desperdício
+ * evitável — falta de material, defeito de equipamento, atraso). Sem
+ * classificação salva, o padrão é o mais conservador: DN pra atividade,
+ * DNN pra improdutividade.
+ */
 export function classificacaoDoLancamento(l) {
-  if (l.tipoRegistro === 'improdutividade') return 'DNN';
+  if (l.tipoRegistro === 'improdutividade') {
+    return l.classificacao === 'DN' ? 'DN' : 'DNN';
+  }
   return l.classificacao === 'VA' ? 'VA' : 'DN';
 }
