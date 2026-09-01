@@ -11,7 +11,13 @@ import { renderLaunchPage } from './MobileLaunch.js';
 import { renderHistoryPage } from './MobileHistory.js';
 
 export function mountMobileApp(root, { profile }) {
-  const state = { colaboradores: [], atividades: [], lancamentos: [], loaded: false };
+  const state = {
+    colaboradores: [],
+    atividades: [],
+    lancamentos: [],
+    loaded: { colaboradores: false, atividades: false, lancamentos: false },
+    rendered: false
+  };
   let historyRefresh = null;
   let syncing = false;
 
@@ -148,29 +154,47 @@ export function mountMobileApp(root, { profile }) {
     }
   }
 
+  /**
+   * As 3 assinaturas (colaboradores, atividades, lançamentos) resolvem em
+   * paralelo e em ordem imprevisível. Renderizar assim que a primeira
+   * responder — como o código fazia antes — corre o risco de montar a tela
+   * de Lançar com listas de atividades/colaboradores ainda vazias, e elas
+   * nunca mais são atualizadas depois (a tela só remonta ao trocar de aba).
+   * Por isso a primeira renderização só acontece quando as 3 já chegaram.
+   */
+  function allLoaded() {
+    return Object.values(state.loaded).every(Boolean);
+  }
+
+  function renderInitial() {
+    if (state.rendered || !allLoaded()) return;
+    state.rendered = true;
+    if (!currentRoute().page) navigate('lancar');
+    else renderPage();
+  }
+
   const unsubColab = subscribeColaboradores((list) => {
     state.colaboradores = list;
+    state.loaded.colaboradores = true;
+    renderInitial();
   });
   const unsubAtiv = subscribeAtividades((list) => {
     state.atividades = list;
+    state.loaded.atividades = true;
+    renderInitial();
   });
   const unsubLanc = subscribeMeusLancamentos(profile.uid, (list) => {
     state.lancamentos = list;
     applySyncVisual();
     if (historyRefresh) historyRefresh(list);
-    if (!state.loaded) {
-      state.loaded = true;
-      renderPage();
-    }
+    state.loaded.lancamentos = true;
+    renderInitial();
   });
   const unsubRoute = onRouteChange(renderPage);
   const unsubConn = onConnectivityChange((online) => {
     banner.style.display = online ? 'none' : 'flex';
   });
   banner.style.display = isOnline() ? 'none' : 'flex';
-
-  if (!currentRoute().page) navigate('lancar');
-  else renderPage();
 
   return () => {
     unsubColab();
