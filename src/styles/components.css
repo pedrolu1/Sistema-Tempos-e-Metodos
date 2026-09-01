@@ -25,7 +25,7 @@
 
 .btn-primary {
   background: var(--accent-grad);
-  color: #1a1006;
+  color: var(--on-accent);
   box-shadow: 0 10px 30px -10px var(--accent-glow);
 }
 .btn-primary:hover:not(:disabled) { filter: brightness(1.06); box-shadow: 0 14px 36px -8px var(--accent-glow); }
@@ -145,7 +145,7 @@
 .badge-ok { background: var(--ok-glow); color: var(--ok-500); }
 .badge-warn { background: rgba(255, 204, 77, 0.16); color: var(--warn-500); }
 .badge-danger { background: var(--danger-glow); color: var(--danger-500); }
-.badge-info { background: rgba(82, 169, 255, 0.16); color: var(--info-500); }
+.badge-info { background: var(--info-glow); color: var(--info-500); }
 .badge-neutral { background: var(--bg-3); color: var(--text-1); }
 
 .chip {
@@ -164,7 +164,7 @@
   transition: all var(--dur-fast) var(--ease-out);
 }
 .chip:hover { border-color: var(--border-strong); background: var(--bg-4); }
-.chip.selected { background: var(--accent-grad); color: #1a1006; border-color: transparent; font-weight: 700; }
+.chip.selected { background: var(--accent-grad); color: var(--on-accent); border-color: transparent; font-weight: 700; }
 .chip .chip-remove {
   display: flex; align-items: center; justify-content: center;
   width: 20px; height: 20px; border-radius: 50%;
@@ -179,8 +179,8 @@
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background: var(--bg-4);
-  color: var(--text-0);
+  background: rgba(43, 95, 234, 0.16);
+  color: var(--accent-300);
   font-family: var(--font-display);
   font-size: 12.5px;
   font-weight: 700;
@@ -291,7 +291,7 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13.5px; mi
   cursor: pointer;
   transition: all var(--dur-fast) var(--ease-out);
 }
-.segmented button.active { background: var(--accent-grad); color: #1a1006; }
+.segmented button.active { background: var(--accent-grad); color: var(--on-accent); }
 .segmented button:not(.active):hover { color: var(--text-0); }
 
 /* ===================== Empty state / loading ===================== */
@@ -332,7 +332,7 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13.5px; mi
   background: var(--text-1); border-radius: 50%; transition: transform var(--dur-med) var(--ease-spring), background var(--dur-med);
 }
 .switch input:checked + .switch-track { background: var(--accent-grad); border-color: transparent; }
-.switch input:checked + .switch-track::before { transform: translateX(18px); background: #1a1006; }
+.switch input:checked + .switch-track::before { transform: translateX(18px); background: var(--on-accent); }
 
 /* ===================== KPI ===================== */
 .kpi-card {

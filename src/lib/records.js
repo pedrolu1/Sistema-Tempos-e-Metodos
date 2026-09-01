@@ -43,10 +43,11 @@ function buildPayload(input) {
     atividadeId: input.atividadeId,
     atividadeNome: input.atividadeNome,
     atividadeTipo: input.atividadeTipo,
-    // líder da atividade (pessoa da equipe responsável por ela) — um cadastro
-    // do roster de colaboradores, distinto de quem operou o app (criadoPorUid).
-    liderId: input.liderId,
-    liderNome: input.liderNome,
+    // líder da atividade — campo legado, não é mais coletado no app mobile
+    // (removido do formulário); preservado aqui só para não quebrar registros
+    // antigos e permitir que o admin ainda o edite pelo painel desktop.
+    liderId: input.liderId || '',
+    liderNome: input.liderNome || '',
     colaboradoresIds: input.colaboradoresIds || [],
     colaboradoresNomes: input.colaboradoresNomes || [],
     observacoes: input.observacoes || ''

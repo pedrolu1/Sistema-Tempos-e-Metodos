@@ -1,6 +1,6 @@
 import { el, mount } from '../../utils/dom.js';
 import { field, button, segmented, card } from '../../components/ui.js';
-import { liderSelect, colaboradoresPicker } from '../../components/PeoplePicker.js';
+import { colaboradoresPicker } from '../../components/PeoplePicker.js';
 import { efetivoInputs } from '../../components/EfetivoInputs.js';
 import { icon } from '../../utils/icons.js';
 import { todayISO, nowHHMM } from '../../utils/format.js';
@@ -15,7 +15,6 @@ export function renderLaunchPage({ colaboradores, atividades, profile }) {
   function buildForm() {
     let tipoRegistro = 'atividade';
     let contratoId = '';
-    let liderId = '';
     let colaboradoresIds = [];
     let submitting = false;
 
@@ -27,7 +26,6 @@ export function renderLaunchPage({ colaboradores, atividades, profile }) {
     const contratoFieldWrap = el('div');
     const contratoSelectWrap = el('div');
     const atividadeSelectWrap = el('div');
-    const liderWrap = el('div');
     const colaboradoresWrap = el('div');
     const efetivo = efetivoInputs();
 
@@ -99,26 +97,11 @@ export function renderLaunchPage({ colaboradores, atividades, profile }) {
       ]);
     }
 
-    function buildLider() {
-      mount(liderWrap, [
-        liderSelect({
-          options: colaboradores.filter((c) => c.ativo !== false),
-          value: liderId,
-          onChange: (val) => {
-            liderId = val;
-            colaboradoresIds = colaboradoresIds.filter((id) => id !== liderId);
-            buildColaboradores();
-          }
-        })
-      ]);
-    }
-
     function buildColaboradores() {
       mount(colaboradoresWrap, [
         colaboradoresPicker({
           options: colaboradores.filter((c) => c.ativo !== false),
           selected: colaboradoresIds,
-          excludeId: liderId || undefined,
           onChange: (ids) => {
             colaboradoresIds = ids;
           }
@@ -128,7 +111,6 @@ export function renderLaunchPage({ colaboradores, atividades, profile }) {
 
     buildContratoSelect();
     buildAtividadeSelect();
-    buildLider();
     buildColaboradores();
 
     const atividadeLabel = document.createTextNode('Atividade em execução');
@@ -175,10 +157,6 @@ export function renderLaunchPage({ colaboradores, atividades, profile }) {
             toast(`Selecione a ${tipoRegistro === 'atividade' ? 'atividade' : 'improdutividade'}.`, 'error');
             return;
           }
-          if (!liderId) {
-            toast('Selecione o líder da atividade.', 'error');
-            return;
-          }
           if (colaboradoresIds.length === 0) {
             toast('Selecione ao menos um colaborador.', 'error');
             return;
@@ -187,7 +165,6 @@ export function renderLaunchPage({ colaboradores, atividades, profile }) {
           submitting = true;
           submitBtn.disabled = true;
 
-          const lider = colaboradores.find((c) => c.id === liderId);
           const colaboradoresNomes = colaboradoresIds.map((id) => colaboradores.find((c) => c.id === id)?.nomeCompleto || '');
 
           try {
@@ -200,8 +177,6 @@ export function renderLaunchPage({ colaboradores, atividades, profile }) {
               atividadeId,
               atividadeNome: atividade?.nome || '',
               atividadeTipo: atividade?.tipo || '',
-              liderId,
-              liderNome: lider?.nomeCompleto || '',
               colaboradoresIds,
               colaboradoresNomes,
               efetivo: efetivo.getValue(),
@@ -230,7 +205,6 @@ export function renderLaunchPage({ colaboradores, atividades, profile }) {
         el('div', { class: 'field' }, [el('label', { class: 'field-label' }, 'O que está sendo registrado?'), tipoTabs]),
         contratoFieldWrap,
         field({ label: atividadeLabel, input: atividadeSelectWrap }),
-        field({ label: 'Líder da atividade', input: liderWrap }),
         field({ label: 'Colaboradores', input: colaboradoresWrap }),
         field({ label: 'Efetivo utilizado', input: efetivo.node, hint: 'Quantidade por função — deixe 0 quando não se aplicar.' }),
         field({ label: 'Observações', input: obsInput }),

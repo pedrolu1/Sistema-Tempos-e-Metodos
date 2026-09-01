@@ -1,6 +1,6 @@
 import { el, mount } from '../../utils/dom.js';
 import { badge, button, emptyState, field, modal } from '../../components/ui.js';
-import { liderSelect, colaboradoresPicker } from '../../components/PeoplePicker.js';
+import { colaboradoresPicker } from '../../components/PeoplePicker.js';
 import { efetivoInputs } from '../../components/EfetivoInputs.js';
 import { icon } from '../../utils/icons.js';
 import { formatDateBR, formatMinutes, weekdayShort, efetivoTotal, formatEfetivo } from '../../utils/format.js';
@@ -46,7 +46,6 @@ export function renderHistoryPage({ lancamentos, colaboradores, atividades }) {
       ]),
       el('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '14px', fontSize: '13px', color: 'var(--text-1)' } }, [
         rowInfo(icon.clock(14), `${l.horaInicio}–${l.horaTermino} (${formatMinutes(l.duracaoMinutos)})`),
-        rowInfo(icon.briefcase(14), l.liderNome || '—'),
         rowInfo(icon.users(14), `${(l.colaboradoresNomes || []).length} colaborador(es)`),
         efetivoTotal(l.efetivo) > 0 ? el('span', { title: formatEfetivo(l.efetivo) }, rowInfo(icon.crew(14), `Efetivo: ${efetivoTotal(l.efetivo)}`)) : null
       ]),
@@ -96,7 +95,6 @@ export function renderHistoryPage({ lancamentos, colaboradores, atividades }) {
   }
 
   function openEdit(l) {
-    let liderId = l.liderId;
     let colaboradoresIds = [...(l.colaboradoresIds || [])];
     let tipoRegistro = l.tipoRegistro;
 
@@ -106,7 +104,6 @@ export function renderHistoryPage({ lancamentos, colaboradores, atividades }) {
     const obsInput = el('textarea', { class: 'textarea', value: l.observacoes || '' });
 
     const atividadeWrap = el('div');
-    const liderWrap = el('div');
     const colabWrap = el('div');
     const efetivo = efetivoInputs(l.efetivo || {});
 
@@ -119,30 +116,16 @@ export function renderHistoryPage({ lancamentos, colaboradores, atividades }) {
         ])
       ]);
     }
-    function buildLider() {
-      mount(liderWrap, [
-        liderSelect({
-          options: colaboradores,
-          value: liderId,
-          onChange: (v) => {
-            liderId = v;
-            buildColab();
-          }
-        })
-      ]);
-    }
     function buildColab() {
       mount(colabWrap, [
         colaboradoresPicker({
           options: colaboradores,
           selected: colaboradoresIds,
-          excludeId: liderId || undefined,
           onChange: (ids) => (colaboradoresIds = ids)
         })
       ]);
     }
     buildAtividade();
-    buildLider();
     buildColab();
 
     const close = () => backdrop.remove();
@@ -155,7 +138,6 @@ export function renderHistoryPage({ lancamentos, colaboradores, atividades }) {
         ]),
         field({ label: 'Data', input: dataInput }),
         field({ label: tipoRegistro === 'atividade' ? 'Atividade' : 'Improdutividade', input: atividadeWrap }),
-        field({ label: 'Líder da atividade', input: liderWrap }),
         field({ label: 'Colaboradores', input: colabWrap }),
         field({ label: 'Efetivo utilizado', input: efetivo.node }),
         field({ label: 'Observações', input: obsInput })
@@ -168,8 +150,7 @@ export function renderHistoryPage({ lancamentos, colaboradores, atividades }) {
           onClick: async () => {
             const atividadeId = atividadeWrap.querySelector('select').value;
             const atividade = atividades.find((a) => a.id === atividadeId);
-            const lider = colaboradores.find((c) => c.id === liderId);
-            if (!atividadeId || !liderId || colaboradoresIds.length === 0) {
+            if (!atividadeId || colaboradoresIds.length === 0) {
               toast('Preencha todos os campos obrigatórios.', 'error');
               return;
             }
@@ -183,8 +164,8 @@ export function renderHistoryPage({ lancamentos, colaboradores, atividades }) {
                 atividadeId,
                 atividadeNome: atividade?.nome || '',
                 atividadeTipo: atividade?.tipo || '',
-                liderId,
-                liderNome: lider?.nomeCompleto || '',
+                liderId: l.liderId || '',
+                liderNome: l.liderNome || '',
                 colaboradoresIds,
                 colaboradoresNomes: colaboradoresIds.map((id) => colaboradores.find((c) => c.id === id)?.nomeCompleto || ''),
                 efetivo: efetivo.getValue(),

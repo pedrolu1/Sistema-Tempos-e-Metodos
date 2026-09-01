@@ -48,7 +48,7 @@ export async function exportPDF(rows, filename = `reframax-lancamentos-${stamp()
     head: [COLUMNS.map((c) => c.label)],
     body: rows.map((r) => COLUMNS.map((c) => c.map(r))),
     styles: { fontSize: 8.2, cellPadding: 5, textColor: [30, 30, 34] },
-    headStyles: { fillColor: [255, 138, 61], textColor: [26, 16, 6], fontStyle: 'bold' },
+    headStyles: { fillColor: [43, 95, 234], textColor: [255, 255, 255], fontStyle: 'bold' },
     alternateRowStyles: { fillColor: [246, 246, 248] },
     margin: { left: 40, right: 40 }
   });
@@ -67,8 +67,8 @@ export async function exportWord(rows, filename = `reframax-lancamentos-${stamp(
     children: COLUMNS.map(
       (c) =>
         new TableCell({
-          shading: { fill: 'FF8A3D' },
-          children: [new Paragraph({ children: [new TextRun({ text: c.label, bold: true, color: '1A1006', size: 18 })] })]
+          shading: { fill: '2B5FEA' },
+          children: [new Paragraph({ children: [new TextRun({ text: c.label, bold: true, color: 'FFFFFF', size: 18 })] })]
         })
     )
   });

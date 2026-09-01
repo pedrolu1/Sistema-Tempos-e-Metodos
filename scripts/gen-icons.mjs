@@ -5,8 +5,8 @@ import { deflateSync } from 'node:zlib';
 import { writeFileSync, mkdirSync } from 'node:fs';
 
 const BG = [11, 12, 15]; // #0b0c0f
-const ACCENT_A = [255, 138, 61]; // #ff8a3d
-const ACCENT_B = [255, 180, 84]; // #ffb454
+const ACCENT_A = [43, 95, 234]; // #2b5fea
+const ACCENT_B = [147, 180, 255]; // #93b4ff
 
 function lerp(a, b, t) {
   return a.map((v, i) => Math.round(v + (b[i] - v) * t));

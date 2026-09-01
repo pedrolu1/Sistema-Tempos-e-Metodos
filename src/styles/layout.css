@@ -72,6 +72,14 @@
 .mobile-topbar-title small { display: block; font-family: var(--font-body); font-weight: 500; font-size: 11.5px; color: var(--text-2); letter-spacing: normal; margin-top: 1px; }
 
 .mobile-content { flex: 1; padding: 18px; display: flex; flex-direction: column; gap: 18px; }
+/* transição suave ao trocar de aba (Lançar/Consultar) — o conteúdo entra
+   com um leve slide + fade em vez de trocar seco, reforçando a sensação
+   de fluidez pedida para o app mobile. */
+.mobile-content > * { animation: content-in var(--dur-slow) var(--ease-out); }
+@keyframes content-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
 
 .mobile-nav {
   position: fixed;
@@ -131,7 +139,7 @@
 /* estado pendente — chama atenção com o gradiente da marca + halo pulsante */
 .sync-fab.pending {
   background: var(--accent-grad);
-  color: #1a1006;
+  color: var(--on-accent);
   box-shadow: 0 10px 28px -8px var(--accent-glow);
 }
 .sync-fab.pending::before {
@@ -147,7 +155,7 @@
 /* estado sincronizando — mesmo gradiente, ícone girando, halo em modo "carregando" */
 .sync-fab.syncing {
   background: var(--accent-grad);
-  color: #1a1006;
+  color: var(--on-accent);
   box-shadow: 0 10px 28px -8px var(--accent-glow);
 }
 .sync-fab.syncing svg { animation: spin 0.85s linear infinite; }

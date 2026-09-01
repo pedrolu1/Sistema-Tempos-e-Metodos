@@ -19,20 +19,32 @@
   --text-2: #7b7c88;
   --text-3: #4d4f5b;
 
-  /* ---- marca / acento (âmbar-cobre, tema "cronômetro") ---- */
-  --accent-500: #ff8a3d;
-  --accent-400: #ffa25c;
-  --accent-300: #ffb454;
-  --accent-glow: rgba(255, 138, 61, 0.35);
-  --accent-grad: linear-gradient(135deg, var(--accent-500), var(--accent-300));
+  /* ---- marca / acento ----
+     Azul: a cor associada a confiança, estabilidade e clareza mental —
+     a psicologia da cor mais estudada para ferramentas onde a pessoa
+     precisa se sentir segura ao registrar um dado técnico em campo.
+     Saturação alta o bastante para permanecer com energia em CTAs,
+     mas sem cair no azul "genérico de software" — puxa ligeiramente
+     para o índigo, ficando mais sofisticado e menos "feito de template". */
+  --accent-500: #2b5fea;
+  --accent-400: #4f80ff;
+  --accent-300: #93b4ff;
+  --on-accent: #ffffff;
+  --accent-glow: rgba(43, 95, 234, 0.35);
+  --accent-grad: linear-gradient(135deg, #2b5fea, #3573ef);
 
-  /* ---- semânticas ---- */
+  /* ---- semânticas (nunca seguem o azul da marca — são sinais universais
+     que a pessoa reconhece por hábito, independente da cor de marca) ---- */
   --ok-500: #2fd07d;
   --ok-glow: rgba(47, 208, 125, 0.28);
   --warn-500: #ffcc4d;
   --danger-500: #ff5c72;
   --danger-glow: rgba(255, 92, 114, 0.28);
-  --info-500: #52a9ff;
+  /* info: um ciano-esverdeado — deliberadamente distinto do azul de marca,
+     pra "isso é uma informação neutra" nunca ser confundido com "isso é
+     uma ação/destaque da marca" */
+  --info-500: #17b3a3;
+  --info-glow: rgba(23, 179, 163, 0.16);
 
   /* ---- séries de gráfico (categórica, validada p/ contraste e daltonismo) ---- */
   --chart-1: #3987e5;
