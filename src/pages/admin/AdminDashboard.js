@@ -2,7 +2,17 @@ import { el, mount } from '../../utils/dom.js';
 import { cardWithHeader, button, segmented } from '../../components/ui.js';
 import { statTile, meter, rankingBars, stackedTrend, stackedTrendN } from '../../components/charts.js';
 import { icon } from '../../utils/icons.js';
-import { formatMinutes, formatDateBR, todayISO, classificacaoDoLancamento, CLASSIFICACAO_INFO } from '../../utils/format.js';
+import {
+  formatMinutes,
+  formatDateBR,
+  todayISO,
+  classificacaoDoLancamento,
+  classificacaoBreakdown,
+  excedenteMinutos,
+  temDesperdicio,
+  capacidadeMinutosSetor,
+  CLASSIFICACAO_INFO
+} from '../../utils/format.js';
 import { exportExcel, exportPDF, exportWord } from '../../lib/export.js';
 
 const CLASSIFICACAO_SERIES = ['VA', 'DN', 'DNN'].map((k) => ({ key: k, label: CLASSIFICACAO_INFO[k].label, color: CLASSIFICACAO_INFO[k].color }));
@@ -24,17 +34,22 @@ function isoDaysAgo(n) {
 
 export function renderDashboardPage(ctx) {
   let lancamentos = ctx.lancamentos;
+  let setores = ctx.setores || [];
   const state = {
     preset: '30d',
+    setor: 'todos',
     filters: { tipo: null, atividadeId: null, liderId: null, classificacao: null }
   };
 
   const filterRow = el('div', { class: 'toolbar' });
+  const setorRow = el('div', { class: 'toolbar' });
   const chipsRow = el('div', { class: 'toolbar', style: { minHeight: '20px' } });
   const kpiRow = el('div', { class: 'grid grid-kpis' });
   const meterCard = el('div');
   const trendCard = el('div');
   const leanCard = el('div');
+  const desperdicioCard = el('div');
+  const insightsCard = el('div');
   const atividadesCard = el('div');
   const improdCard = el('div');
   const lideresCard = el('div');
@@ -67,14 +82,35 @@ export function renderDashboardPage(ctx) {
     presetTabs
   ]);
 
+  function buildSetorFilter() {
+    if (setores.length === 0) {
+      mount(setorRow, []);
+      return;
+    }
+    const sel = el(
+      'select',
+      {
+        class: 'select',
+        style: { height: '34px', fontSize: '12.5px', minWidth: '190px' },
+        onchange: (e) => { state.setor = e.target.value; paint(); }
+      },
+      [
+        el('option', { value: 'todos', selected: state.setor === 'todos' }, 'Todos os setores'),
+        ...setores.map((s) => el('option', { value: s.nome, selected: s.nome === state.setor }, s.nome))
+      ]
+    );
+    mount(setorRow, [el('span', { class: 'section-title', style: { padding: '0' } }, 'Setor'), sel]);
+  }
+
   const node = el('div', { style: { display: 'flex', flexDirection: 'column', gap: '20px' } }, [
     el('div', { class: 'page-header' }, [
-      el('div', {}, [filterRow, chipsRow]),
+      el('div', { style: { display: 'flex', flexDirection: 'column', gap: '10px' } }, [filterRow, setorRow, chipsRow]),
       exportBtns
     ]),
     kpiRow,
     el('div', { class: 'grid grid-charts' }, [trendCard, meterCard]),
     leanCard,
+    el('div', { class: 'grid grid-2' }, [desperdicioCard, insightsCard]),
     el('div', { class: 'grid grid-2' }, [atividadesCard, improdCard]),
     lideresCard
   ]);
@@ -83,6 +119,14 @@ export function renderDashboardPage(ctx) {
     if (state.preset === 'tudo') return 'todo o período';
     if (state.preset === 'hoje') return `hoje (${formatDateBR(todayISO())})`;
     return `últimos ${PRESETS[state.preset] + 1} dias`;
+  }
+
+  /** Data inicial do período atual (para cálculo de capacidade do turno). */
+  function periodoFrom() {
+    if (state.preset !== 'tudo') return isoDaysAgo(PRESETS[state.preset]);
+    const ds = dataset();
+    if (!ds.length) return todayISO();
+    return ds.reduce((min, l) => (l.data < min ? l.data : min), ds[0].data);
   }
 
   function inRange(l) {
@@ -95,6 +139,7 @@ export function renderDashboardPage(ctx) {
   function dataset(excludeDims = []) {
     return lancamentos.filter((l) => {
       if (!inRange(l)) return false;
+      if (state.setor !== 'todos' && (l.setor || '') !== state.setor) return false;
       if (!excludeDims.includes('tipo') && state.filters.tipo && l.tipoRegistro !== state.filters.tipo) return false;
       if (!excludeDims.includes('atividadeId') && state.filters.atividadeId && l.atividadeId !== state.filters.atividadeId) return false;
       if (!excludeDims.includes('liderId') && state.filters.liderId && l.liderId !== state.filters.liderId) return false;
@@ -215,7 +260,10 @@ export function renderDashboardPage(ctx) {
     const full = dataset();
     const byClass = { VA: 0, DN: 0, DNN: 0 };
     full.forEach((l) => {
-      byClass[classificacaoDoLancamento(l)] += l.duracaoMinutos;
+      const b = classificacaoBreakdown(l);
+      byClass.VA += b.VA;
+      byClass.DN += b.DN;
+      byClass.DNN += b.DNN;
     });
 
     const tiles = CLASSIFICACAO_SERIES.map((s) =>
@@ -232,7 +280,11 @@ export function renderDashboardPage(ctx) {
     const byDay = new Map();
     full.forEach((l) => {
       if (!byDay.has(l.data)) byDay.set(l.data, { VA: 0, DN: 0, DNN: 0 });
-      byDay.get(l.data)[classificacaoDoLancamento(l)] += l.duracaoMinutos;
+      const e = byDay.get(l.data);
+      const b = classificacaoBreakdown(l);
+      e.VA += b.VA;
+      e.DN += b.DN;
+      e.DNN += b.DNN;
     });
     const days = [...byDay.keys()].sort();
     const trendData = days.map((d) => ({
@@ -267,6 +319,125 @@ export function renderDashboardPage(ctx) {
     return [...map.values()].sort((a, b) => b.value - a.value).slice(0, 8);
   }
 
+  function setorSelecionado() {
+    return state.setor !== 'todos' ? setores.find((s) => s.nome === state.setor) : null;
+  }
+
+  function paintDesperdicio() {
+    const full = dataset();
+    const excedenteTotal = full.reduce((s, l) => s + excedenteMinutos(l), 0);
+    const comDesperdicio = full.filter((l) => temDesperdicio(l));
+
+    // ranking de atividades que mais estouram o tempo padrão
+    const map = new Map();
+    full.forEach((l) => {
+      const ex = excedenteMinutos(l);
+      if (ex <= 0) return;
+      if (!map.has(l.atividadeId)) map.set(l.atividadeId, { id: l.atividadeId, label: l.atividadeNome || '—', value: 0 });
+      map.get(l.atividadeId).value += ex;
+    });
+    const ranking = [...map.values()].sort((a, b) => b.value - a.value).slice(0, 6);
+
+    const setor = setorSelecionado();
+    const capacidade = setor ? capacidadeMinutosSetor(setor, periodoFrom(), todayISO()) : 0;
+    const apontado = full.reduce((s, l) => s + l.duracaoMinutos, 0);
+
+    mount(desperdicioCard, [
+      cardWithHeader({
+        title: 'Gargalos & desperdício',
+        subtitle: 'Tempo perdido acima do padrão e concentração dos maiores ofensores',
+        children: [
+          el('div', { class: 'grid grid-kpis', style: { marginBottom: '16px' } }, [
+            statTile({ label: 'Excedente do padrão', value: formatMinutes(excedenteTotal), iconHtml: icon.alert(16), tone: 'danger' }),
+            statTile({ label: 'Lançamentos com desperdício', value: String(comDesperdicio.length), iconHtml: icon.target(16), tone: 'warn' })
+          ]),
+          setor
+            ? el('div', { style: { marginBottom: '16px' } }, [
+                meter({
+                  label: `Ocupação do turno — ${setor.nome}`,
+                  ratio: capacidade > 0 ? apontado / capacidade : 0,
+                  valueLabel: capacidade > 0 ? `${Math.round((apontado / capacidade) * 100)}%` : '—',
+                  color: 'var(--accent-500)'
+                }),
+                el('div', { style: { fontSize: '11.5px', color: 'var(--text-3)', marginTop: '6px' } }, `${formatMinutes(apontado)} apontados de ${formatMinutes(capacidade)} de capacidade estimada`)
+              ])
+            : null,
+          el('div', { class: 'section-title', style: { padding: '0 0 8px' } }, 'Atividades que mais estouram o padrão'),
+          rankingBars({ data: ranking, color: 'var(--danger-500)', emptyLabel: 'Nenhum estouro de tempo padrão no período. 👏' })
+        ]
+      })
+    ]);
+  }
+
+  function paintInsights() {
+    const full = dataset();
+    const totalMin = full.reduce((s, l) => s + l.duracaoMinutos, 0);
+    const byClass = { VA: 0, DN: 0, DNN: 0 };
+    full.forEach((l) => {
+      const b = classificacaoBreakdown(l);
+      byClass.VA += b.VA;
+      byClass.DN += b.DN;
+      byClass.DNN += b.DNN;
+    });
+    const pct = (v) => (totalMin > 0 ? Math.round((v / totalMin) * 100) : 0);
+
+    // maior improdutividade evitável (DNN) por item
+    const dnnMap = new Map();
+    full.filter((l) => classificacaoDoLancamento(l) === 'DNN').forEach((l) => {
+      dnnMap.set(l.atividadeNome, (dnnMap.get(l.atividadeNome) || 0) + l.duracaoMinutos);
+    });
+    const topDNN = [...dnnMap.entries()].sort((a, b) => b[1] - a[1])[0];
+
+    // atividade que mais estoura o padrão
+    const exMap = new Map();
+    full.forEach((l) => {
+      const ex = excedenteMinutos(l);
+      if (ex > 0) exMap.set(l.atividadeNome, (exMap.get(l.atividadeNome) || 0) + ex);
+    });
+    const topEx = [...exMap.entries()].sort((a, b) => b[1] - a[1])[0];
+
+    const insights = [];
+    if (totalMin === 0) {
+      insights.push({ tone: 'neutral', txt: 'Sem lançamentos no período/filtros atuais.' });
+    } else {
+      insights.push({
+        tone: pct(byClass.VA) >= 50 ? 'ok' : pct(byClass.VA) >= 30 ? 'warn' : 'danger',
+        txt: `Valor Agregado representa ${pct(byClass.VA)}% do tempo. ${pct(byClass.VA) >= 50 ? 'Bom patamar — mantenha o padrão.' : 'Há espaço para converter desperdício em valor.'}`
+      });
+      if (pct(byClass.DNN) >= 15) {
+        insights.push({ tone: 'danger', txt: `Desperdício Não Necessário está em ${pct(byClass.DNN)}% — foco de eliminação imediata.` });
+      }
+      if (topDNN) {
+        insights.push({ tone: 'danger', txt: `Maior desperdício evitável: “${topDNN[0]}” (${formatMinutes(topDNN[1])}). Ataque a causa raiz dessa parada.` });
+      }
+      if (topEx) {
+        insights.push({ tone: 'warn', txt: `“${topEx[0]}” é a atividade que mais passa do tempo padrão (${formatMinutes(topEx[1])} de excedente). Reveja método, sequência ou dimensionamento da equipe.` });
+      }
+      if (pct(byClass.DN) >= 40) {
+        insights.push({ tone: 'warn', txt: `Desperdício Necessário em ${pct(byClass.DN)}% — parte é inevitável, mas questione se todo acesso/preparo é realmente necessário (Lean: eliminar, combinar, simplificar).` });
+      }
+      if (pct(byClass.VA) >= 55 && pct(byClass.DNN) < 10) {
+        insights.push({ tone: 'ok', txt: 'Processo saudável: alto valor agregado e pouco desperdício evitável. Padronize o que está dando certo.' });
+      }
+    }
+
+    mount(insightsCard, [
+      cardWithHeader({
+        title: 'Insights & sugestões',
+        subtitle: 'Leitura automática do período aplicando princípios Lean',
+        children: [
+          el('div', { style: { display: 'flex', flexDirection: 'column', gap: '10px' } }, insights.map((i) => {
+            const color = i.tone === 'ok' ? 'var(--ok-500)' : i.tone === 'warn' ? 'var(--warn-500)' : i.tone === 'danger' ? 'var(--danger-500)' : 'var(--text-3)';
+            return el('div', { style: { display: 'flex', gap: '10px', alignItems: 'flex-start', fontSize: '13px', lineHeight: '1.5' } }, [
+              el('span', { html: icon.lightbulb(16), style: { display: 'inline-flex', color, flexShrink: '0', marginTop: '1px' } }),
+              el('span', { style: { color: 'var(--text-1)' } }, i.txt)
+            ]);
+          }))
+        ]
+      })
+    ]);
+  }
+
   function paintAtividades() {
     const rows = dataset(['atividadeId']).filter((l) => l.tipoRegistro === 'atividade');
     const data = aggregateBy(rows, 'atividadeId', 'atividadeNome');
@@ -292,22 +463,25 @@ export function renderDashboardPage(ctx) {
   }
 
   function paintLideres() {
-    const rows = dataset(['liderId']);
-    const data = aggregateBy(rows, 'liderId', 'liderNome');
+    const rows = dataset();
+    const data = aggregateBy(rows, 'criadoPorUid', 'criadoPorNome');
     mount(lideresCard, [
       cardWithHeader({
-        title: 'Ranking de líderes',
-        subtitle: 'Tempo total registrado sob liderança de cada colaborador — clique para filtrar',
-        children: [rankingBars({ data, color: 'var(--accent-500)', activeId: state.filters.liderId, onSelect: (id) => toggleFilter('liderId', id) })]
+        title: 'Tempo apontado por lançador',
+        subtitle: 'Total registrado por cada líder que operou o app no período',
+        children: [rankingBars({ data, color: 'var(--accent-500)' })]
       })
     ]);
   }
 
   function paint() {
+    buildSetorFilter();
     paintChips();
     paintKpis();
     paintTrend();
     paintLean();
+    paintDesperdicio();
+    paintInsights();
     paintAtividades();
     paintImprod();
     paintLideres();
@@ -319,6 +493,8 @@ export function renderDashboardPage(ctx) {
     node,
     update(newCtx) {
       lancamentos = newCtx.lancamentos;
+      setores = newCtx.setores || [];
+      if (state.setor !== 'todos' && !setores.some((s) => s.nome === state.setor)) state.setor = 'todos';
       paint();
     }
   };

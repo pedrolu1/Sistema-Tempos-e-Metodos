@@ -12,7 +12,7 @@ import {
   serverTimestamp
 } from 'firebase/firestore';
 import { db } from './firebase.js';
-import { durationMinutes, EFETIVO_CAMPOS } from '../utils/format.js';
+import { durationMinutes, EFETIVO_CAMPOS, efetivoExcedido } from '../utils/format.js';
 import { reportSnapshotError } from './errors.js';
 
 const COL = 'lancamentos';
@@ -32,14 +32,30 @@ function sanitizeEfetivo(efetivo = {}) {
  * mesmo em documentos criados offline, antes do carimbo do servidor chegar.
  */
 function buildPayload(input) {
+  const duracaoMinutos = durationMinutes(input.horaInicio, input.horaTermino);
+  const efetivo = sanitizeEfetivo(input.efetivo);
+  const efetivoPadrao = sanitizeEfetivo(input.efetivoPadrao);
+  const duracaoPadraoMin = input.tipoRegistro === 'improdutividade' ? 0 : Math.max(0, Math.round(Number(input.duracaoPadraoMin) || 0));
+  const excedenteMin = duracaoPadraoMin > 0 ? Math.max(0, duracaoMinutos - duracaoPadraoMin) : 0;
+  const efetivoExcede = efetivoExcedido(efetivo, efetivoPadrao);
   return {
     data: input.data,
     horaInicio: input.horaInicio,
     horaTermino: input.horaTermino,
-    duracaoMinutos: durationMinutes(input.horaInicio, input.horaTermino),
+    duracaoMinutos,
     tipoRegistro: input.tipoRegistro,
     contrato: input.contrato || '',
-    efetivo: sanitizeEfetivo(input.efetivo),
+    setor: input.setor || '',
+    efetivo,
+    // padrões vigentes no momento do lançamento (snapshot) + desvios calculados,
+    // base para os alertas e indicadores de desperdício. `excedenteMin` é o tempo
+    // que passou do padrão (vira DN); `efetivoExcede` marca mão de obra acima do
+    // padrão; `justificativa` é preenchida pelo líder quando há qualquer excesso.
+    duracaoPadraoMin,
+    efetivoPadrao,
+    excedenteMin,
+    efetivoExcede,
+    justificativa: (input.justificativa || '').trim(),
     atividadeId: input.atividadeId,
     atividadeNome: input.atividadeNome,
     atividadeTipo: input.atividadeTipo,

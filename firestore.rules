@@ -49,6 +49,12 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // setores — configuração de turno/escala por área da planta (Hub ADM).
+    match /setores/{id} {
+      allow read: if isAprovado();
+      allow write: if isAdmin();
+    }
+
     // ---------------------------------------------------------------
     // lancamentos — cada líder cria e mantém seus próprios apontamentos;
     // o admin tem acesso total. A trava de "não editar no mobile após

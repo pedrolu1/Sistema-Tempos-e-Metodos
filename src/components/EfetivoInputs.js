@@ -14,8 +14,12 @@ function clamp(n) {
  * Steppers em vez de um campo numérico cru: em campo, tocar um botão grande
  * é mais rápido e confiável do que abrir o teclado numérico do celular —
  * inclusive com luvas.
+ *
+ * `onChange` (opcional) é chamado a cada alteração — usado no app mobile para
+ * reavaliar em tempo real se o efetivo passou do padrão. `setValues` permite
+ * pré-preencher a grade quando o líder escolhe uma atividade com padrão.
  */
-export function efetivoInputs(initial = {}) {
+export function efetivoInputs(initial = {}, onChange) {
   const inputs = {};
 
   const grid = el(
@@ -34,6 +38,7 @@ export function efetivoInputs(initial = {}) {
 
       const setVal = (n) => {
         input.value = String(clamp(n));
+        if (onChange) onChange();
       };
       input.addEventListener('change', () => setVal(input.value));
 
@@ -58,5 +63,12 @@ export function efetivoInputs(initial = {}) {
     return out;
   }
 
-  return { node: grid, getValue };
+  function setValues(obj = {}) {
+    EFETIVO_CAMPOS.forEach((c) => {
+      inputs[c.key].value = String(clamp(obj[c.key]));
+    });
+    if (onChange) onChange();
+  }
+
+  return { node: grid, getValue, setValues };
 }

@@ -1,11 +1,13 @@
 import { el, mount } from '../../utils/dom.js';
 import { badge, button, emptyState, field, modal, segmented, switchToggle, cardWithHeader } from '../../components/ui.js';
+import { efetivoInputs } from '../../components/EfetivoInputs.js';
 import { icon } from '../../utils/icons.js';
 import { addAtividade, updateAtividade, deleteAtividade } from '../../lib/activities.js';
 import { addColaborador, updateColaborador, deleteColaborador } from '../../lib/collaborators.js';
 import { toast } from '../../lib/toast.js';
 import { SEED_ATIVIDADES } from '../../data/seedAtividades.js';
-import { CLASSIFICACAO_INFO } from '../../utils/format.js';
+import { CLASSIFICACAO_INFO, formatMinutes, formatEfetivo, efetivoTotal } from '../../utils/format.js';
+import { parseAtividadesArquivo } from '../../lib/importAtividades.js';
 
 function classificacaoBadge(a) {
   const key = a.tipo === 'produtiva' ? (a.classificacao === 'VA' ? 'VA' : 'DN') : a.classificacao === 'DN' ? 'DN' : 'DNN';
@@ -16,9 +18,19 @@ function classificacaoBadge(a) {
   ]);
 }
 
+function padraoResumo(a) {
+  if (a.tipo !== 'produtiva') return el('span', { style: { color: 'var(--text-3)' } }, '—');
+  const partes = [];
+  if (Number(a.duracaoPadraoMin) > 0) partes.push(formatMinutes(a.duracaoPadraoMin));
+  if (efetivoTotal(a.efetivoPadrao) > 0) partes.push(`${efetivoTotal(a.efetivoPadrao)} MO`);
+  if (partes.length === 0) return el('span', { style: { color: 'var(--text-3)' } }, 'sem padrão');
+  return el('span', { class: 'mono', title: formatEfetivo(a.efetivoPadrao), style: { fontSize: '12.5px' } }, partes.join(' · '));
+}
+
 export function renderCatalogPage(ctx) {
   let atividades = ctx.atividades;
   let colaboradores = ctx.colaboradores;
+  let setores = ctx.setores || [];
   let tab = 'atividades';
   let contratoFiltro = 'todos';
   const profile = ctx.profile;
@@ -38,15 +50,48 @@ export function renderCatalogPage(ctx) {
 
   const body = el('div');
   const contratoSelectWrap = el('div');
-  const importBtn = button({ label: 'Importar catálogo padrão', size: 'sm', variant: 'outline', icon: icon.download(15), onClick: importarCatalogoPadrao });
+  const importBtn = button({ label: 'Catálogo padrão', size: 'sm', variant: 'outline', icon: icon.download(15), onClick: importarCatalogoPadrao });
+  const fileInput = el('input', { type: 'file', accept: '.csv,.tsv,.txt,.xlsx,.xls', style: { display: 'none' }, onchange: onArquivoEscolhido });
+  const uploadBtn = button({ label: 'Importar arquivo', size: 'sm', variant: 'outline', icon: icon.upload(15), onClick: () => fileInput.click() });
   const addBtn = button({ label: '', variant: 'primary', size: 'sm', icon: icon.plus(15), onClick: () => (tab === 'atividades' ? openAtividadeModal() : openColaboradorModal()) });
 
   const node = cardWithHeader({
     title: 'Cadastros',
     subtitle: 'Itens disponíveis para seleção no app mobile',
-    actions: [contratoSelectWrap, importBtn, addBtn],
+    actions: [contratoSelectWrap, importBtn, uploadBtn, fileInput, addBtn],
     children: [body]
   });
+
+  async function onArquivoEscolhido(e) {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = ''; // permite reimportar o mesmo arquivo depois
+    if (!file) return;
+    uploadBtn.disabled = true;
+    try {
+      const linhas = await parseAtividadesArquivo(file);
+      if (!linhas.length) {
+        toast('Não encontrei atividades no arquivo. Confira se há uma coluna "nome".', 'error');
+        return;
+      }
+      const codigosExistentes = new Set(atividades.filter((a) => a.codigo).map((a) => a.codigo));
+      const nomesExistentes = new Set(atividades.map((a) => `${a.nome}||${a.contrato || ''}`.toLowerCase()));
+      let criadas = 0;
+      let ignoradas = 0;
+      for (const item of linhas) {
+        const dupCodigo = item.codigo && codigosExistentes.has(item.codigo);
+        const dupNome = nomesExistentes.has(`${item.nome}||${item.contrato || ''}`.toLowerCase());
+        if (dupCodigo || dupNome) { ignoradas++; continue; }
+        // eslint-disable-next-line no-await-in-loop
+        await addAtividade({ ...item, criadoPor: profile.uid });
+        criadas++;
+      }
+      toast(`${criadas} atividade(s) importada(s)${ignoradas ? ` · ${ignoradas} já existiam` : ''}.`, criadas ? 'ok' : 'info', 5000);
+    } catch (err) {
+      toast(err?.message || 'Não foi possível ler o arquivo.', 'error', 5000);
+    } finally {
+      uploadBtn.disabled = false;
+    }
+  }
 
   function contratosDisponiveis() {
     return [...new Set(atividades.filter((a) => a.contrato).map((a) => a.contrato))].sort();
@@ -115,6 +160,7 @@ export function renderCatalogPage(ctx) {
   function paint() {
     mount(addBtn, [el('span', { html: icon.plus(15) }), tab === 'atividades' ? 'Nova atividade' : 'Novo colaborador']);
     importBtn.style.display = tab === 'atividades' ? 'inline-flex' : 'none';
+    uploadBtn.style.display = tab === 'atividades' ? 'inline-flex' : 'none';
     buildContratoFilter();
     if (tab === 'atividades') paintAtividades();
     else paintColaboradores();
@@ -135,7 +181,7 @@ export function renderCatalogPage(ctx) {
     const wrap = el('div', { class: 'table-wrap' });
     mount(wrap, [
       el('table', { class: 'data-table' }, [
-        el('thead', {}, el('tr', {}, [el('th', {}, 'Código'), el('th', {}, 'Nome'), el('th', {}, 'Contrato'), el('th', {}, 'Tipo'), el('th', {}, 'Lean'), el('th', {}, 'Situação'), el('th', {}, 'Ações')])),
+        el('thead', {}, el('tr', {}, [el('th', {}, 'Código'), el('th', {}, 'Nome'), el('th', {}, 'Contrato'), el('th', {}, 'Tipo'), el('th', {}, 'Lean'), el('th', {}, 'Padrão'), el('th', {}, 'Situação'), el('th', {}, 'Ações')])),
         el(
           'tbody',
           {},
@@ -146,6 +192,7 @@ export function renderCatalogPage(ctx) {
               el('td', {}, a.contrato || '—'),
               el('td', {}, badge(a.tipo === 'produtiva' ? 'Atividade' : 'Improdutividade', a.tipo === 'produtiva' ? 'info' : 'danger')),
               el('td', {}, classificacaoBadge(a)),
+              el('td', {}, padraoResumo(a)),
               el('td', {}, switchToggle(a.ativo !== false, (val) => updateAtividade(a.id, { ativo: val }))),
               el('td', {}, rowActions(() => openAtividadeModal(a), () => removeItem(() => deleteAtividade(a.id), 'Atividade removida.')))
             ])
@@ -227,10 +274,27 @@ export function renderCatalogPage(ctx) {
     });
     const contratoDatalist = el('datalist', { id: 'contratos-existentes' }, contratosDisponiveis().map((c) => el('option', { value: c })));
     const localInput = el('input', { class: 'input', type: 'text', value: item?.local || '', placeholder: 'Ex.: MONOLÍTICO (opcional)' });
+    const setorSelect = el('select', { class: 'select' }, [
+      el('option', { value: '' }, 'Nenhum / todos os setores'),
+      ...setores.filter((s) => s.ativo !== false).map((s) => el('option', { value: s.nome, selected: item?.setor === s.nome }, s.nome))
+    ]);
     const tipoSelect = el('select', { class: 'select' }, [
       el('option', { value: 'produtiva', selected: !item || item.tipo === 'produtiva' }, 'Atividade (produtiva)'),
       el('option', { value: 'improdutiva', selected: item?.tipo === 'improdutiva' }, 'Improdutividade')
     ]);
+    const duracaoInput = el('input', { class: 'input mono', type: 'number', min: '0', step: '1', value: String(Math.max(0, Math.round(Number(item?.duracaoPadraoMin) || 0))), placeholder: '0' });
+    const efetivoPadrao = efetivoInputs(item?.efetivoPadrao || {});
+    const padraoFieldWrap = el('div');
+    function buildPadraoField() {
+      if (tipoSelect.value !== 'produtiva') {
+        mount(padraoFieldWrap, []);
+        return;
+      }
+      mount(padraoFieldWrap, [
+        field({ label: 'Tempo padrão (minutos)', input: duracaoInput, hint: 'Meta de duração da atividade. O tempo que passar disso entra como Desperdício Necessário e dispara alerta.' }),
+        field({ label: 'Mão de obra padrão', input: efetivoPadrao.node, hint: 'Efetivo esperado por função. Se o lançamento usar mais, o líder precisa justificar.' })
+      ]);
+    }
     let classificacaoSelecionada = item?.classificacao || (tipoSelect.value === 'produtiva' ? 'DN' : 'DNN');
     const classificacaoFieldWrap = el('div');
     function classificacaoOptions() {
@@ -260,7 +324,9 @@ export function renderCatalogPage(ctx) {
       mount(classificacaoFieldWrap, [field({ label: 'Classificação Lean', input: tabs, hint })]);
     }
     tipoSelect.addEventListener('change', buildClassificacaoField);
+    tipoSelect.addEventListener('change', buildPadraoField);
     buildClassificacaoField();
+    buildPadraoField();
 
     const close = () => backdrop.remove();
     const backdrop = modal({
@@ -274,6 +340,8 @@ export function renderCatalogPage(ctx) {
           field({ label: 'Local', input: localInput })
         ]),
         field({ label: 'Contrato', input: contratoInput, hint: 'Usado no app mobile para filtrar as etapas por contrato.' }),
+        field({ label: 'Setor', input: setorSelect, hint: 'Área da planta (configurada em Setores). Opcional.' }),
+        padraoFieldWrap,
         contratoDatalist
       ],
       footer: [
@@ -289,7 +357,10 @@ export function renderCatalogPage(ctx) {
               classificacao: classificacaoSelecionada,
               codigo: codigoInput.value.trim(),
               contrato: contratoInput.value.trim(),
-              local: localInput.value.trim()
+              setor: setorSelect.value,
+              local: localInput.value.trim(),
+              duracaoPadraoMin: tipoSelect.value === 'produtiva' ? Math.max(0, Math.round(Number(duracaoInput.value) || 0)) : 0,
+              efetivoPadrao: tipoSelect.value === 'produtiva' ? efetivoPadrao.getValue() : {}
             };
             try {
               if (item) await updateAtividade(item.id, payload);
@@ -344,6 +415,7 @@ export function renderCatalogPage(ctx) {
     update(newCtx) {
       atividades = newCtx.atividades;
       colaboradores = newCtx.colaboradores;
+      setores = newCtx.setores || [];
       paint();
     }
   };

@@ -27,5 +27,9 @@ export const icon = {
   arrowUp: (sz) => s('<path d="M12 19V5"/><path d="M6 11l6-6 6 6"/>', sz),
   arrowDown: (sz) => s('<path d="M12 5v14"/><path d="M18 13l-6 6-6-6"/>', sz),
   bolt: (sz) => s('<path d="M13 2 4 14h6l-1 8 9-12h-6z"/>', sz),
-  crew: (sz) => s('<path d="M4 15.5a8 8 0 0 1 16 0"/><path d="M2 15.5h20"/><circle cx="12" cy="7" r="2.3"/>', sz)
+  crew: (sz) => s('<path d="M4 15.5a8 8 0 0 1 16 0"/><path d="M2 15.5h20"/><circle cx="12" cy="7" r="2.3"/>', sz),
+  building: (sz) => s('<rect x="4" y="3" width="16" height="18" rx="1.5"/><path d="M9 7h2M13 7h2M9 11h2M13 11h2M9 15h2M13 15h2"/><path d="M10 21v-3h4v3"/>', sz),
+  upload: (sz) => s('<path d="M12 15V3"/><path d="M7 8l5-5 5 5"/><path d="M5 21h14"/>', sz),
+  target: (sz) => s('<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/>', sz),
+  lightbulb: (sz) => s('<path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.3 1 2.5h6c0-1.2.3-1.8 1-2.5A6 6 0 0 0 12 3z"/>', sz)
 };

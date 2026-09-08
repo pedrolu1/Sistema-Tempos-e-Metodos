@@ -2,7 +2,7 @@ import { el, mount } from '../../utils/dom.js';
 import { badge, button, emptyState, field, modal } from '../../components/ui.js';
 import { efetivoInputs } from '../../components/EfetivoInputs.js';
 import { icon } from '../../utils/icons.js';
-import { formatDateBR, formatMinutes, weekdayShort, efetivoTotal, formatEfetivo } from '../../utils/format.js';
+import { formatDateBR, formatMinutes, weekdayShort, efetivoTotal, formatEfetivo, temDesperdicio, excedenteMinutos } from '../../utils/format.js';
 import { updateLancamento, deleteLancamento } from '../../lib/records.js';
 import { toast } from '../../lib/toast.js';
 
@@ -47,7 +47,12 @@ export function renderHistoryPage({ lancamentos, atividades }) {
         rowInfo(icon.clock(14), `${l.horaInicio}–${l.horaTermino} (${formatMinutes(l.duracaoMinutos)})`),
         efetivoTotal(l.efetivo) > 0 ? el('span', { title: formatEfetivo(l.efetivo) }, rowInfo(icon.crew(14), `Efetivo: ${efetivoTotal(l.efetivo)}`)) : null
       ]),
-      badge(isImprodutiva ? 'Improdutividade' : 'Atividade', isImprodutiva ? 'danger' : 'info'),
+      el('div', { style: { display: 'flex', gap: '8px', flexWrap: 'wrap' } }, [
+        badge(isImprodutiva ? 'Improdutividade' : 'Atividade', isImprodutiva ? 'danger' : 'info'),
+        temDesperdicio(l)
+          ? badge(excedenteMinutos(l) > 0 ? `Desperdício · +${formatMinutes(excedenteMinutos(l))}` : 'Desperdício · MO extra', 'danger', true)
+          : null
+      ]),
       el('div', { style: { display: 'flex', gap: '8px', marginTop: '2px' } }, [
         synced
           ? el('span', { style: { fontSize: '12px', color: 'var(--text-3)' } }, 'Editável apenas pelo administrador após a sincronização.')
@@ -150,6 +155,10 @@ export function renderHistoryPage({ lancamentos, atividades }) {
                 atividadeNome: atividade?.nome || '',
                 atividadeTipo: atividade?.tipo || '',
                 classificacao: atividade?.classificacao || '',
+                setor: l.setor || '',
+                duracaoPadraoMin: atividade?.duracaoPadraoMin || 0,
+                efetivoPadrao: atividade?.efetivoPadrao || {},
+                justificativa: l.justificativa || '',
                 liderId: l.liderId || '',
                 liderNome: l.liderNome || '',
                 colaboradoresIds: l.colaboradoresIds || [],

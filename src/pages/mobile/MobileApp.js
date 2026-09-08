@@ -2,6 +2,7 @@ import { el, mount } from '../../utils/dom.js';
 import { icon } from '../../utils/icons.js';
 import { navigate, currentRoute, onRouteChange } from '../../router.js';
 import { subscribeAtividades } from '../../lib/activities.js';
+import { subscribeSetores } from '../../lib/setores.js';
 import { subscribeMeusLancamentos } from '../../lib/records.js';
 import { syncNow, isOnline, onConnectivityChange } from '../../lib/sync.js';
 import { logoutUser } from '../../lib/auth.js';
@@ -12,8 +13,9 @@ import { renderHistoryPage } from './MobileHistory.js';
 export function mountMobileApp(root, { profile }) {
   const state = {
     atividades: [],
+    setores: [],
     lancamentos: [],
-    loaded: { atividades: false, lancamentos: false },
+    loaded: { atividades: false, setores: false, lancamentos: false },
     rendered: false
   };
   let historyRefresh = null;
@@ -137,6 +139,7 @@ export function mountMobileApp(root, { profile }) {
       mount(content, [
         renderLaunchPage({
           atividades: state.atividades,
+          setores: state.setores,
           profile
         })
       ]);
@@ -174,6 +177,11 @@ export function mountMobileApp(root, { profile }) {
     state.loaded.atividades = true;
     renderInitial();
   });
+  const unsubSetores = subscribeSetores((list) => {
+    state.setores = list;
+    state.loaded.setores = true;
+    renderInitial();
+  });
   const unsubLanc = subscribeMeusLancamentos(profile.uid, (list) => {
     state.lancamentos = list;
     applySyncVisual();
@@ -189,6 +197,7 @@ export function mountMobileApp(root, { profile }) {
 
   return () => {
     unsubAtiv();
+    unsubSetores();
     unsubLanc();
     unsubRoute();
     unsubConn();

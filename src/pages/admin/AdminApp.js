@@ -4,6 +4,7 @@ import { initials } from '../../utils/format.js';
 import { navigate, currentRoute, onRouteChange } from '../../router.js';
 import { subscribeColaboradores } from '../../lib/collaborators.js';
 import { subscribeAtividades } from '../../lib/activities.js';
+import { subscribeSetores } from '../../lib/setores.js';
 import { subscribeTodosLancamentos } from '../../lib/records.js';
 import { subscribeAllUsers } from '../../lib/auth.js';
 import { logoutUser } from '../../lib/auth.js';
@@ -11,11 +12,13 @@ import { renderDashboardPage } from './AdminDashboard.js';
 import { renderRecordsPage } from './AdminRecords.js';
 import { renderUsersPage } from './AdminUsers.js';
 import { renderCatalogPage } from './AdminCatalog.js';
+import { renderSetoresPage } from './AdminSetores.js';
 
 const NAV = [
   { page: 'dashboard', label: 'Dashboard', icon: icon.grid(18) },
   { page: 'lancamentos', label: 'Lançamentos', icon: icon.clock(18) },
   { page: 'cadastros', label: 'Cadastros', icon: icon.briefcase(18) },
+  { page: 'setores', label: 'Setores', icon: icon.building(18) },
   { page: 'usuarios', label: 'Usuários', icon: icon.users(18) }
 ];
 
@@ -23,11 +26,12 @@ const TITLES = {
   dashboard: ['Dashboard', 'Indicadores de produtividade em tempo real'],
   lancamentos: ['Lançamentos', 'Todos os apontamentos coletados em campo'],
   cadastros: ['Cadastros', 'Atividades, improdutividades e colaboradores'],
+  setores: ['Setores', 'Configuração de turno e capacidade por área'],
   usuarios: ['Usuários', 'Aprovação de acesso e permissões']
 };
 
 export function mountAdminApp(root, { profile }) {
-  const state = { colaboradores: [], atividades: [], lancamentos: [], usuarios: [], loaded: { c: false, a: false, l: false, u: false } };
+  const state = { colaboradores: [], atividades: [], setores: [], lancamentos: [], usuarios: [], loaded: { c: false, a: false, s: false, l: false, u: false } };
 
   const content = el('div', { class: 'desktop-content' });
   const topTitle = el('h1', {}, 'Dashboard');
@@ -90,13 +94,14 @@ export function mountAdminApp(root, { profile }) {
     dashboard: renderDashboardPage,
     lancamentos: renderRecordsPage,
     cadastros: renderCatalogPage,
+    setores: renderSetoresPage,
     usuarios: renderUsersPage
   };
   const instances = {};
   let mountedPage = null;
 
   function ctx() {
-    return { colaboradores: state.colaboradores, atividades: state.atividades, lancamentos: state.lancamentos, usuarios: state.usuarios, profile };
+    return { colaboradores: state.colaboradores, atividades: state.atividades, setores: state.setores, lancamentos: state.lancamentos, usuarios: state.usuarios, profile };
   }
 
   function renderPage() {
@@ -140,6 +145,11 @@ export function mountAdminApp(root, { profile }) {
     state.loaded.a = true;
     renderPage();
   });
+  const unsubSetores = subscribeSetores((list) => {
+    state.setores = list;
+    state.loaded.s = true;
+    renderPage();
+  });
   const unsubLanc = subscribeTodosLancamentos((list) => {
     state.lancamentos = list;
     state.loaded.l = true;
@@ -158,6 +168,7 @@ export function mountAdminApp(root, { profile }) {
   return () => {
     unsubColab();
     unsubAtiv();
+    unsubSetores();
     unsubLanc();
     unsubUsers();
     unsubRoute();
