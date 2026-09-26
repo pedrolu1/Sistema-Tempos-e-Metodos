@@ -1,0 +1,59 @@
+/*
+  Pulso: sistema visual
+  Base "tinta": índigo profundo, com textura leve de impressão.
+  Cada agente tem a sua cor de tinta (risografia). O usuário é o "papel":
+  as ações dele (aprovar, confirmar) usam o tom claro, nunca uma tinta de agente.
+*/
+:root {
+  --noite: #1c1644;
+  --noite-2: #241d55;
+  --noite-3: #2e2668;
+  --noite-4: #3a3180;
+  --linha: rgba(236, 232, 255, 0.1);
+  --linha-forte: rgba(236, 232, 255, 0.2);
+
+  --papel: #f4f0ff;
+  --texto: #f4f0ff;
+  --texto-2: #c9c2ea;
+  --texto-3: #9d95c7;
+  --tinta-escura: #150f38;
+
+  /* tintas dos agentes */
+  --radar: #5b7cff;
+  --compasso: #ffc53d;
+  --traco: #ff4fa3;
+  --verbo: #34e0b4;
+  --disparo: #ff7a45;
+  --lupa: #b98cff;
+
+  /* estados (reservados, sempre com ícone + texto) */
+  --ok: #34e0b4;
+  --alerta: #ffc53d;
+  --erro: #ff6b7a;
+
+  --fonte-display: 'Anybody Variable', 'Figtree Variable', system-ui, sans-serif;
+  --fonte-texto: 'Figtree Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  /* escala 1.25 */
+  --t-xs: 0.8rem;
+  --t-sm: 0.875rem;
+  --t-md: 1rem;
+  --t-lg: 1.25rem;
+  --t-xl: 1.5625rem;
+  --t-2xl: 1.953rem;
+  --t-3xl: 2.441rem;
+  --t-4xl: 3.052rem;
+
+  --r-sm: 8px;
+  --r-md: 14px;
+  --r-lg: 22px;
+  --r-pill: 999px;
+
+  --sombra-papel: 0 1px 0 rgba(255, 255, 255, 0.06) inset, 0 18px 40px -18px rgba(5, 2, 25, 0.8);
+  --mola: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --suave: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --lateral: 248px;
+  --gutter: clamp(16px, 3vw, 36px);
+  color-scheme: dark;
+}

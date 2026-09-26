@@ -1,0 +1,13 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "posts",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "agendadoPara", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

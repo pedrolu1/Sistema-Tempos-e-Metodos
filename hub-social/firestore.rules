@@ -1,0 +1,39 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function dono(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    match /usuarios/{uid} {
+      allow read, create, update: if dono(uid);
+
+      // o que o cliente edita direto
+      match /marca/{doc} { allow read, write: if dono(uid); }
+      match /fotos/{doc} { allow read, write: if dono(uid); }
+      match /atividade/{doc} { allow read, create: if dono(uid); }
+
+      // pedidos para a equipe (Cloud Functions)
+      match /execucoes/{doc} {
+        allow read: if dono(uid);
+        allow create: if dono(uid) && request.resource.data.tipo in ['equipe', 'foto', 'ajuste'];
+      }
+
+      // posts: quem cria são os agentes; o cliente aprova, edita, descarta ou pede ajuste.
+      // Publicar é só com o Disparo (servidor), então o app nunca marca "publicado".
+      match /posts/{doc} {
+        allow read: if dono(uid);
+        allow update: if dono(uid)
+          && request.resource.data.status in ['aguardando', 'agendado', 'descartado', 'ajustando', resource.data.status]
+          && !(request.resource.data.status in ['publicado', 'publicando'])
+          && request.resource.data.get('publicacoes', null) == resource.data.get('publicacoes', null);
+      }
+
+      // agentes, conexões, tendências, insights e controle: só leitura no app
+      match /{outros=**} { allow read: if dono(uid); }
+    }
+
+    // tokens da Meta, cifrados: ninguém lê pelo app
+    match /segredos/{uid} { allow read, write: if false; }
+  }
+}
