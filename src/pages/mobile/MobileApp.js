@@ -3,6 +3,7 @@ import { icon } from '../../utils/icons.js';
 import { navigate, currentRoute, onRouteChange } from '../../router.js';
 import { subscribeAtividades } from '../../lib/activities.js';
 import { subscribeSetores } from '../../lib/setores.js';
+import { subscribeProjetos } from '../../lib/projetos.js';
 import { subscribeMeusLancamentos } from '../../lib/records.js';
 import { syncNow, isOnline, onConnectivityChange } from '../../lib/sync.js';
 import { logoutUser } from '../../lib/auth.js';
@@ -14,8 +15,9 @@ export function mountMobileApp(root, { profile }) {
   const state = {
     atividades: [],
     setores: [],
+    projetos: [],
     lancamentos: [],
-    loaded: { atividades: false, setores: false, lancamentos: false },
+    loaded: { atividades: false, setores: false, projetos: false, lancamentos: false },
     rendered: false
   };
   let historyRefresh = null;
@@ -140,6 +142,7 @@ export function mountMobileApp(root, { profile }) {
         renderLaunchPage({
           atividades: state.atividades,
           setores: state.setores,
+          projetos: state.projetos,
           profile
         })
       ]);
@@ -154,12 +157,12 @@ export function mountMobileApp(root, { profile }) {
   }
 
   /**
-   * As 2 assinaturas (atividades, lançamentos) resolvem em paralelo e em
+   * As assinaturas (atividades, setores, projetos, lançamentos) resolvem em paralelo e em
    * ordem imprevisível. Renderizar assim que a primeira responder — como o
    * código fazia antes — corre o risco de montar a tela de Lançar com a
    * lista de atividades ainda vazia, e ela nunca mais é atualizada depois
    * (a tela só remonta ao trocar de aba). Por isso a primeira renderização
-   * só acontece quando as 2 já chegaram.
+   * só acontece quando todas já chegaram.
    */
   function allLoaded() {
     return Object.values(state.loaded).every(Boolean);
@@ -182,6 +185,11 @@ export function mountMobileApp(root, { profile }) {
     state.loaded.setores = true;
     renderInitial();
   });
+  const unsubProjetos = subscribeProjetos((list) => {
+    state.projetos = list;
+    state.loaded.projetos = true;
+    renderInitial();
+  });
   const unsubLanc = subscribeMeusLancamentos(profile.uid, (list) => {
     state.lancamentos = list;
     applySyncVisual();
@@ -198,6 +206,7 @@ export function mountMobileApp(root, { profile }) {
   return () => {
     unsubAtiv();
     unsubSetores();
+    unsubProjetos();
     unsubLanc();
     unsubRoute();
     unsubConn();

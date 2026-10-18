@@ -2,7 +2,9 @@ import { el, mount } from '../../utils/dom.js';
 import { field, button, segmented, card } from '../../components/ui.js';
 import { efetivoInputs } from '../../components/EfetivoInputs.js';
 import { icon } from '../../utils/icons.js';
-import { todayISO, nowHHMM, durationMinutes, formatMinutes, efetivoExcedido, efetivoTotal } from '../../utils/format.js';
+import { todayISO, nowHHMM, durationMinutes, formatMinutes, efetivoExcedido, efetivoTotal, escalaLabel } from '../../utils/format.js';
+import { efetivoDiferencas, formatDiferencas } from '../../utils/planejamento.js';
+import { projetosAtivos } from '../../lib/projetos.js';
 import { createLancamento } from '../../lib/records.js';
 import { toast } from '../../lib/toast.js';
 
@@ -19,7 +21,15 @@ function somaHHMM(hhmm, min) {
   return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
 }
 
-export function renderLaunchPage({ atividades, setores = [], profile }) {
+const PROJETO_KEY = 'rfx.projeto';
+function lerProjetoSalvo() {
+  try { return localStorage.getItem(PROJETO_KEY) || ''; } catch { return ''; }
+}
+function salvarProjeto(id) {
+  try { localStorage.setItem(PROJETO_KEY, id); } catch { /* armazenamento indisponível: só não lembra */ }
+}
+
+export function renderLaunchPage({ atividades, setores = [], projetos = [], profile }) {
   const wrap = el('div', { style: { display: 'flex', flexDirection: 'column', gap: '18px' } });
   buildForm();
   return wrap;
@@ -29,12 +39,17 @@ export function renderLaunchPage({ atividades, setores = [], profile }) {
     let contratoId = '';
     let setorNome = '';
     let submitting = false;
+    const projetosAbertos = projetosAtivos(projetos);
+    // lembra o último projeto usado neste aparelho; se só existe um, já vem escolhido
+    let projetoId = projetosAbertos.some((p) => p.id === lerProjetoSalvo()) ? lerProjetoSalvo() : projetosAbertos.length === 1 ? projetosAbertos[0].id : '';
 
     const dataInput = el('input', { class: 'input', type: 'date', value: todayISO(), required: true });
     const inicioInput = el('input', { class: 'input', type: 'time', value: nowHHMM(), required: true });
     const terminoInput = el('input', { class: 'input', type: 'time', required: true });
     const obsInput = el('textarea', { class: 'textarea', placeholder: 'Observações (opcional)' });
 
+    const projetoFieldWrap = el('div');
+    const planoWrap = el('div');
     const setorFieldWrap = el('div');
     const contratoFieldWrap = el('div');
     const contratoSelectWrap = el('div');
@@ -44,10 +59,26 @@ export function renderLaunchPage({ atividades, setores = [], profile }) {
     const justificativaInput = el('textarea', { class: 'textarea', placeholder: 'Explique o motivo do desperdício (tempo acima do padrão e/ou mão de obra extra)' });
     const efetivo = efetivoInputs({}, () => atualizarDesperdicio());
 
+    const projeto = () => projetosAbertos.find((p) => p.id === projetoId) || null;
+    /** Com projeto, a atividade vem das etapas planejadas; senão, do catálogo. */
+    const usaEtapas = () => tipoRegistro === 'atividade' && !!projeto();
+
+    /**
+     * Item escolhido normalizado — seja uma etapa do projeto ou uma atividade
+     * do catálogo — com o "planejado" (duração e efetivo) que vale para ele.
+     */
     function atividadeSelecionada() {
       const sel = atividadeSelectWrap.querySelector('select');
       const id = sel ? sel.value : '';
-      return atividades.find((a) => a.id === id) || null;
+      if (!id) return null;
+      if (usaEtapas()) {
+        const e = (projeto().etapas || []).find((x) => x.id === id);
+        if (!e) return null;
+        const cat = atividades.find((a) => a.id === e.atividadeId);
+        return { id: e.atividadeId, etapaId: e.id, nome: e.nome, tipo: 'produtiva', classificacao: e.classificacao || cat?.classificacao, duracaoPadraoMin: e.duracaoMin, efetivoPadrao: e.efetivo };
+      }
+      const a = atividades.find((x) => x.id === id);
+      return a ? { ...a, etapaId: '' } : null;
     }
 
     /** Contratos só existem entre as atividades produtivas — improdutividade não é filtrada por contrato. */
@@ -56,7 +87,7 @@ export function renderLaunchPage({ atividades, setores = [], profile }) {
     }
 
     function usaContrato() {
-      return tipoRegistro === 'atividade' && contratosDisponiveis().length > 0;
+      return tipoRegistro === 'atividade' && !projeto() && contratosDisponiveis().length > 0;
     }
 
     function activeAtividades() {
@@ -69,9 +100,56 @@ export function renderLaunchPage({ atividades, setores = [], profile }) {
       return produtivas.filter((a) => a.contrato === contratoId);
     }
 
+    function buildProjetoSelect() {
+      if (projetosAbertos.length === 0) {
+        mount(projetoFieldWrap, []);
+        mount(planoWrap, []);
+        return;
+      }
+      const sel = el(
+        'select',
+        {
+          class: 'select',
+          onchange: (e) => {
+            projetoId = e.target.value;
+            salvarProjeto(projetoId);
+            contratoId = '';
+            buildProjetoSelect();
+            buildSetorSelect();
+            buildContratoSelect();
+            buildAtividadeSelect();
+          }
+        },
+        [
+          el('option', { value: '' }, 'Sem projeto (lançamento avulso)'),
+          ...projetosAbertos.map((p) => el('option', { value: p.id, selected: p.id === projetoId }, `${p.nome} — ${p.contratoNome}`))
+        ]
+      );
+      mount(projetoFieldWrap, [field({ label: 'Projeto', input: sel })]);
+
+      // resumo didático do que o planejador definiu para o projeto
+      const p = projeto();
+      if (!p) {
+        mount(planoWrap, []);
+        return;
+      }
+      const f = p.ficha || {};
+      mount(planoWrap, [
+        el('div', { class: 'plan-card' }, [
+          el('strong', {}, 'Planejado para este projeto'),
+          el('div', {}, `${escalaLabel(f.escala)} · ${f.horaChegada || '—'} às ${f.horaSaida || '—'}${f.almocoInicio ? ` · almoço ${f.almocoInicio}–${f.almocoFim}` : ''}`),
+          el('div', {}, `${(p.etapas || []).length} etapa(s) · ${p.clienteNome} › ${p.contratoNome}`),
+          f.restricoes?.length
+            ? el('div', { class: 'chip-row' }, f.restricoes.map((r) => el('span', { class: 'chip chip-warn' }, [el('span', { html: icon.alert(11) }), r])))
+            : null
+        ])
+      ]);
+    }
+
     function buildSetorSelect() {
       const ativos = setores.filter((s) => s.ativo !== false);
-      if (ativos.length === 0) {
+      // o projeto já define o setor — não pergunta de novo
+      if (ativos.length === 0 || projeto()?.setor) {
         mount(setorFieldWrap, []);
         return;
       }
@@ -109,6 +187,17 @@ export function renderLaunchPage({ atividades, setores = [], profile }) {
     }
 
     function buildAtividadeSelect() {
+      if (usaEtapas()) {
+        const etapas = projeto().etapas || [];
+        mount(atividadeSelectWrap, [
+          el('select', { class: 'select', required: true, onchange: () => onAtividadeChange() }, [
+            el('option', { value: '' }, etapas.length ? 'Selecione a etapa…' : 'Projeto sem etapas — avise o planejador'),
+            ...etapas.map((e) => el('option', { value: e.id }, e.codigo ? `${e.codigo} — ${e.nome}` : e.nome))
+          ])
+        ]);
+        onAtividadeChange();
+        return;
+      }
       const opts = activeAtividades();
       const semContratoEscolhido = usaContrato() && !contratoId;
       mount(atividadeSelectWrap, [
@@ -135,6 +224,7 @@ export function renderLaunchPage({ atividades, setores = [], profile }) {
     /** Ao escolher uma atividade com padrão, pré-preenche término e efetivo. */
     function onAtividadeChange() {
       const a = atividadeSelecionada();
+      efetivo.setPlanejado(a && a.tipo === 'produtiva' && efetivoTotal(a.efetivoPadrao) > 0 ? a.efetivoPadrao : null);
       if (a && a.tipo === 'produtiva') {
         if (Number(a.duracaoPadraoMin) > 0 && inicioInput.value) {
           terminoInput.value = somaHHMM(inicioInput.value, Number(a.duracaoPadraoMin));
@@ -156,10 +246,20 @@ export function renderLaunchPage({ atividades, setores = [], profile }) {
       const moExcede = a && a.tipo === 'produtiva' ? efetivoExcedido(efetivo.getValue(), a.efetivoPadrao) : false;
 
       const msgs = [];
-      if (excedente > 0) msgs.push(`Tempo ${formatMinutes(excedente)} acima do padrão (${formatMinutes(padraoMin)}). O excedente entra como Desperdício Necessário.`);
-      if (moExcede) msgs.push('Mão de obra acima do padrão configurado.');
+      if (excedente > 0) msgs.push(`Tempo ${formatMinutes(excedente)} acima do planejado (${formatMinutes(padraoMin)}). O excedente entra como Desperdício Necessário.`);
+      if (moExcede) msgs.push('Mão de obra acima do planejado.');
+      // efetivo diferente do planejado (para mais ou para menos) é só informativo:
+      // o planejador vê a divergência no painel; justificativa só quando passa.
+      const difs = a && a.tipo === 'produtiva' ? efetivoDiferencas(efetivo.getValue(), a.efetivoPadrao) : [];
+      const infoDif = difs.length && !moExcede
+        ? el('div', { class: 'inline-alert info' }, [
+            el('span', { html: icon.lightbulb(15), style: { display: 'inline-flex', flexShrink: '0' } }),
+            el('div', {}, [el('div', {}, 'Diferente do planejado — o planejador será avisado.'), el('div', {}, formatDiferencas(difs))])
+          ])
+        : null;
 
       if (msgs.length) {
+        if (difs.length) msgs.push(formatDiferencas(difs));
         mount(alertaWrap, [
           el('div', { class: 'inline-alert warn' }, [
             el('span', { html: icon.alert(15), style: { display: 'inline-flex', flexShrink: '0' } }),
@@ -168,11 +268,12 @@ export function renderLaunchPage({ atividades, setores = [], profile }) {
         ]);
         mount(justificativaWrap, [field({ label: 'Justificativa do desperdício', input: justificativaInput, hint: 'Obrigatória quando há excesso de tempo ou de mão de obra.' })]);
       } else {
-        mount(alertaWrap, []);
+        mount(alertaWrap, [infoDif]);
         mount(justificativaWrap, []);
       }
     }
 
+    buildProjetoSelect();
     buildSetorSelect();
     buildContratoSelect();
     buildAtividadeSelect();
@@ -211,6 +312,7 @@ export function renderLaunchPage({ atividades, setores = [], profile }) {
 
           const atividade = atividadeSelecionada();
           const atividadeId = atividade?.id || '';
+          const proj = projeto();
 
           if (!dataInput.value || !inicioInput.value || !terminoInput.value) {
             toast('Preencha data, horário de início e término.', 'error');
@@ -244,8 +346,12 @@ export function renderLaunchPage({ atividades, setores = [], profile }) {
               horaInicio: inicioInput.value,
               horaTermino: terminoInput.value,
               tipoRegistro,
-              contrato: usaContrato() ? contratoId : '',
-              setor: setorNome,
+              contrato: proj ? proj.contratoNome : usaContrato() ? contratoId : '',
+              setor: proj?.setor || setorNome,
+              projetoId: proj?.id || '',
+              projetoNome: proj?.nome || '',
+              clienteNome: proj?.clienteNome || '',
+              etapaId: atividade?.etapaId || '',
               atividadeId,
               atividadeNome: atividade?.nome || '',
               atividadeTipo: atividade?.tipo || '',
@@ -281,6 +387,8 @@ export function renderLaunchPage({ atividades, setores = [], profile }) {
         ]),
 
         sectionTitle('Etapa'),
+        projetoFieldWrap,
+        planoWrap,
         setorFieldWrap,
         el('div', { class: 'field' }, [el('label', { class: 'field-label' }, 'O que está sendo registrado?'), tipoTabs]),
         contratoFieldWrap,
@@ -288,7 +396,7 @@ export function renderLaunchPage({ atividades, setores = [], profile }) {
 
         sectionTitle('Efetivo utilizado'),
         efetivo.node,
-        el('div', { class: 'field-hint' }, 'Vem pré-preenchido pelo padrão da atividade — ajuste se precisar.'),
+        el('div', { class: 'field-hint' }, 'Vem preenchido com o planejado — se em campo for diferente, ajuste com − e +.'),
 
         alertaWrap,
         justificativaWrap,

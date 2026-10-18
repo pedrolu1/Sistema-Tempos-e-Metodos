@@ -378,6 +378,7 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13.5px; mi
   font-weight: 600;
 }
 .inline-alert.warn { background: rgba(255, 204, 77, 0.12); color: var(--warn-500); border: 1px solid rgba(255, 204, 77, 0.22); }
+.inline-alert.info { background: var(--info-glow); color: var(--info-500); border: 1px solid rgba(23, 179, 163, 0.25); }
 .inline-alert.danger { background: var(--danger-glow); color: var(--danger-500); border: 1px solid rgba(255, 92, 114, 0.22); }
 .inline-alert > div > div + div { margin-top: 2px; }
 
@@ -415,3 +416,80 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13.5px; mi
 .kpi-trend { display: flex; align-items: center; gap: 4px; font-size: 12px; margin-top: 6px; font-weight: 600; }
 .kpi-trend.up { color: var(--ok-500); }
 .kpi-trend.down { color: var(--danger-500); }
+
+/* ===================== Planejamento (Projetos) ===================== */
+.muted { color: var(--text-2); }
+.chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip-warn { background: rgba(255, 204, 77, 0.1); color: var(--warn-500); border-color: rgba(255, 204, 77, 0.22); cursor: default; }
+.chip-warn span { display: inline-flex; }
+
+/* passo a passo de primeiro uso: 1 cliente → 2 contrato → 3 projeto */
+.guide-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+.guide-step {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px; border-radius: var(--r-lg);
+  background: var(--bg-2); border: 1px dashed var(--border-strong);
+}
+.guide-step strong { display: block; font-size: 13.5px; }
+.guide-step small { color: var(--text-2); font-size: 12px; }
+.guide-step-num {
+  width: 30px; height: 30px; flex-shrink: 0; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-weight: 700;
+  background: var(--accent-grad); color: var(--on-accent);
+}
+.guide-step.done { border-style: solid; border-color: var(--border-soft); opacity: 0.7; }
+.guide-step.done .guide-step-num { background: var(--ok-500); color: #06240f; }
+
+.tree-list { display: flex; flex-direction: column; gap: 10px; }
+.tree-row { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; border-radius: var(--r-md); background: var(--bg-1); border: 1px solid var(--border-soft); }
+.tree-head { display: flex; align-items: center; gap: 10px; font-size: 13.5px; }
+
+.project-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+.project-card {
+  display: flex; flex-direction: column; gap: 10px; text-align: left;
+  padding: 16px; border-radius: var(--r-lg);
+  background: var(--bg-1); border: 1px solid var(--border-soft);
+  color: inherit; font: inherit; cursor: pointer;
+  transition: transform var(--dur-fast) var(--ease-out), border-color var(--dur-med), box-shadow var(--dur-med);
+}
+.project-card:hover { transform: translateY(-2px); border-color: var(--accent-500); box-shadow: 0 12px 30px -16px var(--accent-glow); }
+.project-card-top { display: flex; gap: 6px; flex-wrap: wrap; }
+.project-card-title { font-family: var(--font-display); font-size: 15px; }
+.project-card-foot { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-2); }
+.project-card-foot b { color: var(--text-0); }
+
+.kv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px 18px; }
+.kv { display: flex; flex-direction: column; gap: 3px; }
+.kv span { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-3); }
+.kv strong { font-size: 13.5px; }
+.kv-wide { grid-column: 1 / -1; }
+
+.div-list { display: flex; flex-direction: column; gap: 10px; max-height: 340px; overflow-y: auto; }
+.div-item { padding: 10px 12px; border-radius: var(--r-md); background: var(--bg-1); border-left: 3px solid var(--warn-500); display: flex; flex-direction: column; gap: 3px; }
+.div-item-head { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; }
+.div-item-head .muted { font-size: 11.5px; white-space: nowrap; }
+.div-line { font-size: 12.5px; }
+.div-line.warn { color: var(--warn-500); }
+.div-line.info { color: var(--info-500); }
+
+.check-list { max-height: 340px; overflow-y: auto; border: 1px solid var(--border-soft); border-radius: var(--r-md); }
+.check-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; font-size: 13px; cursor: pointer; border-bottom: 1px solid var(--border-soft); }
+.check-item:last-child { border-bottom: none; }
+.check-item:hover { background: var(--bg-3); }
+.check-item input { width: 17px; height: 17px; accent-color: var(--accent-500); }
+
+.input-compact { height: 32px; width: 78px; padding: 0 8px; font-size: 12.5px; }
+.data-table .chip, .tree-row .chip, .kv-grid + .chip-row .chip { height: 30px; font-size: 12.5px; padding: 0 12px; }
+
+/* app de campo: escolha do projeto + comparação planejado × real */
+.plan-card {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 12px 14px; border-radius: var(--r-md);
+  background: rgba(43, 95, 234, 0.08); border: 1px solid rgba(79, 128, 255, 0.25);
+  font-size: 12.5px; color: var(--text-1);
+}
+.plan-card strong { color: var(--accent-300); font-family: var(--font-display); font-size: 13px; }
+.plan-card .chip-row .chip { height: 26px; font-size: 11.5px; padding: 0 10px; }
+.stepper-plan { white-space: nowrap; flex-shrink: 0; font-size: 10.5px; font-weight: 700; color: var(--text-3); }
+.stepper-plan.diff { color: var(--info-500); }

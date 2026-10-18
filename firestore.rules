@@ -19,6 +19,13 @@ service cloud.firestore {
       return isSignedIn() && meDoc().status == 'aprovado' && meDoc().role == 'admin';
     }
 
+    // gestor = admin ou planejador: quem monta o planejamento (catálogo,
+    // setores, clientes, contratos, projetos) e acompanha todos os apontamentos.
+    // Só o admin aprova usuários e muda papéis.
+    function isGestor() {
+      return isSignedIn() && meDoc().status == 'aprovado' && meDoc().role in ['admin', 'planejador'];
+    }
+
     // ---------------------------------------------------------------
     // usuarios — cada pessoa lê o próprio perfil (para saber se já foi
     // aprovada); só o admin lê a lista inteira, aprova, nega ou muda papéis.
@@ -46,13 +53,31 @@ service cloud.firestore {
 
     match /atividades/{id} {
       allow read: if isAprovado();
-      allow write: if isAdmin();
+      allow write: if isGestor();
     }
 
     // setores — configuração de turno/escala por área da planta (Hub ADM).
     match /setores/{id} {
       allow read: if isAprovado();
-      allow write: if isAdmin();
+      allow write: if isGestor();
+    }
+
+    // planejamento: cliente → contrato → projeto (com ficha e etapas).
+    // Todo aprovado lê (o apontador precisa do planejado em campo);
+    // só admin/planejador escreve.
+    match /clientes/{id} {
+      allow read: if isAprovado();
+      allow write: if isGestor();
+    }
+
+    match /contratos/{id} {
+      allow read: if isAprovado();
+      allow write: if isGestor();
+    }
+
+    match /projetos/{id} {
+      allow read: if isAprovado();
+      allow write: if isGestor();
     }
 
     // ---------------------------------------------------------------
@@ -64,11 +89,11 @@ service cloud.firestore {
     // controles de edição assim que o servidor confirma o documento.
     // ---------------------------------------------------------------
     match /lancamentos/{id} {
-      allow read: if isAprovado() && (isAdmin() || resource.data.criadoPorUid == request.auth.uid);
+      allow read: if isAprovado() && (isGestor() || resource.data.criadoPorUid == request.auth.uid);
       allow create: if isAprovado()
         && request.resource.data.criadoPorUid == request.auth.uid;
       allow update, delete: if isAprovado()
-        && (isAdmin() || resource.data.criadoPorUid == request.auth.uid);
+        && (isGestor() || resource.data.criadoPorUid == request.auth.uid);
     }
   }
 }

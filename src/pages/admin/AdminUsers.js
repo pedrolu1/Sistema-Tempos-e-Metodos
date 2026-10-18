@@ -84,7 +84,7 @@ export function renderUsersPage(ctx) {
       'select',
       {
         class: 'select',
-        style: { height: '34px', fontSize: '12.5px', minWidth: '120px' },
+        style: { height: '34px', fontSize: '12.5px', minWidth: '150px' },
         onchange: async (e) => {
           try {
             await setUserRole(u.uid, e.target.value);
@@ -96,7 +96,8 @@ export function renderUsersPage(ctx) {
         disabled: u.status !== 'aprovado'
       },
       [
-        el('option', { value: 'lider', selected: u.role === 'lider' }, 'Líder (mobile)'),
+        el('option', { value: 'lider', selected: u.role === 'lider' }, 'Apontador (celular)'),
+        el('option', { value: 'planejador', selected: u.role === 'planejador' }, 'Planejador'),
         el('option', { value: 'admin', selected: u.role === 'admin' }, 'Administrador')
       ]
     );

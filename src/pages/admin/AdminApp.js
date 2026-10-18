@@ -5,6 +5,7 @@ import { navigate, currentRoute, onRouteChange } from '../../router.js';
 import { subscribeColaboradores } from '../../lib/collaborators.js';
 import { subscribeAtividades } from '../../lib/activities.js';
 import { subscribeSetores } from '../../lib/setores.js';
+import { subscribeClientes, subscribeContratos, subscribeProjetos } from '../../lib/projetos.js';
 import { subscribeTodosLancamentos } from '../../lib/records.js';
 import { subscribeAllUsers } from '../../lib/auth.js';
 import { logoutUser } from '../../lib/auth.js';
@@ -13,17 +14,20 @@ import { renderRecordsPage } from './AdminRecords.js';
 import { renderUsersPage } from './AdminUsers.js';
 import { renderCatalogPage } from './AdminCatalog.js';
 import { renderSetoresPage } from './AdminSetores.js';
+import { renderProjetosPage } from './AdminProjetos.js';
 
 const NAV = [
   { page: 'dashboard', label: 'Dashboard', icon: icon.grid(18) },
+  { page: 'projetos', label: 'Projetos', icon: icon.folder(18) },
   { page: 'lancamentos', label: 'Lançamentos', icon: icon.clock(18) },
   { page: 'cadastros', label: 'Cadastros', icon: icon.briefcase(18) },
   { page: 'setores', label: 'Setores', icon: icon.building(18) },
-  { page: 'usuarios', label: 'Usuários', icon: icon.users(18) }
+  { page: 'usuarios', label: 'Usuários', icon: icon.users(18), soAdmin: true }
 ];
 
 const TITLES = {
   dashboard: ['Dashboard', 'Indicadores de produtividade em tempo real'],
+  projetos: ['Projetos', 'Planejamento por cliente e contrato — planejado × real'],
   lancamentos: ['Lançamentos', 'Todos os apontamentos coletados em campo'],
   cadastros: ['Cadastros', 'Atividades, improdutividades e colaboradores'],
   setores: ['Setores', 'Configuração de turno e capacidade por área'],
@@ -31,7 +35,13 @@ const TITLES = {
 };
 
 export function mountAdminApp(root, { profile }) {
-  const state = { colaboradores: [], atividades: [], setores: [], lancamentos: [], usuarios: [], loaded: { c: false, a: false, s: false, l: false, u: false } };
+  const isAdmin = profile.role === 'admin';
+  // o planejador vê o mesmo painel, menos a aprovação de usuários (só admin)
+  const navItems = NAV.filter((n) => isAdmin || !n.soAdmin);
+  const state = {
+    colaboradores: [], atividades: [], setores: [], lancamentos: [], usuarios: [], clientes: [], contratos: [], projetos: [],
+    loaded: { c: false, a: false, s: false, l: false, u: !isAdmin, cl: false, ct: false, p: false }
+  };
 
   const content = el('div', { class: 'desktop-content' });
   const topTitle = el('h1', {}, 'Dashboard');
@@ -41,7 +51,7 @@ export function mountAdminApp(root, { profile }) {
   const nav = el(
     'div',
     { class: 'sidebar-nav' },
-    NAV.map((item) => {
+    navItems.map((item) => {
       const link = el('button', { class: 'sidebar-link', type: 'button', onclick: () => navigate(item.page) }, [
         el('span', { html: item.icon, style: { display: 'inline-flex' } }),
         item.label
@@ -52,7 +62,7 @@ export function mountAdminApp(root, { profile }) {
   );
 
   const pendingBadge = el('span', { class: 'badge badge-warn', style: { display: 'none' } }, '0');
-  navLinks.usuarios.appendChild(pendingBadge);
+  if (navLinks.usuarios) navLinks.usuarios.appendChild(pendingBadge);
 
   const shell = el('div', { class: 'desktop-shell' }, [
     el('aside', { class: 'desktop-sidebar' }, [
@@ -66,7 +76,7 @@ export function mountAdminApp(root, { profile }) {
           el('span', { class: 'avatar' }, initials(profile.nomeCompleto)),
           el('div', {}, [
             el('div', { class: 'sidebar-user-name' }, profile.nomeCompleto),
-            el('div', { class: 'sidebar-user-role' }, 'Administrador')
+            el('div', { class: 'sidebar-user-role' }, isAdmin ? 'Administrador' : 'Planejador')
           ])
         ]),
         el('button', { class: 'btn btn-ghost btn-sm btn-block', onclick: () => logoutUser() }, [el('span', { html: icon.logout(15) }), ' Sair'])
@@ -92,6 +102,7 @@ export function mountAdminApp(root, { profile }) {
 
   const factories = {
     dashboard: renderDashboardPage,
+    projetos: renderProjetosPage,
     lancamentos: renderRecordsPage,
     cadastros: renderCatalogPage,
     setores: renderSetoresPage,
@@ -101,13 +112,23 @@ export function mountAdminApp(root, { profile }) {
   let mountedPage = null;
 
   function ctx() {
-    return { colaboradores: state.colaboradores, atividades: state.atividades, setores: state.setores, lancamentos: state.lancamentos, usuarios: state.usuarios, profile };
+    return {
+      colaboradores: state.colaboradores,
+      atividades: state.atividades,
+      setores: state.setores,
+      lancamentos: state.lancamentos,
+      usuarios: state.usuarios,
+      clientes: state.clientes,
+      contratos: state.contratos,
+      projetos: state.projetos,
+      profile
+    };
   }
 
   function renderPage() {
     if (!allLoaded()) return;
     const { page } = currentRoute();
-    const active = NAV.some((n) => n.page === page) ? page : 'dashboard';
+    const active = navItems.some((n) => n.page === page) ? page : 'dashboard';
     Object.entries(navLinks).forEach(([key, node]) => node.classList.toggle('active', key === active));
     const [title, subtitle] = TITLES[active];
     topTitle.textContent = title;
@@ -155,12 +176,20 @@ export function mountAdminApp(root, { profile }) {
     state.loaded.l = true;
     renderPage();
   });
-  const unsubUsers = subscribeAllUsers((list) => {
-    state.usuarios = list;
-    state.loaded.u = true;
-    updatePendingBadge();
-    renderPage();
-  });
+  // a lista de usuários só é legível pelo admin (regras do Firestore)
+  const unsubUsers = isAdmin
+    ? subscribeAllUsers((list) => {
+        state.usuarios = list;
+        state.loaded.u = true;
+        updatePendingBadge();
+        renderPage();
+      })
+    : () => {};
+  const unsubPlan = [
+    subscribeClientes((list) => { state.clientes = list; state.loaded.cl = true; renderPage(); }),
+    subscribeContratos((list) => { state.contratos = list; state.loaded.ct = true; renderPage(); }),
+    subscribeProjetos((list) => { state.projetos = list; state.loaded.p = true; renderPage(); })
+  ];
   const unsubRoute = onRouteChange(renderPage);
 
   if (!currentRoute().page) navigate('dashboard');
@@ -171,6 +200,7 @@ export function mountAdminApp(root, { profile }) {
     unsubSetores();
     unsubLanc();
     unsubUsers();
+    unsubPlan.forEach((u) => u());
     unsubRoute();
   };
 }

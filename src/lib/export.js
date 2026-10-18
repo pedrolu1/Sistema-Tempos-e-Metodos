@@ -10,6 +10,7 @@ const COLUMNS = [
   { key: 'duracao', label: 'Duração', map: (r) => formatMinutes(r.duracaoMinutos) },
   { key: 'tipo', label: 'Tipo', map: (r) => (r.tipoRegistro === 'improdutividade' ? 'Improdutividade' : 'Atividade') },
   { key: 'classificacao', label: 'Classificação Lean', map: (r) => CLASSIFICACAO_INFO[classificacaoDoLancamento(r)].short },
+  { key: 'projetoNome', label: 'Projeto', map: (r) => r.projetoNome || 'Avulso' },
   { key: 'atividadeNome', label: 'Descrição', map: (r) => r.atividadeNome || '' },
   { key: 'liderNome', label: 'Líder', map: (r) => r.liderNome || '' },
   { key: 'colaboradores', label: 'Colaboradores', map: (r) => (r.colaboradoresNomes || []).join(', ') },

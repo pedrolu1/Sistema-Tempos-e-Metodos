@@ -4,7 +4,7 @@ import { liderSelect, colaboradoresPicker } from '../../components/PeoplePicker.
 import { efetivoInputs } from '../../components/EfetivoInputs.js';
 import { icon } from '../../utils/icons.js';
 import { formatDateBR, formatMinutes, efetivoTotal, formatEfetivo, classificacaoDoLancamento, CLASSIFICACAO_INFO } from '../../utils/format.js';
-import { updateLancamento, deleteLancamento } from '../../lib/records.js';
+import { updateLancamento, deleteLancamento, contextoDaEdicao } from '../../lib/records.js';
 import { exportExcel, exportPDF, exportWord } from '../../lib/export.js';
 import { toast } from '../../lib/toast.js';
 
@@ -74,7 +74,7 @@ export function renderRecordsPage(ctx) {
       if (filters.status === 'sincronizado' && l._sincronizado === false) return false;
       if (filters.status === 'pendente' && l._sincronizado !== false) return false;
       if (filters.busca) {
-        const haystack = [l.atividadeNome, l.liderNome, ...(l.colaboradoresNomes || [])].join(' ').toLowerCase();
+        const haystack = [l.atividadeNome, l.projetoNome, l.liderNome, ...(l.colaboradoresNomes || [])].join(' ').toLowerCase();
         if (!haystack.includes(filters.busca)) return false;
       }
       return true;
@@ -110,7 +110,10 @@ export function renderRecordsPage(ctx) {
               el('td', { class: 'mono' }, formatMinutes(l.duracaoMinutos)),
               el('td', {}, badge(l.tipoRegistro === 'improdutividade' ? 'Improd.' : 'Atividade', l.tipoRegistro === 'improdutividade' ? 'danger' : 'info')),
               el('td', {}, leanBadge(l)),
-              el('td', { class: 'strong' }, l.atividadeNome || '—'),
+              el('td', { class: 'strong' }, [
+                l.atividadeNome || '—',
+                l.projetoNome ? el('div', { style: { fontSize: '11.5px', fontWeight: '500', color: 'var(--text-2)' } }, l.projetoNome) : null
+              ]),
               el('td', {}, l.liderNome || '—'),
               el('td', {}, colabCell(l.colaboradoresNomes || [])),
               el('td', { class: 'mono', title: formatEfetivo(l.efetivo) }, String(efetivoTotal(l.efetivo))),
@@ -232,15 +235,7 @@ export function renderRecordsPage(ctx) {
                 horaInicio: inicioInput.value,
                 horaTermino: terminoInput.value,
                 tipoRegistro,
-                contrato: l.contrato || '',
-                atividadeId,
-                atividadeNome: atividade?.nome || '',
-                atividadeTipo: atividade?.tipo || '',
-                classificacao: atividade?.classificacao || '',
-                setor: l.setor || '',
-                duracaoPadraoMin: atividade?.duracaoPadraoMin || 0,
-                efetivoPadrao: atividade?.efetivoPadrao || {},
-                justificativa: l.justificativa || '',
+                ...contextoDaEdicao(l, atividadeId, atividade),
                 liderId,
                 liderNome: lider?.nomeCompleto || '',
                 colaboradoresIds,

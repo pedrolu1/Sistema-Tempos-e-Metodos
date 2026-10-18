@@ -3,7 +3,7 @@ import { badge, button, emptyState, field, modal } from '../../components/ui.js'
 import { efetivoInputs } from '../../components/EfetivoInputs.js';
 import { icon } from '../../utils/icons.js';
 import { formatDateBR, formatMinutes, weekdayShort, efetivoTotal, formatEfetivo, temDesperdicio, excedenteMinutos } from '../../utils/format.js';
-import { updateLancamento, deleteLancamento } from '../../lib/records.js';
+import { updateLancamento, deleteLancamento, contextoDaEdicao } from '../../lib/records.js';
 import { toast } from '../../lib/toast.js';
 
 export function renderHistoryPage({ lancamentos, atividades }) {
@@ -39,7 +39,8 @@ export function renderHistoryPage({ lancamentos, atividades }) {
       el('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' } }, [
         el('div', {}, [
           el('div', { style: { fontSize: '11.5px', color: 'var(--text-2)', fontWeight: '600', textTransform: 'uppercase' } }, `${weekdayShort(l.data)} · ${formatDateBR(l.data)}`),
-          el('div', { style: { fontFamily: 'var(--font-display)', fontWeight: '600', fontSize: '14.5px', marginTop: '2px' } }, l.atividadeNome || '—')
+          el('div', { style: { fontFamily: 'var(--font-display)', fontWeight: '600', fontSize: '14.5px', marginTop: '2px' } }, l.atividadeNome || '—'),
+          l.projetoNome ? el('div', { style: { fontSize: '11.5px', color: 'var(--text-2)', marginTop: '1px' } }, l.projetoNome) : null
         ]),
         badge(synced ? 'Sincronizado' : 'Pendente', synced ? 'ok' : 'warn', true)
       ]),
@@ -150,15 +151,7 @@ export function renderHistoryPage({ lancamentos, atividades }) {
                 horaInicio: inicioInput.value,
                 horaTermino: terminoInput.value,
                 tipoRegistro,
-                contrato: l.contrato || '',
-                atividadeId,
-                atividadeNome: atividade?.nome || '',
-                atividadeTipo: atividade?.tipo || '',
-                classificacao: atividade?.classificacao || '',
-                setor: l.setor || '',
-                duracaoPadraoMin: atividade?.duracaoPadraoMin || 0,
-                efetivoPadrao: atividade?.efetivoPadrao || {},
-                justificativa: l.justificativa || '',
+                ...contextoDaEdicao(l, atividadeId, atividade),
                 liderId: l.liderId || '',
                 liderNome: l.liderNome || '',
                 colaboradoresIds: l.colaboradoresIds || [],

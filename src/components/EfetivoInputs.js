@@ -17,14 +17,31 @@ function clamp(n) {
  *
  * `onChange` (opcional) é chamado a cada alteração — usado no app mobile para
  * reavaliar em tempo real se o efetivo passou do padrão. `setValues` permite
- * pré-preencher a grade quando o líder escolhe uma atividade com padrão.
+ * pré-preencher a grade quando o líder escolhe uma atividade com padrão;
+ * `setPlanejado` mostra ao lado de cada função quanto foi planejado.
  */
 export function efetivoInputs(initial = {}, onChange) {
   const inputs = {};
+  const planTags = {};
+  let planejado = null; // quando definido, cada função mostra "plan. N" e destaca a diferença
+
+  function marcarDiferencas() {
+    EFETIVO_CAMPOS.forEach((c) => {
+      const tag = planTags[c.key];
+      if (!planejado) {
+        tag.textContent = '';
+        return;
+      }
+      const plan = clamp(planejado[c.key]);
+      const diff = clamp(inputs[c.key].value) !== plan;
+      tag.textContent = `plan. ${plan}`;
+      tag.classList.toggle('diff', diff);
+    });
+  }
 
   const grid = el(
     'div',
-    { style: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' } },
+    { style: { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '10px' } },
     EFETIVO_CAMPOS.map((c) => {
       const input = el('input', {
         class: 'mono',
@@ -38,6 +55,7 @@ export function efetivoInputs(initial = {}, onChange) {
 
       const setVal = (n) => {
         input.value = String(clamp(n));
+        marcarDiferencas();
         if (onChange) onChange();
       };
       input.addEventListener('change', () => setVal(input.value));
@@ -48,8 +66,12 @@ export function efetivoInputs(initial = {}, onChange) {
         el('button', { type: 'button', class: 'stepper-btn', 'aria-label': `Aumentar ${c.label}`, onclick: () => setVal(Number(input.value) + 1) }, '+')
       ]);
 
+      planTags[c.key] = el('span', { class: 'stepper-plan' });
       return el('div', { style: { display: 'flex', flexDirection: 'column', gap: '5px' } }, [
-        el('label', { style: { fontSize: '11.5px', color: 'var(--text-2)', fontWeight: '600' } }, c.label),
+        el('div', { style: { display: 'flex', justifyContent: 'space-between', gap: '6px' } }, [
+          el('label', { title: c.label, style: { fontSize: '11.5px', color: 'var(--text-2)', fontWeight: '600', minWidth: '0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, c.label),
+          planTags[c.key]
+        ]),
         stepper
       ]);
     })
@@ -67,8 +89,15 @@ export function efetivoInputs(initial = {}, onChange) {
     EFETIVO_CAMPOS.forEach((c) => {
       inputs[c.key].value = String(clamp(obj[c.key]));
     });
+    marcarDiferencas();
     if (onChange) onChange();
   }
 
-  return { node: grid, getValue, setValues };
+  /** Define (ou limpa, com null) o efetivo planejado usado como referência visual. */
+  function setPlanejado(obj) {
+    planejado = obj;
+    marcarDiferencas();
+  }
+
+  return { node: grid, getValue, setValues, setPlanejado };
 }

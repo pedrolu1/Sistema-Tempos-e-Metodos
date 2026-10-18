@@ -87,7 +87,8 @@ function boot() {
       return;
     }
 
-    if (profile.role === 'admin') {
+    // admin e planejador usam o painel desktop; o líder/apontador, o app de campo.
+    if (profile.role === 'admin' || profile.role === 'planejador') {
       cleanupApp = mountAdminApp(app, { profile });
     } else {
       cleanupApp = mountMobileApp(app, { profile });

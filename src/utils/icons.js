@@ -31,5 +31,8 @@ export const icon = {
   building: (sz) => s('<rect x="4" y="3" width="16" height="18" rx="1.5"/><path d="M9 7h2M13 7h2M9 11h2M13 11h2M9 15h2M13 15h2"/><path d="M10 21v-3h4v3"/>', sz),
   upload: (sz) => s('<path d="M12 15V3"/><path d="M7 8l5-5 5 5"/><path d="M5 21h14"/>', sz),
   target: (sz) => s('<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/>', sz),
+  folder: (sz) => s('<path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>', sz),
+  arrowLeft: (sz) => s('<path d="M19 12H5"/><path d="M11 18l-6-6 6-6"/>', sz),
+  calendar: (sz) => s('<rect x="3.5" y="5" width="17" height="15.5" rx="1.8"/><path d="M3.5 10h17M8 3v4M16 3v4"/>', sz),
   lightbulb: (sz) => s('<path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.3 1 2.5h6c0-1.2.3-1.8 1-2.5A6 6 0 0 0 12 3z"/>', sz)
 };
