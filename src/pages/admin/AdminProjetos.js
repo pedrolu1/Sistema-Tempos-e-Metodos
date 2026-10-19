@@ -478,7 +478,7 @@ export function renderProjetosPage(ctx) {
                 el('td', { class: 'strong' }, e.etapa.nome),
                 el('td', {}, el('span', { style: { color: info.color, fontWeight: '700', fontSize: '12px' } }, info.short)),
                 el('td', {}, el('div', { style: { display: 'flex', alignItems: 'center', gap: '6px' } }, [dur, el('span', { class: 'muted', style: { fontSize: '11.5px' } }, 'min')])),
-                el('td', {}, el('button', { class: 'chip', type: 'button', title: 'Editar MOD da etapa', onclick: () => modalMODEtapa(p, e.etapa) }, efetivoTotal(e.etapa.efetivo) ? `${efetivoTotal(e.etapa.efetivo)} pessoas` : 'definir')),
+                el('td', {}, el('button', { class: 'chip', type: 'button', title: 'Editar MOD da etapa', onclick: () => modalMODEtapa(p, e.etapa) }, efetivoTotal(e.etapa.efetivo) ? `${efetivoTotal(e.etapa.efetivo)} pessoa${efetivoTotal(e.etapa.efetivo) > 1 ? 's' : ''}` : 'definir')),
                 el('td', { class: 'mono' }, e.lancamentos
                   ? [formatMinutes(e.mediaMin), e.lancamentos > 1 ? el('div', { class: 'muted', style: { fontSize: '11px' } }, `média de ${e.lancamentos}×`) : null]
                   : '—'),

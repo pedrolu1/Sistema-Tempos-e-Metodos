@@ -7,6 +7,7 @@ import { repararApp, VERSAO } from '../../lib/saude.js';
 import { encontrarInconsistencias } from '../../lib/reparo.js';
 import { appCheckAtivo } from '../../lib/firebase.js';
 import { toast } from '../../lib/toast.js';
+import { modal } from '../../components/ui.js';
 
 const SETE_DIAS = 7 * 86400000;
 const quando = (ms) => (ms ? new Date(ms).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—');
@@ -53,7 +54,7 @@ export function renderSistemaPage(ctxInicial) {
           statTile({ label: 'Falhas registradas', value: String(erros.length), iconHtml: icon.alert(16), tone: naoRecuperados.length ? 'danger' : 'ok' }),
           statTile({ label: 'Recuperações automáticas', value: String(recuperacoes.length + erros.length - naoRecuperados.length), iconHtml: icon.sync(16), tone: 'ok' }),
           statTile({ label: 'Lançamentos a reparar', value: String(pendentesReparo), iconHtml: icon.bolt(16), tone: pendentesReparo ? 'warn' : 'ok' }),
-          statTile({ label: 'Versão do app', value: VERSAO, iconHtml: icon.grid(16) })
+          statTile({ label: 'Versão do app', value: el('span', { style: { fontSize: '19px' } }, VERSAO), iconHtml: icon.grid(16) })
         ]),
         grupos.length
           ? el('div', { class: 'table-wrap' }, [
@@ -147,10 +148,53 @@ export function renderSistemaPage(ctxInicial) {
       children: [el('div', { class: 'kv-grid' }, seg.map(([k, v]) => el('div', { class: 'kv' }, [el('span', {}, k), el('strong', { style: { fontWeight: '500', fontSize: '13px', lineHeight: '1.45' } }, v)])))]
     });
 
+    const demoCard = cardDemo();
+
     // mantém o foco na busca da auditoria ao repintar
     const focoNaBusca = document.activeElement?.type === 'search' && node.contains(document.activeElement);
-    mount(node, [saudeCard, el('div', { class: 'grid grid-2' }, [backupCard, segCard]), auditCard]);
+    mount(node, [demoCard, saudeCard, el('div', { class: 'grid grid-2' }, [backupCard, segCard]), auditCard]);
     if (focoNaBusca) buscaInput.focus();
+  }
+
+  /** Carregar/remover o cenário de demonstração (para conhecer o app com dados). */
+  function cardDemo() {
+    const nProj = (ctx.projetos || []).filter((p) => p.demo).length;
+    const nLanc = (ctx.lancamentos || []).filter((l) => l.demo).length;
+    const carregado = nProj > 0;
+    const executar = (titulo, texto, rotulo, acao) => {
+      const close = () => backdrop.remove();
+      const ok = button({ label: rotulo, variant: carregado ? 'danger' : 'primary', onClick: async () => {
+        ok.disabled = true;
+        ok.textContent = 'Aguarde…';
+        try {
+          await acao();
+        } catch {
+          toast('Não foi possível concluir. Verifique a internet e as regras do Firestore.', 'error', 6000);
+        }
+        close();
+      } });
+      const backdrop = modal({ title: titulo, body: [el('p', { style: { fontSize: '13.5px', color: 'var(--text-1)', lineHeight: '1.55' } }, texto)], footer: [button({ label: 'Cancelar', variant: 'ghost', onClick: close }), ok], onClose: close });
+      document.body.appendChild(backdrop);
+    };
+    return cardWithHeader({
+      title: 'Dados de demonstração',
+      subtitle: 'Um cenário de exemplo completo para conhecer o app funcionando',
+      actions: [carregado
+        ? button({ label: 'Remover dados de demonstração', size: 'sm', variant: 'danger', icon: icon.trash(14), onClick: () => executar('Remover a demonstração?', 'Apaga somente os registros marcados como demonstração (projetos, lançamentos, estudos, contratos, cliente e atividades "DEMO"). Os seus dados reais não são tocados.', 'Remover', async () => {
+            const n = await (await import('../../lib/demo.js')).removerDemo();
+            toast(`${n} registros de demonstração removidos.`, 'ok');
+          }) })
+        : button({ label: 'Carregar dados de demonstração', size: 'sm', variant: 'primary', icon: icon.bolt(14), onClick: () => executar('Carregar a demonstração?', 'Cria o cliente Ternium Brasil, 4 contratos (Coqueria, Alto-Forno, Aciaria, Regenerador), 4 projetos com ficha e etapas, cerca de 200 lançamentos dos últimos 30 dias e 3 estudos de tempos. Tudo fica marcado como demonstração e sai com um clique.', 'Carregar', async () => {
+            const r = await (await import('../../lib/demo.js')).carregarDemo(ctx.profile);
+            toast(`Demonstração carregada: ${r.projetos} projetos, ${r.lancamentos} lançamentos e ${r.estudos} estudos. Veja o Dashboard!`, 'ok', 7000);
+          }) })],
+      children: [el('div', { class: `inline-alert ${carregado ? 'warn' : 'info'}` }, [
+        el('span', { html: carregado ? icon.alert(15) : icon.lightbulb(15), style: { display: 'inline-flex' } }),
+        el('div', {}, carregado
+          ? `Demonstração ativa: ${nProj} projetos e ${nLanc} lançamentos de exemplo aparecem nos indicadores. Remova antes de começar a usar com dados reais.`
+          : 'Carregue para ver Dashboard, Assistente, Projetos e Estudos preenchidos. Para ver o app do celular, use "Ver app de campo" no menu lateral.')
+      ])]
+    });
   }
 
   paint();

@@ -2,7 +2,7 @@ import { collection, doc, setDoc, deleteDoc, onSnapshot, query, where, serverTim
 import { db } from './firebase.js';
 import { reportSnapshotError } from './errors.js';
 import { gravacaoLocal } from './sync.js';
-import { auditar, camposAlterados } from './auditoria.js';
+import { auditar } from './auditoria.js';
 
 const COL = 'estudos';
 

@@ -84,6 +84,12 @@ export function mountMobileApp(root, { profile }) {
       title: 'Opções',
       body: [
         el('div', { class: 'menu-list' }, [
+          profile.role === 'admin' || profile.role === 'planejador'
+            ? el('button', { class: 'menu-item', type: 'button', onclick: () => { close(); window.dispatchEvent(new CustomEvent('rfx:trocar-visao', { detail: 'painel' })); } }, [
+                el('span', { html: icon.grid(20) }),
+                el('div', {}, [el('strong', {}, 'Voltar ao painel'), el('small', {}, 'Você está vendo o app de campo como o apontador vê.')])
+              ])
+            : null,
           el('button', { class: 'menu-item', type: 'button', onclick: () => { close(); repararApp(); } }, [
             el('span', { html: icon.sync(20) }),
             el('div', {}, [el('strong', {}, 'Reparar o app'), el('small', {}, 'Use se algo estiver estranho ou travado. Seus lançamentos não são apagados.')])

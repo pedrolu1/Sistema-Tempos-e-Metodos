@@ -33,7 +33,7 @@ function sanitizeEfetivo(efetivo = {}) {
  * não um serverTimestamp — ele existe só para permitir ordenação consistente
  * mesmo em documentos criados offline, antes do carimbo do servidor chegar.
  */
-function buildPayload(input) {
+export function buildPayload(input) {
   const duracaoMinutos = durationMinutes(input.horaInicio, input.horaTermino);
   const efetivo = sanitizeEfetivo(input.efetivo);
   const efetivoPadrao = sanitizeEfetivo(input.efetivoPadrao);

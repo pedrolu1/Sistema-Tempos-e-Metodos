@@ -74,6 +74,7 @@ function boot() {
 
   observeSession(({ user, profile }) => {
     teardown();
+    perfilAtual = null;
     const ativo = profile && profile.status === 'aprovado' ? profile : null;
     definirContextoSaude(ativo);
     definirUsuarioAuditoria(ativo);
@@ -95,14 +96,36 @@ function boot() {
       return;
     }
 
-    // admin e planejador usam o painel desktop; o líder/apontador, o app de campo.
-    if (profile.role === 'admin' || profile.role === 'planejador') {
-      cleanupApp = mountAdminApp(app, { profile });
-    } else {
-      cleanupApp = mountMobileApp(app, { profile });
-    }
+    perfilAtual = profile;
+    montarApp();
   });
 }
+
+// admin e planejador usam o painel; o apontador, o app de campo. O gestor
+// pode alternar para ver o app de campo (ex.: conferir o que o apontador vê).
+let perfilAtual = null;
+function visaoCampo() {
+  try {
+    return sessionStorage.getItem('rfx.visao') === 'campo';
+  } catch {
+    return false;
+  }
+}
+function montarApp() {
+  const gestor = perfilAtual.role === 'admin' || perfilAtual.role === 'planejador';
+  cleanupApp = gestor && !visaoCampo() ? mountAdminApp(app, { profile: perfilAtual }) : mountMobileApp(app, { profile: perfilAtual });
+}
+window.addEventListener('rfx:trocar-visao', (e) => {
+  try {
+    sessionStorage.setItem('rfx.visao', e.detail);
+  } catch {
+    /* sem sessionStorage: troca só até recarregar */
+  }
+  if (!perfilAtual) return;
+  teardown();
+  location.hash = '';
+  montarApp();
+});
 
 function switchToRegister() {
   authMode = 'register';

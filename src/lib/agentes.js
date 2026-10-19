@@ -45,7 +45,8 @@ const minutosDoDia = (hhmm) => {
 export function sobreposicoes(lancamentos) {
   const grupos = new Map();
   lancamentos.forEach((l) => {
-    const k = `${l.criadoPorUid}|${l.data}`;
+    // por pessoa e dia (o nome entra na chave: dois apontadores na mesma conta não se cruzam)
+    const k = `${l.criadoPorUid}|${l.criadoPorNome || ''}|${l.data}`;
     if (!grupos.has(k)) grupos.set(k, []);
     const ini = minutosDoDia(l.horaInicio);
     grupos.get(k).push({ l, ini, fim: ini + (Number(l.duracaoMinutos) || 0) });
@@ -159,7 +160,9 @@ export function analisarPlanejamento({ lancamentos = [], projetos = [], atividad
     if (p.status === 'andamento') {
       const ultimo = r.lancamentos.map((l) => l.data).sort().pop();
       const parado = ultimo ? diasEntre(ultimo, hoje) : null;
-      if (parado === null || parado >= 3) {
+      // escalas com folgas longas (4x4, 3x3) ficam dias sem lançar por natureza
+      const limite = { '4x4': 5, '3x3': 4 }[p.ficha?.escala] || 3;
+      if (parado === null || parado >= limite) {
         add({ id: `sem-lancamento:${p.id}:${ultimo || 'nunca'}`, nivel: 'atencao', area: 'Campo',
           titulo: `"${p.nome}" sem apontamentos ${ultimo ? `há ${parado} dias` : 'até agora'}`,
           detalhe: ultimo ? `Último apontamento em ${formatDateBR(ultimo)}.` : 'O projeto está em andamento, mas ninguém lançou nele.',

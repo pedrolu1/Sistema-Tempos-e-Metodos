@@ -456,8 +456,9 @@ export function renderDashboardPage(ctx) {
   }
 
   function paintLideres() {
-    const rows = dataset();
-    const data = aggregateBy(rows, 'criadoPorUid', 'criadoPorNome');
+    // chave por conta + nome: se uma conta lançar por mais de uma pessoa, cada nome aparece separado
+    const rows = dataset().map((l) => ({ ...l, _lancador: `${l.criadoPorUid}|${l.criadoPorNome || ''}` }));
+    const data = aggregateBy(rows, '_lancador', 'criadoPorNome');
     mount(lideresCard, [
       cardWithHeader({
         title: 'Tempo apontado por lançador',

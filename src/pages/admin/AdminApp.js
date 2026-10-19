@@ -99,6 +99,7 @@ export function mountAdminApp(root, { profile }) {
             el('div', { class: 'sidebar-user-role' }, isAdmin ? 'Administrador' : 'Planejador')
           ])
         ]),
+        el('button', { class: 'btn btn-outline btn-sm btn-block', title: 'Ver o app como o apontador vê no celular', onclick: () => window.dispatchEvent(new CustomEvent('rfx:trocar-visao', { detail: 'campo' })) }, [el('span', { html: icon.clock(15) }), ' Ver app de campo']),
         el('button', { class: 'btn btn-ghost btn-sm btn-block', onclick: () => logoutUser() }, [el('span', { html: icon.logout(15) }), ' Sair'])
       ])
     ]),
