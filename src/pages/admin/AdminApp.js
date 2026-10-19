@@ -16,10 +16,12 @@ import { renderCatalogPage } from './AdminCatalog.js';
 import { renderSetoresPage } from './AdminSetores.js';
 import { renderProjetosPage } from './AdminProjetos.js';
 import { renderEstudosPage } from '../estudos/EstudosPage.js';
+import { renderAssistentePage, achadosAtivos } from './AdminAssistente.js';
 import { subscribeEstudos } from '../../lib/estudos.js';
 
 const NAV = [
   { page: 'dashboard', label: 'Dashboard', icon: icon.grid(18) },
+  { page: 'assistente', label: 'Assistente', icon: icon.lightbulb(18) },
   { page: 'projetos', label: 'Projetos', icon: icon.folder(18) },
   { page: 'estudos', label: 'Estudos', icon: icon.target(18) },
   { page: 'lancamentos', label: 'Lançamentos', icon: icon.clock(18) },
@@ -30,6 +32,7 @@ const NAV = [
 
 const TITLES = {
   dashboard: ['Dashboard', 'Indicadores de produtividade em tempo real'],
+  assistente: ['Assistente', 'Pontos de atenção e sugestões de melhoria encontrados nos dados'],
   projetos: ['Projetos', 'Planejamento por cliente e contrato — planejado × real'],
   estudos: ['Estudos de tempos', 'Cronoanálise, amostragem, MTM, takt/lead time e tempos históricos'],
   lancamentos: ['Lançamentos', 'Todos os apontamentos coletados em campo'],
@@ -67,6 +70,8 @@ export function mountAdminApp(root, { profile }) {
 
   const pendingBadge = el('span', { class: 'badge badge-warn', style: { display: 'none' } }, '0');
   if (navLinks.usuarios) navLinks.usuarios.appendChild(pendingBadge);
+  const assistBadge = el('span', { class: 'badge badge-danger', style: { display: 'none' } }, '0');
+  navLinks.assistente.appendChild(assistBadge);
 
   const shell = el('div', { class: 'desktop-shell' }, [
     el('aside', { class: 'desktop-sidebar' }, [
@@ -106,6 +111,7 @@ export function mountAdminApp(root, { profile }) {
 
   const factories = {
     dashboard: renderDashboardPage,
+    assistente: renderAssistentePage,
     projetos: renderProjetosPage,
     estudos: (c) => renderEstudosPage({ ...c, gestor: true }),
     lancamentos: renderRecordsPage,
@@ -131,8 +137,16 @@ export function mountAdminApp(root, { profile }) {
     };
   }
 
+  /** Nº de pontos críticos/de atenção ainda não dispensados, no menu do Assistente. */
+  function updateAssistBadge() {
+    const n = achadosAtivos(ctx()).filter((a) => a.nivel === 'critico' || a.nivel === 'atencao').length;
+    assistBadge.style.display = n > 0 ? 'inline-flex' : 'none';
+    assistBadge.textContent = String(n);
+  }
+
   function renderPage() {
     if (!allLoaded()) return;
+    updateAssistBadge();
     const { page } = currentRoute();
     const active = navItems.some((n) => n.page === page) ? page : 'dashboard';
     Object.entries(navLinks).forEach(([key, node]) => node.classList.toggle('active', key === active));

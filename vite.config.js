@@ -39,6 +39,9 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
+        // o gerador de PowerPoint (~385 KB) só é usado no painel, com internet:
+        // fica fora do pacote offline para não pesar a instalação no celular
+        globIgnores: ['**/pptxgen*.js'],
         runtimeCaching: [
           {
             urlPattern: ({ url }) => url.origin.includes('firestore.googleapis.com') || url.origin.includes('googleapis.com'),

@@ -24,6 +24,7 @@ export function mountMobileApp(root, { profile }) {
     rendered: false
   };
   let historyRefresh = null;
+  let launchTipsRefresh = null;
   let estudosPage = null; // instância viva da aba Estudos (recebe dados novos sem perder o assistente aberto)
   let syncing = false;
 
@@ -142,20 +143,22 @@ export function mountMobileApp(root, { profile }) {
     const active = ['consultar', 'estudos'].includes(page) ? page : 'lancar';
     updateActiveNav(active);
     historyRefresh = null;
+    launchTipsRefresh = null;
     if (estudosPage) {
       estudosPage.destruir();
       estudosPage = null;
     }
 
     if (active === 'lancar') {
-      mount(content, [
-        renderLaunchPage({
-          atividades: state.atividades,
-          setores: state.setores,
-          projetos: state.projetos,
-          profile
-        })
-      ]);
+      const launch = renderLaunchPage({
+        atividades: state.atividades,
+        setores: state.setores,
+        projetos: state.projetos,
+        lancamentos: state.lancamentos,
+        profile
+      });
+      mount(content, [launch.node]);
+      launchTipsRefresh = launch.atualizarDicas;
     } else if (active === 'estudos') {
       estudosPage = renderEstudosPage(estudosCtx());
       mount(content, [estudosPage.node]);
@@ -216,6 +219,7 @@ export function mountMobileApp(root, { profile }) {
     state.lancamentos = list;
     applySyncVisual();
     if (historyRefresh) historyRefresh(list);
+    if (launchTipsRefresh) launchTipsRefresh(list);
     state.loaded.lancamentos = true;
     renderInitial();
   });

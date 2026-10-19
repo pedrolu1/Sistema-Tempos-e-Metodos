@@ -5,6 +5,7 @@ import { icon } from '../../utils/icons.js';
 import { todayISO, nowHHMM, durationMinutes, formatMinutes, efetivoExcedido, efetivoTotal, escalaLabel } from '../../utils/format.js';
 import { efetivoDiferencas, formatDiferencas } from '../../utils/planejamento.js';
 import { projetosAtivos } from '../../lib/projetos.js';
+import { analisarApontador } from '../../lib/agentes.js';
 import { createLancamento } from '../../lib/records.js';
 import { toast } from '../../lib/toast.js';
 
@@ -29,10 +30,36 @@ function salvarProjeto(id) {
   try { localStorage.setItem(PROJETO_KEY, id); } catch { /* armazenamento indisponível: só não lembra */ }
 }
 
-export function renderLaunchPage({ atividades, setores = [], projetos = [], profile }) {
+const DICAS_KEY = 'rfx.dicas.dispensadas';
+function dicasDispensadas() {
+  try { return new Set(JSON.parse(localStorage.getItem(DICAS_KEY) || '[]')); } catch { return new Set(); }
+}
+
+export function renderLaunchPage({ atividades, setores = [], projetos = [], lancamentos = [], profile }) {
+  const tips = el('div', { class: 'field-tips' });
   const wrap = el('div', { style: { display: 'flex', flexDirection: 'column', gap: '18px' } });
+  const node = el('div', { style: { display: 'flex', flexDirection: 'column', gap: '14px' } }, [tips, wrap]);
+  atualizarDicas(lancamentos);
   buildForm();
-  return wrap;
+  return { node, atualizarDicas };
+
+  /** Até 2 dicas do assistente de campo, cada uma pode ser fechada. */
+  function atualizarDicas(lista) {
+    lancamentos = lista;
+    const fora = dicasDispensadas();
+    const dicas = analisarApontador({ lancamentos, projetos }).filter((d) => !fora.has(d.id)).slice(0, 2);
+    mount(tips, dicas.map((d) =>
+      el('div', { class: `field-tip ${d.nivel}` }, [
+        el('span', { class: 'tip-icon', html: d.nivel === 'atencao' ? icon.alert(16) : d.nivel === 'ok' ? icon.bolt(16) : icon.lightbulb(16) }),
+        el('div', {}, [el('strong', {}, d.titulo), el('p', {}, d.texto)]),
+        el('button', { class: 'tip-close', type: 'button', 'aria-label': 'Fechar dica', html: icon.x(14), onclick: () => {
+          fora.add(d.id);
+          try { localStorage.setItem(DICAS_KEY, JSON.stringify([...fora].slice(-200))); } catch { /* sem armazenamento */ }
+          atualizarDicas(lancamentos);
+        } })
+      ])
+    ));
+  }
 
   function buildForm() {
     let tipoRegistro = 'atividade';

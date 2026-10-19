@@ -22,15 +22,19 @@ export function formatDiferencas(difs) {
 
 /**
  * Compara o planejado do projeto com o que foi apontado em campo. Cada
- * lançamento é ligado à etapa pelo `etapaId` gravado nele. Devolve, por
- * etapa, o tempo planejado × real e a média de efetivo real, além dos
- * totais e da lista de lançamentos que divergiram (tempo ou efetivo).
+ * lançamento é ligado à etapa pelo `etapaId` gravado nele e vale como UMA
+ * execução da etapa (é assim que o app de campo preenche o término). Por
+ * isso a comparação é execução a execução: o real médio contra a duração
+ * planejada, e a soma do real contra o planejado de cada execução.
  */
 export function resumoProjeto(projeto, lancamentos) {
   const doProjeto = lancamentos.filter((l) => l.projetoId === projeto.id);
   const etapas = (projeto.etapas || []).map((etapa) => {
     const ls = doProjeto.filter((l) => l.tipoRegistro !== 'improdutividade' && l.etapaId === etapa.id);
     const realMin = ls.reduce((s, l) => s + (Number(l.duracaoMinutos) || 0), 0);
+    // planejado das execuções feitas: usa o planejado gravado em cada lançamento
+    const planejadoExecMin = ls.reduce((s, l) => s + (Number(l.duracaoPadraoMin) || etapa.duracaoMin || 0), 0);
+    const mediaMin = ls.length ? realMin / ls.length : 0;
     const efetivoMedio = {};
     EFETIVO_CAMPOS.forEach((c) => {
       efetivoMedio[c.key] = ls.length ? Math.round((ls.reduce((s, l) => s + (Number(l.efetivo?.[c.key]) || 0), 0) / ls.length) * 10) / 10 : 0;
@@ -40,7 +44,10 @@ export function resumoProjeto(projeto, lancamentos) {
       lancamentos: ls.length,
       planejadoMin: etapa.duracaoMin || 0,
       realMin,
-      desvioMin: ls.length ? realMin - (etapa.duracaoMin || 0) : 0,
+      mediaMin,
+      planejadoExecMin,
+      // desvio médio por execução (minutos): positivo = levou mais que o planejado
+      desvioMin: ls.length ? mediaMin - (etapa.duracaoMin || 0) : 0,
       efetivoMedio,
       difEfetivo: ls.length ? efetivoDiferencas(efetivoMedio, etapa.efetivo) : []
     };
@@ -59,6 +66,7 @@ export function resumoProjeto(projeto, lancamentos) {
     improdutivoMin,
     planejadoMin: etapas.reduce((s, e) => s + e.planejadoMin, 0),
     realMin: etapas.reduce((s, e) => s + e.realMin, 0),
+    planejadoExecMin: etapas.reduce((s, e) => s + e.planejadoExecMin, 0),
     progresso: etapas.length ? iniciadas / etapas.length : 0,
     iniciadas
   };

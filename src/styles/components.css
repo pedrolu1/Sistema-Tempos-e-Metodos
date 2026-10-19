@@ -614,3 +614,32 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13.5px; mi
 .ref-bar { height: 100%; border-radius: 4px; background: var(--accent-500); transition: width var(--dur-slow) var(--ease-out); }
 .ref-bar.over { background: var(--danger-500); }
 .ref-line { position: absolute; top: -4px; bottom: -4px; width: 0; border-left: 2px dashed var(--text-1); }
+
+/* ===================== Assistente (achados) ===================== */
+.assist-hero { display: flex; gap: 14px; align-items: center; padding: 18px; border-radius: var(--r-lg); background: linear-gradient(135deg, rgba(43, 95, 234, 0.16), rgba(23, 179, 163, 0.08)); border: 1px solid rgba(79, 128, 255, 0.25); }
+.assist-hero-icon { width: 48px; height: 48px; flex-shrink: 0; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: var(--accent-grad); color: var(--on-accent); box-shadow: 0 10px 26px -12px var(--accent-glow); }
+.assist-hero strong { font-family: var(--font-display); font-size: 15.5px; }
+.assist-hero p { font-size: 12.5px; color: var(--text-2); margin-top: 3px; line-height: 1.45; }
+.finding-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+.finding-list.compact { grid-template-columns: 1fr; gap: 10px; }
+.finding { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; border-radius: var(--r-lg); background: var(--bg-2); border: 1px solid var(--border-soft); animation: content-in var(--dur-slow) var(--ease-out); }
+.finding-list.compact .finding { background: var(--bg-1); padding: 12px 14px; }
+.finding-critico { border-color: rgba(255, 92, 114, 0.35); }
+.finding-atencao { border-color: rgba(255, 204, 77, 0.28); }
+.finding-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.finding-area { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-3); }
+.finding-title { font-size: 14px; line-height: 1.35; }
+.finding-detail { font-size: 12.5px; color: var(--text-2); line-height: 1.45; }
+.finding-tip { display: flex; gap: 8px; font-size: 12.5px; line-height: 1.45; color: var(--text-1); padding: 9px 11px; border-radius: var(--r-md); background: var(--info-glow); }
+.finding-tip > span:first-child { color: var(--info-500); }
+
+/* dicas do assistente no app de campo */
+.field-tips { display: flex; flex-direction: column; gap: 8px; }
+.field-tip { display: flex; gap: 10px; align-items: flex-start; padding: 11px 12px; border-radius: var(--r-md); background: var(--bg-2); border: 1px solid var(--border-soft); font-size: 12.5px; line-height: 1.45; animation: content-in var(--dur-slow) var(--ease-out); }
+.field-tip strong { display: block; font-size: 13px; margin-bottom: 1px; }
+.field-tip p { color: var(--text-2); }
+.field-tip .tip-icon { display: inline-flex; flex-shrink: 0; margin-top: 1px; color: var(--info-500); }
+.field-tip.atencao .tip-icon { color: var(--warn-500); }
+.field-tip.ok .tip-icon { color: var(--ok-500); }
+.field-tip .tip-close { margin-left: auto; flex-shrink: 0; background: none; border: none; color: var(--text-3); cursor: pointer; padding: 2px; display: inline-flex; }
+.plan-ul { margin: 6px 0 4px 18px; font-size: 12.5px; color: var(--text-2); display: flex; flex-direction: column; gap: 3px; }

@@ -14,6 +14,10 @@ import {
   CLASSIFICACAO_INFO
 } from '../../utils/format.js';
 import { exportExcel, exportPDF, exportWord } from '../../lib/export.js';
+import { calcularIndicadores, planejadoRealPorProjeto } from '../../utils/indicadores.js';
+import { navigate } from '../../router.js';
+import { toast } from '../../lib/toast.js';
+import { achadosAtivos, cartaoAchado } from './AdminAssistente.js';
 
 const CLASSIFICACAO_SERIES = ['VA', 'DN', 'DNN'].map((k) => ({ key: k, label: CLASSIFICACAO_INFO[k].label, color: CLASSIFICACAO_INFO[k].color }));
 
@@ -35,9 +39,12 @@ function isoDaysAgo(n) {
 export function renderDashboardPage(ctx) {
   let lancamentos = ctx.lancamentos;
   let setores = ctx.setores || [];
+  let fullCtx = ctx; // projetos, atividades, estudos… para o assistente e o relatório
   const state = {
     preset: '30d',
     setor: 'todos',
+    contrato: 'todos',
+    projetoId: 'todos',
     filters: { tipo: null, atividadeId: null, liderId: null, classificacao: null }
   };
 
@@ -50,6 +57,7 @@ export function renderDashboardPage(ctx) {
   const leanCard = el('div');
   const desperdicioCard = el('div');
   const insightsCard = el('div');
+  const aderenciaCard = el('div');
   const atividadesCard = el('div');
   const improdCard = el('div');
   const lideresCard = el('div');
@@ -57,8 +65,37 @@ export function renderDashboardPage(ctx) {
   const exportBtns = el('div', { class: 'toolbar' }, [
     button({ label: 'Excel', size: 'sm', variant: 'outline', icon: icon.fileSpreadsheet(15), onClick: () => exportExcel(dataset()) }),
     button({ label: 'PDF', size: 'sm', variant: 'outline', icon: icon.fileText(15), onClick: () => exportPDF(dataset(), undefined, { periodo: periodoLabel() }) }),
-    button({ label: 'Word', size: 'sm', variant: 'outline', icon: icon.fileWord(15), onClick: () => exportWord(dataset(), undefined, { periodo: periodoLabel() }) })
+    button({ label: 'Word', size: 'sm', variant: 'outline', icon: icon.fileWord(15), onClick: () => exportWord(dataset(), undefined, { periodo: periodoLabel() }) }),
+    button({ label: 'PowerPoint', size: 'sm', variant: 'primary', icon: icon.fileText(15), onClick: gerarPptx })
   ]);
+
+  async function gerarPptx() {
+    const rows = dataset();
+    if (!rows.length) return toast('Sem lançamentos no período/filtros para o relatório.', 'error');
+    toast('Montando a apresentação…', 'info');
+    try {
+      const { gerarRelatorioPptx } = await import('../../lib/relatorioPptx.js');
+      await gerarRelatorioPptx({
+        lancamentos: rows,
+        periodo: periodoLabel(),
+        filtros: filtrosLabel(),
+        projetos: fullCtx.projetos || [],
+        achados: achadosAtivos(fullCtx)
+      });
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error(err);
+      toast('Não foi possível gerar o PowerPoint.', 'error');
+    }
+  }
+
+  function filtrosLabel() {
+    const partes = [];
+    if (state.setor !== 'todos') partes.push(`Setor ${state.setor}`);
+    if (state.contrato !== 'todos') partes.push(`Contrato ${state.contrato}`);
+    if (state.projetoId !== 'todos') partes.push(`Projeto ${(fullCtx.projetos || []).find((p) => p.id === state.projetoId)?.nome || ''}`);
+    return partes.join(' · ') || 'Todos os contratos e projetos';
+  }
 
   const presetTabs = segmented(
     [
@@ -82,24 +119,21 @@ export function renderDashboardPage(ctx) {
     presetTabs
   ]);
 
+  /** Filtros por dimensão (setor, contrato, projeto) — só aparecem quando há o que escolher. */
   function buildSetorFilter() {
-    if (setores.length === 0) {
-      mount(setorRow, []);
-      return;
-    }
-    const sel = el(
-      'select',
-      {
-        class: 'select',
-        style: { height: '34px', fontSize: '12.5px', minWidth: '190px' },
-        onchange: (e) => { state.setor = e.target.value; paint(); }
-      },
-      [
-        el('option', { value: 'todos', selected: state.setor === 'todos' }, 'Todos os setores'),
-        ...setores.map((s) => el('option', { value: s.nome, selected: s.nome === state.setor }, s.nome))
-      ]
-    );
-    mount(setorRow, [el('span', { class: 'section-title', style: { padding: '0' } }, 'Setor'), sel]);
+    const filtro = (chave, todosLabel, opcoes) =>
+      el('select', { class: 'select', style: { height: '34px', fontSize: '12.5px', width: 'auto', minWidth: '170px' }, onchange: (e) => { state[chave] = e.target.value; paint(); } }, [
+        el('option', { value: 'todos', selected: state[chave] === 'todos' }, todosLabel),
+        ...opcoes.map(([v, l]) => el('option', { value: v, selected: v === state[chave] }, l))
+      ]);
+    const contratos = [...new Set(lancamentos.map((l) => l.contrato).filter(Boolean))].sort();
+    const projetos = (fullCtx.projetos || []).filter((p) => lancamentos.some((l) => l.projetoId === p.id));
+    mount(setorRow, [
+      setores.length || contratos.length || projetos.length ? el('span', { class: 'section-title', style: { padding: '0' } }, 'Filtros') : null,
+      setores.length ? filtro('setor', 'Todos os setores', setores.map((x) => [x.nome, x.nome])) : null,
+      contratos.length ? filtro('contrato', 'Todos os contratos', contratos.map((c) => [c, c])) : null,
+      projetos.length ? filtro('projetoId', 'Todos os projetos', projetos.map((p) => [p.id, p.nome])) : null
+    ]);
   }
 
   const node = el('div', { style: { display: 'flex', flexDirection: 'column', gap: '20px' } }, [
@@ -110,6 +144,7 @@ export function renderDashboardPage(ctx) {
     kpiRow,
     el('div', { class: 'grid grid-charts' }, [trendCard, meterCard]),
     leanCard,
+    aderenciaCard,
     el('div', { class: 'grid grid-2' }, [desperdicioCard, insightsCard]),
     el('div', { class: 'grid grid-2' }, [atividadesCard, improdCard]),
     lideresCard
@@ -140,6 +175,8 @@ export function renderDashboardPage(ctx) {
     return lancamentos.filter((l) => {
       if (!inRange(l)) return false;
       if (state.setor !== 'todos' && (l.setor || '') !== state.setor) return false;
+      if (state.contrato !== 'todos' && (l.contrato || '') !== state.contrato) return false;
+      if (state.projetoId !== 'todos' && l.projetoId !== state.projetoId) return false;
       if (!excludeDims.includes('tipo') && state.filters.tipo && l.tipoRegistro !== state.filters.tipo) return false;
       if (!excludeDims.includes('atividadeId') && state.filters.atividadeId && l.atividadeId !== state.filters.atividadeId) return false;
       if (!excludeDims.includes('liderId') && state.filters.liderId && l.liderId !== state.filters.liderId) return false;
@@ -369,70 +406,55 @@ export function renderDashboardPage(ctx) {
     ]);
   }
 
+  /** Principais pontos do assistente (mesmas regras da página Assistente). */
   function paintInsights() {
-    const full = dataset();
-    const totalMin = full.reduce((s, l) => s + l.duracaoMinutos, 0);
-    const byClass = { VA: 0, DN: 0, DNN: 0 };
-    full.forEach((l) => {
-      const b = classificacaoBreakdown(l);
-      byClass.VA += b.VA;
-      byClass.DN += b.DN;
-      byClass.DNN += b.DNN;
-    });
-    const pct = (v) => (totalMin > 0 ? Math.round((v / totalMin) * 100) : 0);
-
-    // maior improdutividade evitável (DNN) por item
-    const dnnMap = new Map();
-    full.filter((l) => classificacaoDoLancamento(l) === 'DNN').forEach((l) => {
-      dnnMap.set(l.atividadeNome, (dnnMap.get(l.atividadeNome) || 0) + l.duracaoMinutos);
-    });
-    const topDNN = [...dnnMap.entries()].sort((a, b) => b[1] - a[1])[0];
-
-    // atividade que mais estoura o padrão
-    const exMap = new Map();
-    full.forEach((l) => {
-      const ex = excedenteMinutos(l);
-      if (ex > 0) exMap.set(l.atividadeNome, (exMap.get(l.atividadeNome) || 0) + ex);
-    });
-    const topEx = [...exMap.entries()].sort((a, b) => b[1] - a[1])[0];
-
-    const insights = [];
-    if (totalMin === 0) {
-      insights.push({ tone: 'neutral', txt: 'Sem lançamentos no período/filtros atuais.' });
-    } else {
-      insights.push({
-        tone: pct(byClass.VA) >= 50 ? 'ok' : pct(byClass.VA) >= 30 ? 'warn' : 'danger',
-        txt: `Valor Agregado representa ${pct(byClass.VA)}% do tempo. ${pct(byClass.VA) >= 50 ? 'Bom patamar — mantenha o padrão.' : 'Há espaço para converter desperdício em valor.'}`
-      });
-      if (pct(byClass.DNN) >= 15) {
-        insights.push({ tone: 'danger', txt: `Desperdício Não Necessário está em ${pct(byClass.DNN)}% — foco de eliminação imediata.` });
-      }
-      if (topDNN) {
-        insights.push({ tone: 'danger', txt: `Maior desperdício evitável: “${topDNN[0]}” (${formatMinutes(topDNN[1])}). Ataque a causa raiz dessa parada.` });
-      }
-      if (topEx) {
-        insights.push({ tone: 'warn', txt: `“${topEx[0]}” é a atividade que mais passa do tempo padrão (${formatMinutes(topEx[1])} de excedente). Reveja método, sequência ou dimensionamento da equipe.` });
-      }
-      if (pct(byClass.DN) >= 40) {
-        insights.push({ tone: 'warn', txt: `Desperdício Necessário em ${pct(byClass.DN)}% — parte é inevitável, mas questione se todo acesso/preparo é realmente necessário (Lean: eliminar, combinar, simplificar).` });
-      }
-      if (pct(byClass.VA) >= 55 && pct(byClass.DNN) < 10) {
-        insights.push({ tone: 'ok', txt: 'Processo saudável: alto valor agregado e pouco desperdício evitável. Padronize o que está dando certo.' });
-      }
-    }
-
+    const achados = achadosAtivos(fullCtx).slice(0, 3);
     mount(insightsCard, [
       cardWithHeader({
-        title: 'Insights & sugestões',
-        subtitle: 'Leitura automática do período aplicando princípios Lean',
+        title: 'Assistente — principais pontos',
+        subtitle: 'Leitura automática dos dados com princípios Lean',
+        actions: [button({ label: 'Ver todos', size: 'sm', variant: 'ghost', onClick: () => navigate('assistente') })],
         children: [
-          el('div', { style: { display: 'flex', flexDirection: 'column', gap: '10px' } }, insights.map((i) => {
-            const color = i.tone === 'ok' ? 'var(--ok-500)' : i.tone === 'warn' ? 'var(--warn-500)' : i.tone === 'danger' ? 'var(--danger-500)' : 'var(--text-3)';
-            return el('div', { style: { display: 'flex', gap: '10px', alignItems: 'flex-start', fontSize: '13px', lineHeight: '1.5' } }, [
-              el('span', { html: icon.lightbulb(16), style: { display: 'inline-flex', color, flexShrink: '0', marginTop: '1px' } }),
-              el('span', { style: { color: 'var(--text-1)' } }, i.txt)
-            ]);
-          }))
+          achados.length
+            ? el('div', { class: 'finding-list compact' }, achados.map((a) => cartaoAchado(a, fullCtx)))
+            : el('div', { style: { padding: '24px 0', textAlign: 'center', color: 'var(--text-3)', fontSize: '13px' } }, 'Nenhum ponto de atenção no momento. 👏')
+        ]
+      })
+    ]);
+  }
+
+  /** Aderência ao planejado: tempo dentro do previsto, equipe conforme e planejado × real por projeto. */
+  function paintAderencia() {
+    const rows = dataset();
+    const ind = calcularIndicadores(rows);
+    const projetos = planejadoRealPorProjeto(fullCtx.projetos || [], rows).sort((a, b) => (b.desvio ?? 0) - (a.desvio ?? 0)).slice(0, 8);
+    const pctTxt = (v) => (v == null ? '—' : `${Math.round(v * 100)}%`);
+    mount(aderenciaCard, [
+      cardWithHeader({
+        title: 'Aderência ao planejado',
+        subtitle: 'Quanto o realizado em campo seguiu o que foi planejado',
+        children: [
+          el('div', { class: 'grid grid-kpis', style: { marginBottom: projetos.length ? '18px' : '0' } }, [
+            statTile({ label: 'Dentro do tempo planejado', value: pctTxt(ind.aderenciaTempo), iconHtml: icon.clock(16), tone: ind.aderenciaTempo == null || ind.aderenciaTempo >= 0.7 ? 'ok' : 'warn' }),
+            statTile({ label: 'Equipe conforme o planejado', value: pctTxt(ind.divergenciaEfetivo == null ? null : 1 - ind.divergenciaEfetivo), iconHtml: icon.crew(16), tone: 'info' }),
+            statTile({ label: 'Lançamentos com planejado', value: `${ind.comPadrao} de ${rows.filter((l) => l.tipoRegistro !== 'improdutividade').length}`, iconHtml: icon.target(16) })
+          ]),
+          projetos.length
+            ? el('div', { class: 'table-wrap' }, [
+                el('table', { class: 'data-table' }, [
+                  el('thead', {}, el('tr', {}, ['Projeto', 'Etapas iniciadas', 'Planejado (execuções feitas)', 'Realizado', 'Desvio', 'Divergências'].map((h) => el('th', {}, h)))),
+                  el('tbody', {}, projetos.map((x) => el('tr', { style: { cursor: 'pointer' }, onclick: () => navigate('projetos') }, [
+                    el('td', { class: 'strong' }, [x.projeto.nome, el('div', { style: { fontSize: '11.5px', color: 'var(--text-2)', fontWeight: '500' } }, x.projeto.contratoNome)]),
+                    el('td', { class: 'mono' }, `${x.iniciadas}/${x.etapas}`),
+                    el('td', { class: 'mono' }, formatMinutes(x.planejadoMin)),
+                    el('td', { class: 'mono' }, formatMinutes(x.realMin)),
+                    el('td', { class: 'mono', style: { fontWeight: '700', color: x.desvio > 0.1 ? 'var(--danger-500)' : x.desvio < -0.1 ? 'var(--ok-500)' : 'var(--text-1)' } },
+                      x.desvio == null ? '—' : `${x.desvio > 0 ? '+' : ''}${Math.round(x.desvio * 100)}%`),
+                    el('td', { class: 'mono' }, String(x.divergencias))
+                  ])))
+                ])
+              ])
+            : null
         ]
       })
     ]);
@@ -480,6 +502,7 @@ export function renderDashboardPage(ctx) {
     paintKpis();
     paintTrend();
     paintLean();
+    paintAderencia();
     paintDesperdicio();
     paintInsights();
     paintAtividades();
@@ -494,6 +517,8 @@ export function renderDashboardPage(ctx) {
     update(newCtx) {
       lancamentos = newCtx.lancamentos;
       setores = newCtx.setores || [];
+      fullCtx = newCtx;
+      if (state.projetoId !== 'todos' && !(newCtx.projetos || []).some((p) => p.id === state.projetoId)) state.projetoId = 'todos';
       if (state.setor !== 'todos' && !setores.some((s) => s.nome === state.setor)) state.setor = 'todos';
       paint();
     }

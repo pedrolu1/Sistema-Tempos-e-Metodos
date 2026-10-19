@@ -91,7 +91,7 @@ export function renderProjetosPage(ctx) {
   // LISTA
   // =====================================================================
   function renderLista() {
-    return [guiaInicio(), cardClientes(), cardProjetos()].filter(Boolean);
+    return [guiaInicio(), cardClientes(), cardProjetos(), cardPlanilha()].filter(Boolean);
   }
 
   /** Passo a passo visível enquanto a estrutura não está completa. */
@@ -165,6 +165,62 @@ export function renderProjetosPage(ctx) {
         button({ label: 'Novo projeto', size: 'sm', variant: 'primary', icon: icon.plus(15), disabled: contratos.length === 0, onClick: () => modalProjeto() })
       ],
       children: [body]
+    });
+  }
+
+  /** Base de planejamento no Excel: baixar, editar fora do app e enviar de volta. */
+  function cardPlanilha() {
+    const arquivo = el('input', { type: 'file', accept: '.xlsx,.xls', style: { display: 'none' }, onchange: async (e) => {
+      const file = e.target.files[0];
+      e.target.value = '';
+      if (!file) return;
+      try {
+        const { lerBase } = await import('../../lib/planilhaBase.js');
+        mostrarPlano(await lerBase(file, { atividades, projetos }));
+      } catch {
+        toast('Não foi possível ler a planilha. Confira se é o arquivo baixado aqui.', 'error');
+      }
+    } });
+    const passos = ['Baixe a planilha', 'Edite no Excel: durações, MOD, horários, restrições e catálogo', 'Envie de volta — o app mostra o que vai mudar antes de gravar'];
+    return cardWithHeader({
+      title: 'Planilha de planejamento (Excel)',
+      subtitle: 'Para editar muita coisa de uma vez, fora do app',
+      actions: [
+        button({ label: 'Baixar planilha', size: 'sm', variant: 'outline', icon: icon.download(15), onClick: async () => {
+          const { exportarBase } = await import('../../lib/planilhaBase.js');
+          await exportarBase({ atividades, projetos, lancamentos });
+        } }),
+        button({ label: 'Enviar planilha editada', size: 'sm', variant: 'primary', icon: icon.upload(15), onClick: () => arquivo.click() }),
+        arquivo
+      ],
+      children: [el('div', { class: 'guide-steps' }, passos.map((t, i) => el('div', { class: 'guide-step' }, [el('span', { class: 'guide-step-num' }, String(i + 1)), el('div', {}, [el('small', { style: { fontSize: '13px', color: 'var(--text-1)' } }, t)])])))]
+    });
+  }
+
+  /** Prévia do que a planilha vai mudar; só grava após confirmação. */
+  function mostrarPlano(plano) {
+    const linha = (texto) => el('li', {}, texto);
+    const NOMES = { codigo: 'código', nome: 'nome', classificacao: 'Lean', contrato: 'grupo', setor: 'setor', duracaoPadraoMin: 'duração padrão', efetivoPadrao: 'MOD', ativo: 'ativa' };
+    const blocos = [];
+    if (plano.atividadesNovas.length) blocos.push(el('div', {}, [el('strong', {}, `${plano.atividadesNovas.length} atividade(s) nova(s) no catálogo`), el('ul', { class: 'plan-ul' }, plano.atividadesNovas.slice(0, 8).map((a) => linha(a.nome)))]));
+    if (plano.atividadesAlteradas.length) blocos.push(el('div', {}, [el('strong', {}, `${plano.atividadesAlteradas.length} atividade(s) alterada(s)`), el('ul', { class: 'plan-ul' }, plano.atividadesAlteradas.slice(0, 8).map((x) => linha(`${x.atividade.nome}: ${Object.keys(x.patch).map((k) => NOMES[k] || k).join(', ')}`)))]));
+    if (plano.projetosAlterados.length) blocos.push(el('div', {}, [el('strong', {}, `${plano.projetosAlterados.length} projeto(s) alterado(s)`), el('ul', { class: 'plan-ul' }, plano.projetosAlterados.map((x) => linha(`${x.projeto.nome} — ${x.itens.join('; ')}`)))]));
+    const erros = plano.erros.length
+      ? el('div', { class: 'inline-alert warn' }, [el('span', { html: icon.alert(15), style: { display: 'inline-flex' } }), el('div', {}, [el('div', {}, `${plano.erros.length} linha(s) ignorada(s):`), ...plano.erros.slice(0, 6).map((e) => el('div', {}, e))])])
+      : null;
+    if (!plano.total) {
+      openModal({ title: 'Nada para atualizar', body: [el('p', { style: { fontSize: '13.5px', color: 'var(--text-1)' } }, 'A planilha é igual ao que já está no app.'), erros], saveLabel: 'Ok', onSave: () => true });
+      return;
+    }
+    openModal({
+      title: 'Conferir alterações da planilha',
+      body: [...blocos, erros],
+      saveLabel: 'Aplicar alterações',
+      onSave: async () => {
+        const { aplicarBase } = await import('../../lib/planilhaBase.js');
+        await aplicarBase(plano, profile);
+        toast('Planejamento atualizado pela planilha.', 'ok');
+      }
     });
   }
 
@@ -366,7 +422,7 @@ export function renderProjetosPage(ctx) {
       ]
     });
 
-    const desvioTotal = r.etapas.filter((e) => e.lancamentos).reduce((s, e) => s + e.desvioMin, 0);
+    const desvioTotal = r.realMin - r.planejadoExecMin; // real × planejado das execuções feitas
     const kpis = el('div', { class: 'grid grid-kpis' }, [
       statTile({ label: 'Etapas iniciadas', value: `${r.iniciadas}/${r.etapas.length}`, iconHtml: icon.target(15) }),
       statTile({ label: 'Planejado (total)', value: formatMinutes(r.planejadoMin), iconHtml: icon.calendar(15), tone: 'info' }),
@@ -411,7 +467,7 @@ export function renderProjetosPage(ctx) {
       ? emptyState({ icon: icon.list(34), title: 'Nenhuma etapa planejada', message: 'Adicione as etapas a partir do catálogo de atividades. Depois ajuste a duração e a MOD de cada uma.' })
       : el('div', { class: 'table-wrap' }, [
           el('table', { class: 'data-table' }, [
-            el('thead', {}, el('tr', {}, ['#', 'Etapa', 'Lean', 'Duração plan.', 'MOD plan.', 'Real', 'Desvio', 'Efetivo real', ''].map((h) => el('th', {}, h)))),
+            el('thead', {}, el('tr', {}, ['#', 'Etapa', 'Lean', 'Duração plan.', 'MOD plan.', 'Real (por execução)', 'Desvio', 'Efetivo real', ''].map((h) => el('th', {}, h)))),
             el('tbody', {}, r.etapas.map((e, idx) => {
               const dur = el('input', { class: 'input mono input-compact', type: 'number', min: '0', step: '5', value: String(e.etapa.duracaoMin || 0), title: 'Minutos',
                 onchange: (ev) => salvarEtapas(etapas.map((x) => (x.id === e.etapa.id ? { ...x, duracaoMin: ev.target.value } : x)), 'Duração atualizada.') });
@@ -423,7 +479,9 @@ export function renderProjetosPage(ctx) {
                 el('td', {}, el('span', { style: { color: info.color, fontWeight: '700', fontSize: '12px' } }, info.short)),
                 el('td', {}, el('div', { style: { display: 'flex', alignItems: 'center', gap: '6px' } }, [dur, el('span', { class: 'muted', style: { fontSize: '11.5px' } }, 'min')])),
                 el('td', {}, el('button', { class: 'chip', type: 'button', title: 'Editar MOD da etapa', onclick: () => modalMODEtapa(p, e.etapa) }, efetivoTotal(e.etapa.efetivo) ? `${efetivoTotal(e.etapa.efetivo)} pessoas` : 'definir')),
-                el('td', { class: 'mono' }, e.lancamentos ? formatMinutes(e.realMin) : '—'),
+                el('td', { class: 'mono' }, e.lancamentos
+                  ? [formatMinutes(e.mediaMin), e.lancamentos > 1 ? el('div', { class: 'muted', style: { fontSize: '11px' } }, `média de ${e.lancamentos}×`) : null]
+                  : '—'),
                 el('td', { class: 'mono', style: { color: desvio == null ? 'var(--text-3)' : desvio > 0 ? 'var(--danger-500)' : 'var(--ok-500)', fontWeight: '700' } },
                   desvio == null ? '—' : `${desvio > 0 ? '+' : desvio < 0 ? '−' : ''}${formatMinutes(Math.abs(desvio))}`),
                 el('td', { style: { fontSize: '12px' } }, !e.lancamentos ? '—' : e.difEfetivo.length ? el('span', { style: { color: 'var(--info-500)' } }, formatDiferencas(e.difEfetivo)) : el('span', { style: { color: 'var(--ok-500)' } }, 'conforme')),
