@@ -16,21 +16,32 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isSignedIn() && meDoc().status == 'aprovado' && meDoc().role == 'admin';
+      return isAprovado() && meDoc().role == 'admin';
     }
 
-    // gestor = admin ou planejador: quem monta o planejamento (catálogo,
-    // setores, clientes, contratos, projetos) e acompanha todos os apontamentos.
+    // gestor = admin ou planejador: monta o planejamento e acompanha tudo.
     // Só o admin aprova usuários e muda papéis.
     function isGestor() {
-      return isSignedIn() && meDoc().status == 'aprovado' && meDoc().role in ['admin', 'planejador'];
+      return isAprovado() && meDoc().role in ['admin', 'planejador'];
+    }
+
+    // permissão por contrato: lista vazia (ou ausente) = todos os contratos
+    function meusContratos() {
+      return meDoc().get('contratos', []);
+    }
+
+    function podeVerContrato(contratoId) {
+      return isGestor() || meusContratos().size() == 0 || contratoId in meusContratos();
+    }
+
+    function texto(v, max) {
+      return v is string && v.size() <= max;
     }
 
     // ---------------------------------------------------------------
-    // usuarios — cada pessoa lê o próprio perfil (para saber se já foi
-    // aprovada); só o admin lê a lista inteira, aprova, nega ou muda papéis.
-    // Ninguém além do admin pode alterar o próprio status/role depois de
-    // criado — é isso que impede autoaprovação.
+    // usuarios — cada pessoa lê o próprio perfil; só o admin lê a lista,
+    // aprova, nega ou muda papéis/contratos. O cadastro nasce sempre como
+    // "pendente" e "lider" — é isso que impede autoaprovação.
     // ---------------------------------------------------------------
     match /usuarios/{uid} {
       allow get: if isSignedIn() && (request.auth.uid == uid || isAdmin());
@@ -38,13 +49,20 @@ service cloud.firestore {
       allow create: if isSignedIn()
         && request.auth.uid == uid
         && request.resource.data.status == 'pendente'
-        && request.resource.data.role == 'lider';
-      allow update, delete: if isAdmin();
+        && request.resource.data.role == 'lider'
+        && texto(request.resource.data.nomeCompleto, 120)
+        && request.resource.data.nomeCompleto.size() >= 3
+        && request.resource.data.matricula is string
+        && request.resource.data.matricula.matches('[0-9]{6}');
+      allow update: if isAdmin()
+        && request.resource.data.role in ['lider', 'planejador', 'admin']
+        && request.resource.data.status in ['pendente', 'aprovado', 'negado'];
+      allow delete: if isAdmin();
     }
 
     // ---------------------------------------------------------------
-    // colaboradores / atividades — catálogo de apoio ao lançamento.
-    // Leitura para qualquer usuário aprovado; escrita só pelo admin.
+    // catálogo e planejamento — todo aprovado lê (o apontador precisa do
+    // planejado em campo); só admin/planejador escreve.
     // ---------------------------------------------------------------
     match /colaboradores/{id} {
       allow read: if isAprovado();
@@ -53,18 +71,15 @@ service cloud.firestore {
 
     match /atividades/{id} {
       allow read: if isAprovado();
-      allow write: if isGestor();
+      allow write: if isGestor() && texto(request.resource.data.nome, 200);
+      allow delete: if isGestor();
     }
 
-    // setores — configuração de turno/escala por área da planta (Hub ADM).
     match /setores/{id} {
       allow read: if isAprovado();
       allow write: if isGestor();
     }
 
-    // planejamento: cliente → contrato → projeto (com ficha e etapas).
-    // Todo aprovado lê (o apontador precisa do planejado em campo);
-    // só admin/planejador escreve.
     match /clientes/{id} {
       allow read: if isAprovado();
       allow write: if isGestor();
@@ -75,36 +90,89 @@ service cloud.firestore {
       allow write: if isGestor();
     }
 
+    // o apontador com contratos definidos só enxerga os projetos deles
     match /projetos/{id} {
-      allow read: if isAprovado();
+      allow read: if isAprovado() && podeVerContrato(resource.data.contratoId);
       allow write: if isGestor();
     }
 
-    // estudos de tempos (cronoanálise, amostragem, MTM, takt/lead,
-    // histórico) — quem faz o estudo é dono dele; admin/planejador veem
-    // e mantêm todos.
+    // ---------------------------------------------------------------
+    // lancamentos — cada apontador cria e mantém os seus; admin/planejador
+    // acessam todos. O servidor recusa formatos inválidos e não deixa
+    // trocar o dono de um lançamento.
+    // ---------------------------------------------------------------
+    function lancamentoValido(d) {
+      return d.data is string && d.data.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}')
+        && d.horaInicio is string && d.horaInicio.matches('[0-9]{2}:[0-9]{2}')
+        && d.horaTermino is string && d.horaTermino.matches('[0-9]{2}:[0-9]{2}')
+        && d.duracaoMinutos is number && d.duracaoMinutos >= 0 && d.duracaoMinutos <= 1440
+        && d.tipoRegistro in ['atividade', 'improdutividade']
+        && texto(d.get('observacoes', ''), 2000)
+        && texto(d.get('justificativa', ''), 2000)
+        && texto(d.get('atividadeNome', ''), 300);
+    }
+
+    // lançamento num projeto só nos contratos permitidos (avulso é livre)
+    function projetoPermitido(d) {
+      return d.get('projetoId', '') == ''
+        || isGestor()
+        || meusContratos().size() == 0
+        || get(/databases/$(database)/documents/projetos/$(d.projetoId)).data.contratoId in meusContratos();
+    }
+
+    match /lancamentos/{id} {
+      allow read: if isAprovado() && (isGestor() || resource.data.criadoPorUid == request.auth.uid);
+      allow create: if isAprovado()
+        && request.resource.data.criadoPorUid == request.auth.uid
+        && lancamentoValido(request.resource.data)
+        && projetoPermitido(request.resource.data);
+      allow update: if isAprovado()
+        && (isGestor() || resource.data.criadoPorUid == request.auth.uid)
+        && request.resource.data.criadoPorUid == resource.data.criadoPorUid
+        && lancamentoValido(request.resource.data);
+      allow delete: if isAprovado()
+        && (isGestor() || resource.data.criadoPorUid == request.auth.uid);
+    }
+
+    // estudos de tempos — quem faz é dono; admin/planejador veem e mantêm todos
     match /estudos/{id} {
       allow read: if isAprovado() && (isGestor() || resource.data.criadoPorUid == request.auth.uid);
       allow create: if isAprovado()
-        && request.resource.data.criadoPorUid == request.auth.uid;
-      allow update, delete: if isAprovado()
+        && request.resource.data.criadoPorUid == request.auth.uid
+        && request.resource.data.tipo in ['cronoanalise', 'amostragem', 'mtm', 'takt', 'historico'];
+      allow update: if isAprovado()
+        && (isGestor() || resource.data.criadoPorUid == request.auth.uid)
+        && request.resource.data.criadoPorUid == resource.data.criadoPorUid;
+      allow delete: if isAprovado()
         && (isGestor() || resource.data.criadoPorUid == request.auth.uid);
     }
 
     // ---------------------------------------------------------------
-    // lancamentos — cada líder cria e mantém seus próprios apontamentos;
-    // o admin tem acesso total. A trava de "não editar no mobile após
-    // sincronizar" é uma regra de produto (UI), não desta camada: aqui
-    // o dono do registro pode alterá-lo a qualquer momento pelo mesmo
-    // motivo que ele pôde criá-lo — a UI do app mobile é quem esconde os
-    // controles de edição assim que o servidor confirma o documento.
+    // auditoria — só acrescenta: ninguém edita nem apaga um registro
     // ---------------------------------------------------------------
-    match /lancamentos/{id} {
-      allow read: if isAprovado() && (isGestor() || resource.data.criadoPorUid == request.auth.uid);
+    match /auditoria/{id} {
+      allow read: if isGestor();
       allow create: if isAprovado()
-        && request.resource.data.criadoPorUid == request.auth.uid;
-      allow update, delete: if isAprovado()
-        && (isGestor() || resource.data.criadoPorUid == request.auth.uid);
+        && request.resource.data.uid == request.auth.uid
+        && texto(request.resource.data.resumo, 300);
+      allow update, delete: if false;
+    }
+
+    // saúde do app — qualquer usuário logado registra falhas/recuperações
+    // dele mesmo; só admin/planejador leem (e podem limpar)
+    match /saude/{id} {
+      allow read, delete: if isGestor();
+      allow create: if isSignedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.tipo in ['erro', 'recuperacao']
+        && texto(request.resource.data.mensagem, 300)
+        && texto(request.resource.data.get('pilha', ''), 1500);
+      allow update: if false;
+    }
+
+    // configurações do sistema (ex.: data do último backup)
+    match /config/{id} {
+      allow read, write: if isGestor();
     }
   }
 }

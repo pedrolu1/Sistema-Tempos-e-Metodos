@@ -15,6 +15,7 @@ import { db } from './firebase.js';
 import { durationMinutes, EFETIVO_CAMPOS, efetivoExcedido } from '../utils/format.js';
 import { reportSnapshotError } from './errors.js';
 import { gravacaoLocal } from './sync.js';
+import { auditar, camposAlterados } from './auditoria.js';
 
 const COL = 'lancamentos';
 
@@ -101,13 +102,15 @@ export function createLancamento(input) {
 }
 
 export function updateLancamento(id, input) {
+  auditar('alterou', 'lançamento', id, `${input.atividadeNome || ''} · ${input.data} ${input.horaInicio}–${input.horaTermino}`);
   return gravacaoLocal(updateDoc(doc(db, COL, id), {
     ...buildPayload(input),
     atualizadoEm: serverTimestamp()
   }), 'lançamento');
 }
 
-export function deleteLancamento(id) {
+export function deleteLancamento(id, resumo = '') {
+  auditar('excluiu', 'lançamento', id, resumo);
   return gravacaoLocal(deleteDoc(doc(db, COL, id)), 'lançamento');
 }
 

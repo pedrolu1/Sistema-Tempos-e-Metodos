@@ -155,7 +155,7 @@ export function renderEstudosPage(ctxInicial) {
         button({ label: 'Excluir', variant: 'danger', onClick: async () => {
           close();
           try {
-            await deleteEstudo(e.id);
+            await deleteEstudo(e.id, e.titulo);
             toast('Estudo excluído.', 'ok');
             voltar();
           } catch {

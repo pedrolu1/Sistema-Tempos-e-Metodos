@@ -263,7 +263,7 @@ export function renderProjetosPage(ctx) {
 
   function removerCliente(c, seus) {
     if (seus.length) return toast('Remova ou mova os contratos deste cliente antes.', 'error');
-    confirmar('Remover cliente?', `"${c.nome}" será removido.`, async () => { await deleteCliente(c.id); toast('Cliente removido.', 'ok'); });
+    confirmar('Remover cliente?', `"${c.nome}" será removido.`, async () => { await deleteCliente(c.id, c.nome); toast('Cliente removido.', 'ok'); });
   }
 
   function modalContrato(item, cliente) {
@@ -282,7 +282,7 @@ export function renderProjetosPage(ctx) {
               variant: 'danger',
               disabled: usados > 0,
               icon: icon.trash(14),
-              onClick: () => { document.querySelector('.modal-backdrop')?.remove(); confirmar('Remover contrato?', `"${item.nome}" será removido.`, async () => { await deleteContrato(item.id); toast('Contrato removido.', 'ok'); }); }
+              onClick: () => { document.querySelector('.modal-backdrop')?.remove(); confirmar('Remover contrato?', `"${item.nome}" será removido.`, async () => { await deleteContrato(item.id, item.nome); toast('Contrato removido.', 'ok'); }); }
             })
           : null
       ],
@@ -399,7 +399,7 @@ export function renderProjetosPage(ctx) {
       el('div', { class: 'toolbar' }, [
         statusSel,
         button({ label: 'Editar ficha', size: 'sm', variant: 'outline', icon: icon.edit(14), onClick: () => modalProjeto(p) }),
-        button({ iconOnly: true, size: 'sm', variant: 'danger', icon: icon.trash(14), onClick: () => confirmar('Remover projeto?', 'Os lançamentos já feitos continuam no histórico.', async () => { await deleteProjeto(p.id); abertoId = null; toast('Projeto removido.', 'ok'); }) })
+        button({ iconOnly: true, size: 'sm', variant: 'danger', icon: icon.trash(14), onClick: () => confirmar('Remover projeto?', 'Os lançamentos já feitos continuam no histórico.', async () => { await deleteProjeto(p.id, p.nome); abertoId = null; toast('Projeto removido.', 'ok'); }) })
       ])
     ]);
 

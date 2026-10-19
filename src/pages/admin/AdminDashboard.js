@@ -7,7 +7,6 @@ import {
   formatDateBR,
   todayISO,
   classificacaoDoLancamento,
-  classificacaoBreakdown,
   excedenteMinutos,
   temDesperdicio,
   capacidadeMinutosSetor,
@@ -216,11 +215,8 @@ export function renderDashboardPage(ctx) {
     ]);
   }
 
-  function paintKpis() {
-    const full = dataset();
-    const totalMin = full.reduce((s, l) => s + l.duracaoMinutos, 0);
-    const prodMin = full.filter((l) => l.tipoRegistro === 'atividade').reduce((s, l) => s + l.duracaoMinutos, 0);
-    const improdMin = full.filter((l) => l.tipoRegistro === 'improdutividade').reduce((s, l) => s + l.duracaoMinutos, 0);
+  function paintKpis(ind) {
+    const { totalMin, prodMin, improdMin } = ind;
 
     mount(kpiRow, [
       statTile({ label: 'Tempo total apontado', value: formatMinutes(totalMin), iconHtml: icon.clock(16) }),
@@ -240,7 +236,7 @@ export function renderDashboardPage(ctx) {
         active: state.filters.tipo === 'improdutividade',
         onToggle: () => toggleFilter('tipo', 'improdutividade')
       }),
-      statTile({ label: 'Lançamentos no período', value: String(full.length), iconHtml: icon.list(16) })
+      statTile({ label: 'Lançamentos no período', value: String(ind.n), iconHtml: icon.list(16) })
     ]);
 
     mount(meterCard, [
@@ -266,22 +262,13 @@ export function renderDashboardPage(ctx) {
     ]);
   }
 
-  function paintTrend() {
-    const rows = dataset();
-    const byDay = new Map();
-    rows.forEach((l) => {
-      if (!byDay.has(l.data)) byDay.set(l.data, { a: 0, b: 0 });
-      const e = byDay.get(l.data);
-      if (l.tipoRegistro === 'atividade') e.a += l.duracaoMinutos;
-      else e.b += l.duracaoMinutos;
-    });
-    const days = [...byDay.keys()].sort();
-    const data = days.map((d) => ({
-      key: d,
-      label: d.slice(8, 10) + '/' + d.slice(5, 7),
-      fullLabel: formatDateBR(d),
-      a: byDay.get(d).a,
-      b: byDay.get(d).b
+  function paintTrend(ind) {
+    const data = ind.porDia.map((d) => ({
+      key: d.data,
+      label: d.data.slice(8, 10) + '/' + d.data.slice(5, 7),
+      fullLabel: formatDateBR(d.data),
+      a: d.prod,
+      b: d.improd
     }));
 
     mount(trendCard, [
@@ -293,15 +280,8 @@ export function renderDashboardPage(ctx) {
     ]);
   }
 
-  function paintLean() {
-    const full = dataset();
-    const byClass = { VA: 0, DN: 0, DNN: 0 };
-    full.forEach((l) => {
-      const b = classificacaoBreakdown(l);
-      byClass.VA += b.VA;
-      byClass.DN += b.DN;
-      byClass.DNN += b.DNN;
-    });
+  function paintLean(ind) {
+    const byClass = ind.lean;
 
     const tiles = CLASSIFICACAO_SERIES.map((s) =>
       statTile({
@@ -314,21 +294,13 @@ export function renderDashboardPage(ctx) {
       })
     );
 
-    const byDay = new Map();
-    full.forEach((l) => {
-      if (!byDay.has(l.data)) byDay.set(l.data, { VA: 0, DN: 0, DNN: 0 });
-      const e = byDay.get(l.data);
-      const b = classificacaoBreakdown(l);
-      e.VA += b.VA;
-      e.DN += b.DN;
-      e.DNN += b.DNN;
-    });
-    const days = [...byDay.keys()].sort();
-    const trendData = days.map((d) => ({
-      key: d,
-      label: d.slice(8, 10) + '/' + d.slice(5, 7),
-      fullLabel: formatDateBR(d),
-      ...byDay.get(d)
+    const trendData = ind.porDia.map((d) => ({
+      key: d.data,
+      label: d.data.slice(8, 10) + '/' + d.data.slice(5, 7),
+      fullLabel: formatDateBR(d.data),
+      VA: d.VA,
+      DN: d.DN,
+      DNN: d.DNN
     }));
 
     mount(leanCard, [
@@ -424,9 +396,8 @@ export function renderDashboardPage(ctx) {
   }
 
   /** Aderência ao planejado: tempo dentro do previsto, equipe conforme e planejado × real por projeto. */
-  function paintAderencia() {
+  function paintAderencia(ind) {
     const rows = dataset();
-    const ind = calcularIndicadores(rows);
     const projetos = planejadoRealPorProjeto(fullCtx.projetos || [], rows).sort((a, b) => (b.desvio ?? 0) - (a.desvio ?? 0)).slice(0, 8);
     const pctTxt = (v) => (v == null ? '—' : `${Math.round(v * 100)}%`);
     mount(aderenciaCard, [
@@ -499,10 +470,11 @@ export function renderDashboardPage(ctx) {
   function paint() {
     buildSetorFilter();
     paintChips();
-    paintKpis();
-    paintTrend();
-    paintLean();
-    paintAderencia();
+    const ind = calcularIndicadores(dataset()); // uma conta só, usada por todos os cards
+    paintKpis(ind);
+    paintTrend(ind);
+    paintLean(ind);
+    paintAderencia(ind);
     paintDesperdicio();
     paintInsights();
     paintAtividades();

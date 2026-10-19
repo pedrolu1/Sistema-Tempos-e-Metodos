@@ -12,6 +12,7 @@ import {
 import { db } from './firebase.js';
 import { EFETIVO_CAMPOS } from '../utils/format.js';
 import { reportSnapshotError } from './errors.js';
+import { auditar, camposAlterados } from './auditoria.js';
 
 const COL = 'atividades';
 
@@ -54,9 +55,11 @@ export function addAtividade({ nome, tipo, criadoPor, contrato = '', codigo = ''
 }
 
 export function updateAtividade(id, data) {
+  auditar('alterou', 'atividade', id, camposAlterados(data));
   return updateDoc(doc(db, COL, id), data);
 }
 
-export function deleteAtividade(id) {
+export function deleteAtividade(id, nome = '') {
+  auditar('excluiu', 'atividade', id, nome);
   return deleteDoc(doc(db, COL, id));
 }

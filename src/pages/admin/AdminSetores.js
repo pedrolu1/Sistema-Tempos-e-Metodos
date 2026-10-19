@@ -74,7 +74,7 @@ export function renderSetoresPage(ctx) {
       footer: [
         button({ label: 'Cancelar', variant: 'ghost', onClick: close }),
         button({ label: 'Remover', variant: 'danger', onClick: async () => {
-          try { await deleteSetor(s.id); toast('Setor removido.', 'ok'); } catch { toast('Não foi possível remover.', 'error'); }
+          try { await deleteSetor(s.id, s.nome); toast('Setor removido.', 'ok'); } catch { toast('Não foi possível remover.', 'error'); }
           close();
         } })
       ],

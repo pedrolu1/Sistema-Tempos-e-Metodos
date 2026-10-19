@@ -1,7 +1,8 @@
-import { collection, doc, setDoc, updateDoc, deleteDoc, onSnapshot, query, where, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, setDoc, deleteDoc, onSnapshot, query, where, serverTimestamp } from 'firebase/firestore';
 import { db } from './firebase.js';
 import { reportSnapshotError } from './errors.js';
 import { gravacaoLocal } from './sync.js';
+import { auditar, camposAlterados } from './auditoria.js';
 
 const COL = 'estudos';
 
@@ -51,5 +52,7 @@ export async function addEstudo({ tipo, titulo, alvo = {}, dados = {}, resultado
   return ref.id;
 }
 
-export const updateEstudo = (id, data) => gravacaoLocal(updateDoc(doc(db, COL, id), { ...limpar(data), atualizadoEm: serverTimestamp() }), 'estudo');
-export const deleteEstudo = (id) => gravacaoLocal(deleteDoc(doc(db, COL, id)), 'estudo');
+export function deleteEstudo(id, titulo = '') {
+  auditar('excluiu', 'estudo', id, titulo);
+  return gravacaoLocal(deleteDoc(doc(db, COL, id)), 'estudo');
+}

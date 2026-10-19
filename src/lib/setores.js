@@ -12,6 +12,7 @@ import {
 import { db } from './firebase.js';
 import { escalaInfo } from '../utils/format.js';
 import { reportSnapshotError } from './errors.js';
+import { auditar, camposAlterados } from './auditoria.js';
 
 const COL = 'setores';
 
@@ -34,9 +35,11 @@ export function addSetor({ nome, escala = 'adm', horasPorTurno, turmas = 1, cria
 }
 
 export function updateSetor(id, data) {
+  auditar('alterou', 'setor', id, camposAlterados(data));
   return updateDoc(doc(db, COL, id), data);
 }
 
-export function deleteSetor(id) {
+export function deleteSetor(id, nome = '') {
+  auditar('excluiu', 'setor', id, nome);
   return deleteDoc(doc(db, COL, id));
 }

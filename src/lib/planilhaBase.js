@@ -1,6 +1,7 @@
 import { EFETIVO_CAMPOS, ESCALAS, formatDateBR } from '../utils/format.js';
 import { STATUS_PROJETO, updateProjeto, sanitizeEtapa } from './projetos.js';
 import { addAtividade, updateAtividade } from './activities.js';
+import { auditar } from './auditoria.js';
 
 /**
  * Base de planejamento editável no Excel: o planejador baixa a planilha,
@@ -269,6 +270,7 @@ export async function lerBase(file, { atividades = [], projetos = [] }) {
 
 /** Grava o plano aprovado. */
 export async function aplicarBase(plano, profile) {
+  auditar('importou', 'planilha', '', `${plano.atividadesNovas.length} atividade(s) nova(s), ${plano.atividadesAlteradas.length} alterada(s), ${plano.projetosAlterados.length} projeto(s)`);
   await Promise.all([
     ...plano.atividadesAlteradas.map((x) => updateAtividade(x.atividade.id, x.patch)),
     ...plano.atividadesNovas.map((a) => addAtividade({ ...a, criadoPor: profile.uid })),

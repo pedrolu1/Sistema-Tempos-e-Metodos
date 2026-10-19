@@ -94,3 +94,31 @@ export function switchToggle(checked, onChange) {
   const input = el('input', { type: 'checkbox', checked, onchange: (e) => onChange(e.target.checked) });
   return el('label', { class: 'switch' }, [input, el('span', { class: 'switch-track' })]);
 }
+
+/** Aviso amigável no lugar de uma tela que falhou (o erro já foi registrado). */
+export function avisoFalha({ aoTentar, aoReparar }) {
+  return el('div', { class: 'card card-pad', style: { display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'flex-start' } }, [
+    el('strong', { style: { fontFamily: 'var(--font-display)', fontSize: '15px' } }, 'Esta tela teve um problema'),
+    el('p', { style: { fontSize: '13px', color: 'var(--text-2)', lineHeight: '1.5' } }, 'O problema foi registrado automaticamente. Seus dados estão guardados. Toque em "Tentar de novo"; se continuar, use "Reparar o app".'),
+    el('div', { class: 'toolbar' }, [
+      button({ label: 'Tentar de novo', variant: 'primary', onClick: aoTentar }),
+      aoReparar ? button({ label: 'Reparar o app', variant: 'ghost', onClick: aoReparar }) : null
+    ])
+  ]);
+}
+
+/** Confirmação rápida e visível (ex.: lançamento registrado) — some sozinha. */
+export function celebrar(titulo, subtitulo = '') {
+  navigator.vibrate?.([20, 40, 30]);
+  const node = el('div', { class: 'celebrate', role: 'status' }, [
+    el('div', { class: 'celebrate-card' }, [
+      el('span', { class: 'celebrate-check', html: '<svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>' }),
+      el('strong', {}, titulo),
+      subtitulo ? el('small', {}, subtitulo) : null
+    ])
+  ]);
+  node.addEventListener('click', () => node.remove());
+  document.body.appendChild(node);
+  setTimeout(() => node.classList.add('out'), 1300);
+  setTimeout(() => node.remove(), 1650);
+}

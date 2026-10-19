@@ -1,4 +1,6 @@
 import { el, mount } from '../../utils/dom.js';
+import { avisoFalha } from '../../components/ui.js';
+import { protegerTela, registrarErro, repararApp } from '../../lib/saude.js';
 import { icon } from '../../utils/icons.js';
 import { initials } from '../../utils/format.js';
 import { navigate, currentRoute, onRouteChange } from '../../router.js';
@@ -17,6 +19,13 @@ import { renderSetoresPage } from './AdminSetores.js';
 import { renderProjetosPage } from './AdminProjetos.js';
 import { renderEstudosPage } from '../estudos/EstudosPage.js';
 import { renderAssistentePage, achadosAtivos } from './AdminAssistente.js';
+import { renderSistemaPage } from './AdminSistema.js';
+import { subscribeSaude } from '../../lib/saude.js';
+import { subscribeAuditoria } from '../../lib/auditoria.js';
+import { subscribeUltimoBackup } from '../../lib/backup.js';
+import { repararDados } from '../../lib/reparo.js';
+import { vigiarInatividade } from '../../lib/inatividade.js';
+import { isOnline } from '../../lib/sync.js';
 import { subscribeEstudos } from '../../lib/estudos.js';
 
 const NAV = [
@@ -27,7 +36,8 @@ const NAV = [
   { page: 'lancamentos', label: 'Lançamentos', icon: icon.clock(18) },
   { page: 'cadastros', label: 'Cadastros', icon: icon.briefcase(18) },
   { page: 'setores', label: 'Setores', icon: icon.building(18) },
-  { page: 'usuarios', label: 'Usuários', icon: icon.users(18), soAdmin: true }
+  { page: 'usuarios', label: 'Usuários', icon: icon.users(18), soAdmin: true },
+  { page: 'sistema', label: 'Sistema', icon: icon.shield(18) }
 ];
 
 const TITLES = {
@@ -38,7 +48,8 @@ const TITLES = {
   lancamentos: ['Lançamentos', 'Todos os apontamentos coletados em campo'],
   cadastros: ['Cadastros', 'Atividades, improdutividades e colaboradores'],
   setores: ['Setores', 'Configuração de turno e capacidade por área'],
-  usuarios: ['Usuários', 'Aprovação de acesso e permissões']
+  usuarios: ['Usuários', 'Aprovação de acesso e permissões'],
+  sistema: ['Sistema', 'Saúde do app, backup, auditoria e segurança']
 };
 
 export function mountAdminApp(root, { profile }) {
@@ -46,7 +57,7 @@ export function mountAdminApp(root, { profile }) {
   // o planejador vê o mesmo painel, menos a aprovação de usuários (só admin)
   const navItems = NAV.filter((n) => isAdmin || !n.soAdmin);
   const state = {
-    colaboradores: [], atividades: [], setores: [], lancamentos: [], usuarios: [], clientes: [], contratos: [], projetos: [], estudos: [],
+    colaboradores: [], atividades: [], setores: [], lancamentos: [], usuarios: [], clientes: [], contratos: [], projetos: [], estudos: [], saude: [], auditoria: [], ultimoBackup: null,
     loaded: { c: false, a: false, s: false, l: false, u: !isAdmin, cl: false, ct: false, p: false, e: false }
   };
 
@@ -117,7 +128,8 @@ export function mountAdminApp(root, { profile }) {
     lancamentos: renderRecordsPage,
     cadastros: renderCatalogPage,
     setores: renderSetoresPage,
-    usuarios: renderUsersPage
+    usuarios: renderUsersPage,
+    sistema: renderSistemaPage
   };
   const instances = {};
   let mountedPage = null;
@@ -133,6 +145,9 @@ export function mountAdminApp(root, { profile }) {
       contratos: state.contratos,
       projetos: state.projetos,
       estudos: state.estudos,
+      saude: state.saude,
+      auditoria: state.auditoria,
+      ultimoBackup: state.ultimoBackup,
       profile
     };
   }
@@ -160,19 +175,33 @@ export function mountAdminApp(root, { profile }) {
     // mantém instância viva por página: preserva filtros/estado da UI entre
     // trocas de aba e apenas repassa dados novos via update(), sem remontar.
     Object.entries(instances).forEach(([key, inst]) => {
-      if (key !== active && inst.update) inst.update(ctx());
+      if (key === active || !inst.update) return;
+      try {
+        inst.update(ctx());
+      } catch (err) {
+        registrarErro(`tela:${key}`, err, { recuperado: true });
+        delete instances[key]; // será recriada limpa quando for aberta
+      }
     });
 
+    if (instances[active]?.update) {
+      try {
+        instances[active].update(ctx());
+      } catch (err) {
+        // auto-recuperação: descarta a instância com problema e monta de novo
+        registrarErro(`tela:${active}`, err, { recuperado: true });
+        delete instances[active];
+      }
+    }
     if (!instances[active]) {
-      instances[active] = factories[active](ctx());
+      instances[active] = protegerTela(active, () => factories[active](ctx()), () => ({
+        node: avisoFalha({ aoTentar: () => { delete instances[active]; mountedPage = null; renderPage(); }, aoReparar: repararApp })
+      }));
       mount(content, [instances[active].node]);
       mountedPage = active;
-    } else {
-      if (instances[active].update) instances[active].update(ctx());
-      if (mountedPage !== active) {
-        mount(content, [instances[active].node]);
-        mountedPage = active;
-      }
+    } else if (mountedPage !== active) {
+      mount(content, [instances[active].node]);
+      mountedPage = active;
     }
   }
 
@@ -191,10 +220,14 @@ export function mountAdminApp(root, { profile }) {
     state.loaded.s = true;
     renderPage();
   });
+  let reparoTimer = null;
   const unsubLanc = subscribeTodosLancamentos((list) => {
     state.lancamentos = list;
     state.loaded.l = true;
     renderPage();
+    // auto-reparo de campos calculados inconsistentes (só com internet, sem pressa)
+    clearTimeout(reparoTimer);
+    reparoTimer = setTimeout(() => { if (isOnline()) repararDados(state.lancamentos); }, 4000);
   });
   // a lista de usuários só é legível pelo admin (regras do Firestore)
   const unsubUsers = isAdmin
@@ -209,11 +242,27 @@ export function mountAdminApp(root, { profile }) {
     subscribeClientes((list) => { state.clientes = list; state.loaded.cl = true; renderPage(); }),
     subscribeContratos((list) => { state.contratos = list; state.loaded.ct = true; renderPage(); }),
     subscribeProjetos((list) => { state.projetos = list; state.loaded.p = true; renderPage(); }),
-    subscribeEstudos((list) => { state.estudos = list; state.loaded.e = true; renderPage(); })
+    subscribeEstudos((list) => { state.estudos = list; state.loaded.e = true; renderPage(); }),
+    subscribeSaude((list) => { state.saude = list; renderPage(); }),
+    subscribeAuditoria((list) => { state.auditoria = list; renderPage(); }),
+    subscribeUltimoBackup((b) => { state.ultimoBackup = b; renderPage(); })
   ];
   const unsubRoute = onRouteChange(renderPage);
 
   if (!currentRoute().page) navigate('dashboard');
+
+  // sessão do painel expira após 30 min sem uso (computador esquecido aberto)
+  const avisoInatividade = el('div', { class: 'idle-banner', style: { display: 'none' } }, [
+    el('span', { html: icon.clock(16), style: { display: 'inline-flex' } }),
+    'Sem uso há quase 30 minutos — a sessão será encerrada em 1 minuto.',
+    el('button', { class: 'btn btn-primary btn-sm', type: 'button' }, 'Continuar conectado')
+  ]);
+  document.body.appendChild(avisoInatividade);
+  const pararVigia = vigiarInatividade({
+    minutos: 30,
+    aoAvisar: (mostrar) => { avisoInatividade.style.display = mostrar ? 'flex' : 'none'; },
+    aoExpirar: () => logoutUser()
+  });
 
   return () => {
     unsubColab();
@@ -222,6 +271,9 @@ export function mountAdminApp(root, { profile }) {
     unsubLanc();
     unsubUsers();
     unsubPlan.forEach((u) => u());
+    clearTimeout(reparoTimer);
+    pararVigia();
+    avisoInatividade.remove();
     unsubRoute();
   };
 }

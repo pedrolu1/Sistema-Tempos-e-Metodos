@@ -1,8 +1,8 @@
 import { el, mount } from '../../utils/dom.js';
-import { badge, button, emptyState, segmented, cardWithHeader } from '../../components/ui.js';
+import { badge, button, emptyState, segmented, cardWithHeader, modal } from '../../components/ui.js';
 import { icon } from '../../utils/icons.js';
 import { initials } from '../../utils/format.js';
-import { setUserStatus, setUserRole } from '../../lib/auth.js';
+import { setUserStatus, setUserRole, setUserContratos } from '../../lib/auth.js';
 import { toast } from '../../lib/toast.js';
 
 const STATUS_TONE = { pendente: 'warn', aprovado: 'ok', negado: 'danger' };
@@ -10,6 +10,7 @@ const STATUS_LABEL = { pendente: 'Pendente', aprovado: 'Aprovado', negado: 'Nega
 
 export function renderUsersPage(ctx) {
   let usuarios = ctx.usuarios;
+  let contratos = ctx.contratos || [];
   let filter = 'pendente';
 
   const tabs = segmented(
@@ -55,7 +56,7 @@ export function renderUsersPage(ctx) {
 
     const wrap = el('div', { class: 'table-wrap' });
     const table = el('table', { class: 'data-table' }, [
-      el('thead', {}, el('tr', {}, [el('th', {}, 'Usuário'), el('th', {}, 'Matrícula'), el('th', {}, 'Papel'), el('th', {}, 'Status'), el('th', {}, 'Ações')])),
+      el('thead', {}, el('tr', {}, [el('th', {}, 'Usuário'), el('th', {}, 'Matrícula'), el('th', {}, 'Papel'), el('th', {}, 'Contratos'), el('th', {}, 'Status'), el('th', {}, 'Ações')])),
       el(
         'tbody',
         {},
@@ -69,6 +70,7 @@ export function renderUsersPage(ctx) {
             ]),
             el('td', { class: 'mono' }, u.matricula || '—'),
             el('td', {}, roleSelect(u)),
+            el('td', {}, contratosCell(u)),
             el('td', {}, badge(STATUS_LABEL[u.status] || u.status, STATUS_TONE[u.status] || 'neutral', true)),
             el('td', {}, actionsFor(u))
           ])
@@ -103,6 +105,46 @@ export function renderUsersPage(ctx) {
     );
   }
 
+  /** Permissão por contrato: vale para o apontador (planejador e admin veem tudo). */
+  function contratosCell(u) {
+    if (u.role === 'admin' || u.role === 'planejador') return el('span', { class: 'muted', style: { fontSize: '12.5px' } }, 'Todos');
+    const ids = u.contratos || [];
+    const nomes = ids.map((id) => contratos.find((c) => c.id === id)?.nome).filter(Boolean);
+    return el('button', { class: 'chip', type: 'button', style: { height: '30px', fontSize: '12.5px' }, disabled: u.status !== 'aprovado', onclick: () => editarContratos(u) },
+      ids.length ? (nomes.length <= 2 ? nomes.join(', ') : `${nomes.length} contratos`) : 'Todos');
+  }
+
+  function editarContratos(u) {
+    const marcados = new Set(u.contratos || []);
+    const close = () => backdrop.remove();
+    const backdrop = modal({
+      title: `Contratos de ${u.nomeCompleto}`,
+      body: [
+        el('p', { style: { fontSize: '13px', color: 'var(--text-2)' } }, 'Marque os contratos em que esta pessoa trabalha. Ela só verá os projetos deles no celular. Sem nenhum marcado, vê todos.'),
+        contratos.length
+          ? el('div', { class: 'check-list' }, contratos.map((c) => el('label', { class: 'check-item' }, [
+              el('input', { type: 'checkbox', checked: marcados.has(c.id), onchange: (e) => (e.target.checked ? marcados.add(c.id) : marcados.delete(c.id)) }),
+              el('span', {}, `${c.nome} · ${c.clienteNome}`)
+            ])))
+          : el('p', { class: 'muted' }, 'Nenhum contrato cadastrado ainda (cadastre em Projetos).')
+      ],
+      footer: [
+        button({ label: 'Cancelar', variant: 'ghost', onClick: close }),
+        button({ label: 'Salvar', variant: 'primary', onClick: async () => {
+          try {
+            await setUserContratos(u.uid, [...marcados].slice(0, 30));
+            toast('Contratos atualizados.', 'ok');
+            close();
+          } catch {
+            toast('Não foi possível salvar.', 'error');
+          }
+        } })
+      ],
+      onClose: close
+    });
+    document.body.appendChild(backdrop);
+  }
+
   function actionsFor(u) {
     if (u.status === 'pendente') {
       return el('div', { class: 'toolbar' }, [
@@ -122,6 +164,7 @@ export function renderUsersPage(ctx) {
     node,
     update(newCtx) {
       usuarios = newCtx.usuarios;
+      contratos = newCtx.contratos || [];
       paint();
     }
   };

@@ -78,7 +78,7 @@ function moda(valores) {
 // =====================================================================
 // Assistente do planejador
 // =====================================================================
-export function analisarPlanejamento({ lancamentos = [], projetos = [], atividades = [], estudos = [], hoje = todayISO() }) {
+export function analisarPlanejamento({ lancamentos = [], projetos = [], atividades = [], estudos = [], saude = [], ultimoBackup, hoje = todayISO() }) {
   const achados = [];
   const add = (a) => achados.push(a);
   const recentes = lancamentos.filter((l) => l.data >= diasAtras(29, hoje) && l.data <= hoje);
@@ -232,6 +232,25 @@ export function analisarPlanejamento({ lancamentos = [], projetos = [], atividad
     add({ id: `longos:${longos.length}:${longos[0].id}`, nivel: 'atencao', area: 'Dados', titulo: `${longos.length} lançamento(s) com mais de 12 horas`,
       detalhe: `Ex.: "${longos[0].atividadeNome}" em ${formatDateBR(longos[0].data)} (${longos[0].horaInicio}–${longos[0].horaTermino}).`,
       sugestao: 'Provável término digitado errado (virada da meia-noite). Corrija para não distorcer os indicadores.', acao: { tipo: 'abrir', label: 'Abrir lançamentos', page: 'lancamentos' } });
+  }
+
+  // ---- 6. saúde do app e backup (o "relatório" da auto-recuperação para o planejador)
+  const semana = saude.filter((e) => (e.emLocal || 0) >= Date.now() - 7 * 86400000);
+  const falhas = semana.filter((e) => e.tipo === 'erro');
+  const pendentes = falhas.filter((e) => !e.recuperado);
+  const recuperacoes = semana.filter((e) => e.tipo === 'recuperacao').length + falhas.length - pendentes.length;
+  if (falhas.length || recuperacoes) {
+    add({ id: `saude:${hoje}:${falhas.length}:${recuperacoes}`, nivel: pendentes.length ? 'atencao' : 'info', area: 'Sistema',
+      titulo: pendentes.length ? `${pendentes.length} falha(s) do app precisam de verificação` : `O app se recuperou sozinho ${recuperacoes} vez(es) nesta semana`,
+      detalhe: `Últimos 7 dias: ${falhas.length} falha(s) registrada(s), ${recuperacoes} recuperação(ões) automática(s).`,
+      sugestao: pendentes.length ? 'Veja os detalhes em Sistema. Se a falha se repetir com várias pessoas, envie o print ao suporte.' : 'Nada a fazer — fica registrado para acompanhamento.',
+      acao: { tipo: 'abrir', label: 'Abrir sistema', page: 'sistema' } });
+  }
+  const ultimo = ultimoBackup?.ultimoEmLocal;
+  if (!ultimo || Date.now() - ultimo > 7 * 86400000) {
+    add({ id: `backup:${hoje}`, nivel: 'atencao', area: 'Sistema', titulo: ultimo ? `Último backup há ${Math.floor((Date.now() - ultimo) / 86400000)} dias` : 'Nenhum backup feito ainda',
+      detalhe: 'O backup é um arquivo com todos os dados, guardado fora do sistema.', sugestao: 'Faça o backup semanal com um clique e guarde o arquivo na rede da empresa.',
+      acao: { tipo: 'abrir', label: 'Fazer backup', page: 'sistema' } });
   }
 
   return achados.sort((a, b) => NIVEIS[a.nivel].ordem - NIVEIS[b.nivel].ordem);

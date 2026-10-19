@@ -1,4 +1,6 @@
 import { el, mount } from '../../utils/dom.js';
+import { avisoFalha, modal, button } from '../../components/ui.js';
+import { protegerTela, repararApp, VERSAO } from '../../lib/saude.js';
 import { icon } from '../../utils/icons.js';
 import { navigate, currentRoute, onRouteChange } from '../../router.js';
 import { subscribeAtividades } from '../../lib/activities.js';
@@ -65,7 +67,7 @@ export function mountMobileApp(root, { profile }) {
         el('div', { style: { width: '1px', height: '26px', background: 'var(--border)' } }),
         topTitle
       ]),
-      el('button', { class: 'btn btn-icon btn-ghost btn-sm', title: 'Sair', onclick: () => logoutUser() }, el('span', { html: icon.logout(16) }))
+      el('button', { class: 'btn btn-icon btn-ghost btn-sm', title: 'Mais opções', 'aria-label': 'Mais opções', onclick: abrirMenu }, el('span', { html: icon.more(18) }))
     ]),
     banner,
     content,
@@ -73,6 +75,35 @@ export function mountMobileApp(root, { profile }) {
   ]);
 
   mount(root, [shell]);
+
+  /** Menu do app de campo: reparar o app e sair (com proteção para dados não sincronizados). */
+  function abrirMenu() {
+    const pendentes = state.lancamentos.filter((l) => !l._sincronizado).length;
+    const close = () => backdrop.remove();
+    const backdrop = modal({
+      title: 'Opções',
+      body: [
+        el('div', { class: 'menu-list' }, [
+          el('button', { class: 'menu-item', type: 'button', onclick: () => { close(); repararApp(); } }, [
+            el('span', { html: icon.sync(20) }),
+            el('div', {}, [el('strong', {}, 'Reparar o app'), el('small', {}, 'Use se algo estiver estranho ou travado. Seus lançamentos não são apagados.')])
+          ]),
+          el('button', { class: 'menu-item danger', type: 'button', onclick: () => {
+            if (pendentes && !confirm(`Você tem ${pendentes} lançamento(s) ainda não sincronizado(s). Se sair agora, eles podem se perder. Conecte-se à internet e sincronize antes. Sair mesmo assim?`)) return;
+            close();
+            logoutUser();
+          } }, [
+            el('span', { html: icon.logout(20) }),
+            el('div', {}, [el('strong', {}, 'Sair'), el('small', {}, pendentes ? `Atenção: ${pendentes} lançamento(s) ainda no celular.` : 'Encerra a sessão neste celular.')])
+          ])
+        ]),
+        el('div', { class: 'muted', style: { fontSize: '11.5px', textAlign: 'center' } }, `Versão ${VERSAO}`)
+      ],
+      footer: [button({ label: 'Fechar', variant: 'ghost', onClick: close })],
+      onClose: close
+    });
+    document.body.appendChild(backdrop);
+  }
 
   async function onSyncClick() {
     if (syncing) return;
@@ -138,7 +169,14 @@ export function mountMobileApp(root, { profile }) {
     }
   }
 
+  /** Monta a aba atual; se falhar, tenta de novo e, persistindo, mostra um aviso com "Tentar de novo". */
   function renderPage() {
+    protegerTela(`campo:${currentRoute().page || 'lancar'}`, montarPagina, () =>
+      mount(content, [avisoFalha({ aoTentar: renderPage, aoReparar: repararApp })])
+    );
+  }
+
+  function montarPagina() {
     const { page } = currentRoute();
     const active = ['consultar', 'estudos'].includes(page) ? page : 'lancar';
     updateActiveNav(active);
@@ -210,7 +248,7 @@ export function mountMobileApp(root, { profile }) {
     state.loaded.projetos = true;
     estudosPage?.update(estudosCtx());
     renderInitial();
-  });
+  }, profile.contratos || []);
   const unsubEstudos = subscribeMeusEstudos(profile.uid, (list) => {
     state.estudos = list;
     estudosPage?.update(estudosCtx());

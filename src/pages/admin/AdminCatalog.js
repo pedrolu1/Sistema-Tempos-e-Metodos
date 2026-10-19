@@ -194,7 +194,7 @@ export function renderCatalogPage(ctx) {
               el('td', {}, classificacaoBadge(a)),
               el('td', {}, padraoResumo(a)),
               el('td', {}, switchToggle(a.ativo !== false, (val) => updateAtividade(a.id, { ativo: val }))),
-              el('td', {}, rowActions(() => openAtividadeModal(a), () => removeItem(() => deleteAtividade(a.id), 'Atividade removida.')))
+              el('td', {}, rowActions(() => openAtividadeModal(a), () => removeItem(() => deleteAtividade(a.id, a.nome), 'Atividade removida.')))
             ])
           )
         )
@@ -220,7 +220,7 @@ export function renderCatalogPage(ctx) {
               el('td', { class: 'strong' }, c.nomeCompleto),
               el('td', {}, c.matricula || '—'),
               el('td', {}, switchToggle(c.ativo !== false, (val) => updateColaborador(c.id, { ativo: val }))),
-              el('td', {}, rowActions(() => openColaboradorModal(c), () => removeItem(() => deleteColaborador(c.id), 'Colaborador removido.')))
+              el('td', {}, rowActions(() => openColaboradorModal(c), () => removeItem(() => deleteColaborador(c.id, c.nomeCompleto), 'Colaborador removido.')))
             ])
           )
         )

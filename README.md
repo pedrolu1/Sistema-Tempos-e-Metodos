@@ -141,17 +141,19 @@ variáveis de ambiente em *Site settings → Environment variables*.
 
 ```
 src/
-  lib/            # Firebase, autenticação, coleções (colaboradores, atividades,
-                   # lançamentos), sincronização, exportação
-  components/      # UI reutilizável (botões, modais, seletor de colaboradores,
-                   # gráficos do dashboard)
+  lib/            # Firebase, coleções (projetos, lançamentos, estudos…), sincronização,
+                  # assistentes por regras, saúde/auto-recuperação, auditoria, backup,
+                  # exportação (Excel, PDF, Word, PowerPoint) e planilha de planejamento
+  components/     # UI reutilizável (botões, modais, assistente passo a passo, gráficos)
   pages/
-    AuthScreens.js       # login, cadastro, tela de aprovação pendente
-    mobile/               # app mobile: lançar + consultar/sincronizar
-    admin/                # painel admin: dashboard, lançamentos, cadastros, usuários
-  styles/          # design system (tokens, componentes, layout)
-  utils/           # helpers de DOM, formatação, ícones
-firestore.rules             # regras de segurança
+    AuthScreens.js   # login, cadastro, tela de aprovação pendente
+    mobile/          # app de campo: lançar, estudos, consultar
+    admin/           # painel: dashboard, assistente, projetos, estudos, lançamentos,
+                     # cadastros, setores, usuários, sistema
+    estudos/         # assistentes de cronoanálise, amostragem, MTM, takt/lead, histórico
+  styles/         # design system (tokens, componentes, layout)
+  utils/          # cálculos puros: formatação, planejamento, indicadores, estudos
+firestore.rules             # regras de segurança (validação de campos, papéis, contratos)
 firestore.indexes.json      # índices compostos necessários
 ```
 
@@ -160,10 +162,26 @@ firestore.indexes.json      # índices compostos necessários
 Não existem dois apps separados: é o **papel do usuário aprovado** que decide
 a experiência exibida após o login —
 
-- `role: "admin"` → painel administrador (dashboard, cadastros, usuários, todos
-  os lançamentos, exportação).
-- `role: "lider"` → app de lançamento (a "versão mobile"), pensado para uso no
-  celular mas funciona em qualquer tela.
+- `role: "admin"` → painel completo, inclusive aprovação de usuários.
+- `role: "planejador"` → painel (planejamento, estudos, indicadores), sem a
+  aprovação de usuários.
+- `role: "lider"` → app de campo (apontador). Em **Usuários** o admin pode limitar
+  os contratos que cada apontador enxerga.
+
+## Segurança e manutenção
+
+- **Regras do Firestore**: sempre que `firestore.rules` mudar, copie o arquivo
+  inteiro em Firestore Database → Regras → Publicar.
+- **Auditoria**: alterações e exclusões ficam registradas (página Sistema) e não
+  podem ser editadas nem apagadas.
+- **Saúde do app**: falhas e recuperações automáticas aparecem resumidas na
+  página Sistema e no Assistente.
+- **Backup**: página Sistema → "Fazer backup agora" (arquivo .json). O Assistente
+  lembra quando passa de 7 dias.
+- **App Check (opcional)**: no console do Firebase, App Check → registrar o app
+  web com reCAPTCHA v3; copie a *site key* e crie o secret
+  `VITE_APPCHECK_SITE_KEY` no GitHub (Settings → Secrets → Actions). Depois do
+  próximo deploy, ative a "aplicação obrigatória" do Firestore no App Check.
 
 ## Como funciona o offline-first
 

@@ -5,6 +5,11 @@ import { renderLogin, renderRegister, renderStatusScreen } from './pages/AuthScr
 import { mountMobileApp } from './pages/mobile/MobileApp.js';
 import { mountAdminApp } from './pages/admin/AdminApp.js';
 import { firebaseConfigured } from './lib/firebase.js';
+import { instalarCapturaGlobal, definirContextoSaude } from './lib/saude.js';
+import { definirUsuarioAuditoria } from './lib/auditoria.js';
+
+// primeira coisa: qualquer falha daqui em diante é registrada e, quando dá, recuperada
+instalarCapturaGlobal();
 
 // O service worker (PWA) atualiza sozinho em segundo plano (skipWaiting +
 // clientsClaim), mas isso só troca quem responde às próximas requisições —
@@ -69,6 +74,9 @@ function boot() {
 
   observeSession(({ user, profile }) => {
     teardown();
+    const ativo = profile && profile.status === 'aprovado' ? profile : null;
+    definirContextoSaude(ativo);
+    definirUsuarioAuditoria(ativo);
 
     if (!user) {
       if (authMode === 'register') renderRegister(app, { onSwitch: switchToLogin });

@@ -11,6 +11,7 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase.js';
 import { reportSnapshotError } from './errors.js';
+import { auditar, camposAlterados } from './auditoria.js';
 
 const COL = 'colaboradores';
 
@@ -30,9 +31,11 @@ export function addColaborador({ nomeCompleto, matricula, criadoPor }) {
 }
 
 export function updateColaborador(id, data) {
+  auditar('alterou', 'colaborador', id, camposAlterados(data));
   return updateDoc(doc(db, COL, id), data);
 }
 
-export function deleteColaborador(id) {
+export function deleteColaborador(id, nome = '') {
+  auditar('excluiu', 'colaborador', id, nome);
   return deleteDoc(doc(db, COL, id));
 }

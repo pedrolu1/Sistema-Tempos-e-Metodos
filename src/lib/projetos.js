@@ -6,12 +6,14 @@ import {
   deleteDoc,
   onSnapshot,
   query,
+  where,
   orderBy,
   serverTimestamp
 } from 'firebase/firestore';
 import { db } from './firebase.js';
 import { EFETIVO_CAMPOS, escalaInfo } from '../utils/format.js';
 import { reportSnapshotError } from './errors.js';
+import { auditar, camposAlterados } from './auditoria.js';
 
 /**
  * Estrutura de planejamento (estilo MS Project simplificado):
@@ -43,8 +45,14 @@ export const subscribeClientes = (cb) => subscribeCol('clientes', 'clientes', cb
 export function addCliente({ nome, unidade = '', criadoPor }) {
   return addDoc(collection(db, 'clientes'), { nome: nome.trim(), unidade: unidade.trim(), ativo: true, criadoPor, criadoEm: serverTimestamp() });
 }
-export const updateCliente = (id, data) => updateDoc(doc(db, 'clientes', id), data);
-export const deleteCliente = (id) => deleteDoc(doc(db, 'clientes', id));
+export function updateCliente(id, data) {
+  auditar('alterou', 'cliente', id, camposAlterados(data));
+  return updateDoc(doc(db, 'clientes', id), data);
+}
+export function deleteCliente(id, nome = '') {
+  auditar('excluiu', 'cliente', id, nome);
+  return deleteDoc(doc(db, 'clientes', id));
+}
 
 // ---------------- contratos ----------------
 export const subscribeContratos = (cb) => subscribeCol('contratos', 'contratos', cb);
@@ -60,11 +68,26 @@ export function addContrato({ nome, numero = '', clienteId, clienteNome, criadoP
     criadoEm: serverTimestamp()
   });
 }
-export const updateContrato = (id, data) => updateDoc(doc(db, 'contratos', id), data);
-export const deleteContrato = (id) => deleteDoc(doc(db, 'contratos', id));
+export function updateContrato(id, data) {
+  auditar('alterou', 'contrato', id, camposAlterados(data));
+  return updateDoc(doc(db, 'contratos', id), data);
+}
+export function deleteContrato(id, nome = '') {
+  auditar('excluiu', 'contrato', id, nome);
+  return deleteDoc(doc(db, 'contratos', id));
+}
 
 // ---------------- projetos ----------------
-export const subscribeProjetos = (cb) => subscribeCol('projetos', 'projetos', cb);
+/**
+ * Projetos. Com `contratos` (permissão por contrato do apontador), a consulta
+ * já vem filtrada — as regras do Firestore só liberam esses projetos para
+ * ele. Sem ordenação no servidor para não exigir índice composto.
+ */
+export function subscribeProjetos(cb, contratos = []) {
+  if (!contratos.length) return subscribeCol('projetos', 'projetos', cb);
+  const q = query(collection(db, 'projetos'), where('contratoId', 'in', contratos.slice(0, 30)));
+  return onSnapshot(q, (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => a.nome.localeCompare(b.nome))), reportSnapshotError('projetos'));
+}
 
 export const STATUS_PROJETO = [
   { value: 'planejado', label: 'Planejado', tone: 'info' },
@@ -135,13 +158,17 @@ export function addProjeto({ nome, contrato, cliente, setor = '', dataInicio = '
 }
 
 export function updateProjeto(id, data) {
+  auditar('alterou', 'projeto', id, camposAlterados(data));
   const patch = { ...data, atualizadoEm: serverTimestamp() };
   if (data.ficha) patch.ficha = sanitizeFicha(data.ficha);
   if (data.etapas) patch.etapas = data.etapas.map(sanitizeEtapa);
   return updateDoc(doc(db, 'projetos', id), patch);
 }
 
-export const deleteProjeto = (id) => deleteDoc(doc(db, 'projetos', id));
+export function deleteProjeto(id, nome = '') {
+  auditar('excluiu', 'projeto', id, nome);
+  return deleteDoc(doc(db, 'projetos', id));
+}
 
 /** Projetos que o apontador pode escolher em campo (não concluídos). */
 export function projetosAtivos(projetos) {

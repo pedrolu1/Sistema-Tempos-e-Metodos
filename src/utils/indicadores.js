@@ -84,5 +84,3 @@ export function planejadoRealPorProjeto(projetos, lancamentos) {
     })
     .filter((x) => x.iniciadas > 0);
 }
-
-export const fracao = (parte, total) => (total > 0 ? parte / total : 0);

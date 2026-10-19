@@ -84,7 +84,7 @@ export function renderHistoryPage({ lancamentos, atividades }) {
           variant: 'danger',
           onClick: async () => {
             try {
-              await deleteLancamento(l.id);
+              await deleteLancamento(l.id, `${l.atividadeNome || ''} · ${l.data} ${l.horaInicio}–${l.horaTermino}`);
               toast('Lançamento excluído.', 'ok');
             } catch {
               toast('Não foi possível excluir.', 'error');

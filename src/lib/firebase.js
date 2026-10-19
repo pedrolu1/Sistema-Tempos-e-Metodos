@@ -4,6 +4,7 @@ import {
   setPersistence,
   browserLocalPersistence
 } from 'firebase/auth';
+import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
 import {
   initializeFirestore,
   persistentLocalCache,
@@ -21,10 +22,19 @@ const firebaseConfig = {
 
 export const firebaseConfigured = Boolean(firebaseConfig.apiKey && firebaseConfig.projectId);
 
+// App Check (opcional): com a chave do reCAPTCHA v3 configurada, o Firebase
+// só aceita chamadas vindas deste app publicado — scripts e cópias do site
+// não conseguem usar o banco mesmo tendo as credenciais públicas.
+const appCheckKey = import.meta.env.VITE_APPCHECK_SITE_KEY;
+export const appCheckAtivo = Boolean(firebaseConfigured && appCheckKey);
+
 let app, auth, db;
 
 if (firebaseConfigured) {
   app = initializeApp(firebaseConfig);
+  if (appCheckAtivo) {
+    initializeAppCheck(app, { provider: new ReCaptchaV3Provider(appCheckKey), isTokenAutoRefreshEnabled: true });
+  }
 
   auth = getAuth(app);
   setPersistence(auth, browserLocalPersistence).catch(() => {});

@@ -1,5 +1,5 @@
 import { el, mount } from '../../utils/dom.js';
-import { field, button, segmented, card } from '../../components/ui.js';
+import { field, button, segmented, card, celebrar } from '../../components/ui.js';
 import { efetivoInputs } from '../../components/EfetivoInputs.js';
 import { icon } from '../../utils/icons.js';
 import { todayISO, nowHHMM, durationMinutes, formatMinutes, efetivoExcedido, efetivoTotal, escalaLabel } from '../../utils/format.js';
@@ -394,7 +394,7 @@ export function renderLaunchPage({ atividades, setores = [], projetos = [], lanc
             if (excedente > 0 || moExcede) {
               toast('Registrado com desperdício sinalizado. Ele sincroniza automaticamente.', 'warn', 4500);
             } else {
-              toast('Lançamento registrado! Ele sincroniza automaticamente.', 'ok');
+              celebrar('Lançamento registrado!', 'Ele sobe sozinho para o sistema — mesmo se estiver sem internet agora.');
             }
             mount(wrap, []);
             buildForm();

@@ -8,6 +8,7 @@ import {
 import { doc, setDoc, updateDoc, onSnapshot, serverTimestamp, collection } from 'firebase/firestore';
 import { auth, db } from './firebase.js';
 import { reportSnapshotError } from './errors.js';
+import { auditar } from './auditoria.js';
 
 const USERS = 'usuarios';
 
@@ -124,9 +125,17 @@ export function subscribeAllUsers(callback) {
 }
 
 export function setUserStatus(uid, status) {
+  auditar('alterou', 'usuário', uid, `situação → ${status}`);
   return updateDoc(doc(db, USERS, uid), { status });
 }
 
 export function setUserRole(uid, role) {
+  auditar('alterou', 'usuário', uid, `papel → ${role}`);
   return updateDoc(doc(db, USERS, uid), { role });
+}
+
+/** Contratos que o apontador pode ver ([] = todos). */
+export function setUserContratos(uid, contratos) {
+  auditar('alterou', 'usuário', uid, `contratos → ${contratos.length ? contratos.length : 'todos'}`);
+  return updateDoc(doc(db, USERS, uid), { contratos });
 }
