@@ -15,10 +15,13 @@ import { renderUsersPage } from './AdminUsers.js';
 import { renderCatalogPage } from './AdminCatalog.js';
 import { renderSetoresPage } from './AdminSetores.js';
 import { renderProjetosPage } from './AdminProjetos.js';
+import { renderEstudosPage } from '../estudos/EstudosPage.js';
+import { subscribeEstudos } from '../../lib/estudos.js';
 
 const NAV = [
   { page: 'dashboard', label: 'Dashboard', icon: icon.grid(18) },
   { page: 'projetos', label: 'Projetos', icon: icon.folder(18) },
+  { page: 'estudos', label: 'Estudos', icon: icon.target(18) },
   { page: 'lancamentos', label: 'Lançamentos', icon: icon.clock(18) },
   { page: 'cadastros', label: 'Cadastros', icon: icon.briefcase(18) },
   { page: 'setores', label: 'Setores', icon: icon.building(18) },
@@ -28,6 +31,7 @@ const NAV = [
 const TITLES = {
   dashboard: ['Dashboard', 'Indicadores de produtividade em tempo real'],
   projetos: ['Projetos', 'Planejamento por cliente e contrato — planejado × real'],
+  estudos: ['Estudos de tempos', 'Cronoanálise, amostragem, MTM, takt/lead time e tempos históricos'],
   lancamentos: ['Lançamentos', 'Todos os apontamentos coletados em campo'],
   cadastros: ['Cadastros', 'Atividades, improdutividades e colaboradores'],
   setores: ['Setores', 'Configuração de turno e capacidade por área'],
@@ -39,8 +43,8 @@ export function mountAdminApp(root, { profile }) {
   // o planejador vê o mesmo painel, menos a aprovação de usuários (só admin)
   const navItems = NAV.filter((n) => isAdmin || !n.soAdmin);
   const state = {
-    colaboradores: [], atividades: [], setores: [], lancamentos: [], usuarios: [], clientes: [], contratos: [], projetos: [],
-    loaded: { c: false, a: false, s: false, l: false, u: !isAdmin, cl: false, ct: false, p: false }
+    colaboradores: [], atividades: [], setores: [], lancamentos: [], usuarios: [], clientes: [], contratos: [], projetos: [], estudos: [],
+    loaded: { c: false, a: false, s: false, l: false, u: !isAdmin, cl: false, ct: false, p: false, e: false }
   };
 
   const content = el('div', { class: 'desktop-content' });
@@ -103,6 +107,7 @@ export function mountAdminApp(root, { profile }) {
   const factories = {
     dashboard: renderDashboardPage,
     projetos: renderProjetosPage,
+    estudos: (c) => renderEstudosPage({ ...c, gestor: true }),
     lancamentos: renderRecordsPage,
     cadastros: renderCatalogPage,
     setores: renderSetoresPage,
@@ -121,6 +126,7 @@ export function mountAdminApp(root, { profile }) {
       clientes: state.clientes,
       contratos: state.contratos,
       projetos: state.projetos,
+      estudos: state.estudos,
       profile
     };
   }
@@ -188,7 +194,8 @@ export function mountAdminApp(root, { profile }) {
   const unsubPlan = [
     subscribeClientes((list) => { state.clientes = list; state.loaded.cl = true; renderPage(); }),
     subscribeContratos((list) => { state.contratos = list; state.loaded.ct = true; renderPage(); }),
-    subscribeProjetos((list) => { state.projetos = list; state.loaded.p = true; renderPage(); })
+    subscribeProjetos((list) => { state.projetos = list; state.loaded.p = true; renderPage(); }),
+    subscribeEstudos((list) => { state.estudos = list; state.loaded.e = true; renderPage(); })
   ];
   const unsubRoute = onRouteChange(renderPage);
 

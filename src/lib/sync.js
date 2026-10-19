@@ -1,4 +1,5 @@
 import { waitForPendingWrites } from 'firebase/firestore';
+import { toast } from './toast.js';
 import { db } from './firebase.js';
 
 export function isOnline() {
@@ -28,4 +29,35 @@ export async function syncNow() {
   }
   await waitForPendingWrites(db);
   return { ok: true };
+}
+
+/**
+ * As escritas do Firestore (addDoc/updateDoc) só resolvem quando o SERVIDOR
+ * confirma — sem internet, a promessa fica pendurada para sempre, mesmo com
+ * o dado já salvo no cache do aparelho (e sincronizando sozinho depois).
+ * Isto espera no máximo `ms`: se o servidor não respondeu até lá, considera
+ * a gravação local suficiente e segue. Um erro que chegue depois (ex.:
+ * regra de segurança recusou) ainda é avisado ao usuário.
+ */
+export function gravacaoLocal(promise, contexto = 'registro', ms = 1500) {
+  let encerrado = false;
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      encerrado = true;
+      resolve(null);
+    }, ms);
+    promise.then(
+      (v) => {
+        clearTimeout(timer);
+        if (!encerrado) resolve(v);
+      },
+      (err) => {
+        clearTimeout(timer);
+        if (!encerrado) reject(err);
+        // eslint-disable-next-line no-console
+        else console.error(`[Firestore] ${contexto}:`, err);
+        if (encerrado) toast(`O servidor recusou um ${contexto} salvo offline. Abra o app com internet e confira.`, 'error', 7000);
+      }
+    );
+  });
 }

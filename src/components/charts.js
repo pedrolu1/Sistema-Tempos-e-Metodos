@@ -292,3 +292,37 @@ function niceCeil(v) {
   const step = norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10;
   return step * magnitude;
 }
+
+/**
+ * Barras horizontais com uma linha de referência (ex.: takt time). Série
+ * única na cor de marca; quem passa da referência ganha a cor de alerta E
+ * a etiqueta "acima" em texto — a cor nunca é o único sinal.
+ */
+export function referenceBars({ data, reference, referenceLabel, valueFmt = formatMinutes, aboveLabel = 'acima' }) {
+  if (!data.length) {
+    return el('div', { style: { padding: '28px 0', textAlign: 'center', color: 'var(--text-3)', fontSize: '13px' } }, 'Sem dados.');
+  }
+  const max = Math.max(...data.map((d) => d.value), reference, 1) * 1.05;
+  const refPct = (reference / max) * 100;
+  return el('div', { class: 'ref-bars' }, [
+    el('div', { class: 'ref-legend' }, [el('span', { class: 'ref-swatch' }), `${referenceLabel}: ${valueFmt(reference)}`]),
+    ...data.map((d) => {
+      const acima = d.value > reference;
+      return el('div', {
+        class: 'ref-row',
+        onmouseenter: (e) => showTooltip(e, [[d.label, valueFmt(d.value)], [referenceLabel, valueFmt(reference)]]),
+        onmousemove: moveTooltip,
+        onmouseleave: hideTooltip
+      }, [
+        el('div', { class: 'ref-row-head' }, [
+          el('span', { class: 'ref-label' }, d.label),
+          el('span', { class: 'mono ref-value' }, [acima ? el('em', {}, aboveLabel) : null, valueFmt(d.value)])
+        ]),
+        el('div', { class: 'ref-track' }, [
+          el('div', { class: `ref-bar${acima ? ' over' : ''}`, style: { width: `${Math.max((d.value / max) * 100, 2)}%` } }),
+          el('div', { class: 'ref-line', style: { left: `${refPct}%` } })
+        ])
+      ]);
+    })
+  ]);
+}

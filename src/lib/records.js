@@ -14,6 +14,7 @@ import {
 import { db } from './firebase.js';
 import { durationMinutes, EFETIVO_CAMPOS, efetivoExcedido } from '../utils/format.js';
 import { reportSnapshotError } from './errors.js';
+import { gravacaoLocal } from './sync.js';
 
 const COL = 'lancamentos';
 
@@ -89,25 +90,25 @@ function buildPayload(input) {
 }
 
 export function createLancamento(input) {
-  return addDoc(collection(db, COL), {
+  return gravacaoLocal(addDoc(collection(db, COL), {
     ...buildPayload(input),
     criadoPorUid: input.criadoPorUid,
     criadoPorNome: input.criadoPorNome,
     criadoEm: serverTimestamp(),
     criadoEmLocal: Date.now(),
     atualizadoEm: serverTimestamp()
-  });
+  }), 'lançamento');
 }
 
 export function updateLancamento(id, input) {
-  return updateDoc(doc(db, COL, id), {
+  return gravacaoLocal(updateDoc(doc(db, COL, id), {
     ...buildPayload(input),
     atualizadoEm: serverTimestamp()
-  });
+  }), 'lançamento');
 }
 
 export function deleteLancamento(id) {
-  return deleteDoc(doc(db, COL, id));
+  return gravacaoLocal(deleteDoc(doc(db, COL, id)), 'lançamento');
 }
 
 function mapSnapshot(snap) {

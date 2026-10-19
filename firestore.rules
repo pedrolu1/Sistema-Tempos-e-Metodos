@@ -80,6 +80,17 @@ service cloud.firestore {
       allow write: if isGestor();
     }
 
+    // estudos de tempos (cronoanálise, amostragem, MTM, takt/lead,
+    // histórico) — quem faz o estudo é dono dele; admin/planejador veem
+    // e mantêm todos.
+    match /estudos/{id} {
+      allow read: if isAprovado() && (isGestor() || resource.data.criadoPorUid == request.auth.uid);
+      allow create: if isAprovado()
+        && request.resource.data.criadoPorUid == request.auth.uid;
+      allow update, delete: if isAprovado()
+        && (isGestor() || resource.data.criadoPorUid == request.auth.uid);
+    }
+
     // ---------------------------------------------------------------
     // lancamentos — cada líder cria e mantém seus próprios apontamentos;
     // o admin tem acesso total. A trava de "não editar no mobile após

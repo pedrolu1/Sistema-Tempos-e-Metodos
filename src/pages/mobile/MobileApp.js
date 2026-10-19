@@ -4,12 +4,14 @@ import { navigate, currentRoute, onRouteChange } from '../../router.js';
 import { subscribeAtividades } from '../../lib/activities.js';
 import { subscribeSetores } from '../../lib/setores.js';
 import { subscribeProjetos } from '../../lib/projetos.js';
+import { subscribeMeusEstudos } from '../../lib/estudos.js';
 import { subscribeMeusLancamentos } from '../../lib/records.js';
 import { syncNow, isOnline, onConnectivityChange } from '../../lib/sync.js';
 import { logoutUser } from '../../lib/auth.js';
 import { toast } from '../../lib/toast.js';
 import { renderLaunchPage } from './MobileLaunch.js';
 import { renderHistoryPage } from './MobileHistory.js';
+import { renderEstudosPage } from '../estudos/EstudosPage.js';
 
 export function mountMobileApp(root, { profile }) {
   const state = {
@@ -17,10 +19,12 @@ export function mountMobileApp(root, { profile }) {
     setores: [],
     projetos: [],
     lancamentos: [],
+    estudos: [],
     loaded: { atividades: false, setores: false, projetos: false, lancamentos: false },
     rendered: false
   };
   let historyRefresh = null;
+  let estudosPage = null; // instância viva da aba Estudos (recebe dados novos sem perder o assistente aberto)
   let syncing = false;
 
   const content = el('div', { class: 'mobile-content' });
@@ -32,6 +36,7 @@ export function mountMobileApp(root, { profile }) {
   ]);
 
   const navLancar = navItem(icon.clock(22), 'Lançar', () => navigate('lancar'));
+  const navEstudos = navItem(icon.target(22), 'Estudos', () => navigate('estudos'));
   const navHistorico = navItem(icon.list(22), 'Consultar', () => navigate('consultar'));
 
   const syncBadge = el('span', { class: 'sync-count', style: { display: 'none' } }, '0');
@@ -63,7 +68,7 @@ export function mountMobileApp(root, { profile }) {
     ]),
     banner,
     content,
-    el('div', { class: 'mobile-nav' }, [navLancar, syncNavWrap, navHistorico])
+    el('div', { class: 'mobile-nav' }, [navLancar, navEstudos, syncNavWrap, navHistorico])
   ]);
 
   mount(root, [shell]);
@@ -104,8 +109,9 @@ export function mountMobileApp(root, { profile }) {
 
   function updateActiveNav(page) {
     navLancar.classList.toggle('active', page === 'lancar');
-    navHistorico.classList.toggle('active', page !== 'lancar');
-    topTitle.firstChild.textContent = page === 'consultar' ? 'Meus lançamentos' : 'Lançar';
+    navEstudos.classList.toggle('active', page === 'estudos');
+    navHistorico.classList.toggle('active', page === 'consultar');
+    topTitle.firstChild.textContent = { consultar: 'Meus lançamentos', estudos: 'Estudos' }[page] || 'Lançar';
   }
 
   function applySyncVisual() {
@@ -133,9 +139,13 @@ export function mountMobileApp(root, { profile }) {
 
   function renderPage() {
     const { page } = currentRoute();
-    const active = page === 'consultar' ? 'consultar' : 'lancar';
+    const active = ['consultar', 'estudos'].includes(page) ? page : 'lancar';
     updateActiveNav(active);
     historyRefresh = null;
+    if (estudosPage) {
+      estudosPage.destruir();
+      estudosPage = null;
+    }
 
     if (active === 'lancar') {
       mount(content, [
@@ -146,6 +156,9 @@ export function mountMobileApp(root, { profile }) {
           profile
         })
       ]);
+    } else if (active === 'estudos') {
+      estudosPage = renderEstudosPage(estudosCtx());
+      mount(content, [estudosPage.node]);
     } else {
       const { node, refresh } = renderHistoryPage({
         lancamentos: state.lancamentos,
@@ -154,6 +167,10 @@ export function mountMobileApp(root, { profile }) {
       mount(content, [node]);
       historyRefresh = refresh;
     }
+  }
+
+  function estudosCtx() {
+    return { projetos: state.projetos, atividades: state.atividades, lancamentos: state.lancamentos, estudos: state.estudos, profile, gestor: false };
   }
 
   /**
@@ -188,7 +205,12 @@ export function mountMobileApp(root, { profile }) {
   const unsubProjetos = subscribeProjetos((list) => {
     state.projetos = list;
     state.loaded.projetos = true;
+    estudosPage?.update(estudosCtx());
     renderInitial();
+  });
+  const unsubEstudos = subscribeMeusEstudos(profile.uid, (list) => {
+    state.estudos = list;
+    estudosPage?.update(estudosCtx());
   });
   const unsubLanc = subscribeMeusLancamentos(profile.uid, (list) => {
     state.lancamentos = list;
@@ -207,7 +229,9 @@ export function mountMobileApp(root, { profile }) {
     unsubAtiv();
     unsubSetores();
     unsubProjetos();
+    unsubEstudos();
     unsubLanc();
+    estudosPage?.destruir();
     unsubRoute();
     unsubConn();
   };
