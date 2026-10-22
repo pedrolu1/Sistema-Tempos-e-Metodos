@@ -132,16 +132,17 @@ em *Project Settings → Environment Variables* com os mesmos valores do `.env`.
 ### Netlify (para o hub do planejamento)
 
 O projeto já existe na Netlify: **reframax-tempos-e-metodos**
-(https://reframax-tempos-e-metodos.netlify.app). Falta ligá-lo ao GitHub, uma vez só:
+(https://reframax-tempos-e-metodos.netlify.app). O mesmo workflow do GitHub Actions
+que publica no GitHub Pages publica também na Netlify, reaproveitando os secrets do
+Firebase. Falta só uma chave de acesso, uma vez:
 
-1. Em app.netlify.com, abra o projeto → *Project configuration → Build & deploy →
-   Continuous deployment → Link repository* → GitHub → `Sistema-Tempos-e-Metodos`.
-2. Em *Branch to deploy*, escolha `claude/industrial-time-methods-system-2sgf0q`.
-   Build e pasta já vêm do `netlify.toml`.
-3. Em *Project configuration → Environment variables*, crie as mesmas 6 chaves
-   `VITE_FIREBASE_*` do `.env` (e `VITE_APPCHECK_SITE_KEY`, se usar App Check).
-4. Em *Deploys*, clique em *Trigger deploy*. Depois disso, cada push publica sozinho
-   nos dois endereços (GitHub Pages e Netlify).
+1. Na Netlify: avatar → *User settings → Applications → Personal access tokens →
+   New access token*. Dê um nome (ex.: "GitHub REFRAMAX"), escolha a validade e copie o token.
+2. No GitHub: `Settings → Secrets and variables → Actions → New repository secret`,
+   nome `NETLIFY_AUTH_TOKEN`, valor = o token copiado.
+3. Em `Actions → Deploy REFRAMAX → Run workflow` (ou qualquer novo push).
+
+Sem esse secret, o passo da Netlify é pulado e o GitHub Pages continua normal.
 
 `public/_headers` libera o app para ser exibido dentro do hub
 (`frame-ancestors`) e bloqueia qualquer outro site. Se o hub mudar de endereço,

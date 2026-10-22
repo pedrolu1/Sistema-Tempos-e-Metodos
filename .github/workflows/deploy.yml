@@ -45,6 +45,21 @@ jobs:
         with:
           path: dist
 
+      # Mesma versão publicada na Netlify (https://reframax-tempos-e-metodos.netlify.app),
+      # reaproveitando as credenciais do Firebase acima. Sem o secret
+      # NETLIFY_AUTH_TOKEN este passo é pulado; se falhar, o GitHub Pages segue normal.
+      - name: Publicar na Netlify
+        continue-on-error: true
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: 43bcdadd-1e0c-4860-9beb-53b309fae2e5
+        run: |
+          if [ -z "$NETLIFY_AUTH_TOKEN" ]; then
+            echo "::warning::Secret NETLIFY_AUTH_TOKEN não configurado: publicação na Netlify pulada."
+            exit 0
+          fi
+          npx --yes netlify-cli@17 deploy --dir=dist --prod --message "${GITHUB_SHA::7}"
+
   deploy:
     needs: build
     runs-on: ubuntu-latest
