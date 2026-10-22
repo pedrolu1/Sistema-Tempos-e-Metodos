@@ -1,0 +1,13 @@
+# Cabeçalhos da Netlify (copiados para dist/ no build).
+# frame-ancestors: só o próprio app e o hub do planejamento podem exibi-lo
+# dentro de outra página (iframe). Se o hub mudar de endereço, atualize aqui.
+/*
+  Content-Security-Policy: frame-ancestors 'self' https://hubplanejamento.netlify.app
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/sw.js
+  Cache-Control: public, max-age=0, must-revalidate

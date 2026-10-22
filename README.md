@@ -129,10 +129,37 @@ Importe o repositório em [vercel.com/new](https://vercel.com/new). O
 `vercel.json` já define build e output. Adicione as variáveis `VITE_FIREBASE_*`
 em *Project Settings → Environment Variables* com os mesmos valores do `.env`.
 
-### Netlify
+### Netlify (para o hub do planejamento)
 
-Importe o repositório — `netlify.toml` já define o build. Adicione as mesmas
-variáveis de ambiente em *Site settings → Environment variables*.
+O projeto já existe na Netlify: **reframax-tempos-e-metodos**
+(https://reframax-tempos-e-metodos.netlify.app). Falta ligá-lo ao GitHub, uma vez só:
+
+1. Em app.netlify.com, abra o projeto → *Project configuration → Build & deploy →
+   Continuous deployment → Link repository* → GitHub → `Sistema-Tempos-e-Metodos`.
+2. Em *Branch to deploy*, escolha `claude/industrial-time-methods-system-2sgf0q`.
+   Build e pasta já vêm do `netlify.toml`.
+3. Em *Project configuration → Environment variables*, crie as mesmas 6 chaves
+   `VITE_FIREBASE_*` do `.env` (e `VITE_APPCHECK_SITE_KEY`, se usar App Check).
+4. Em *Deploys*, clique em *Trigger deploy*. Depois disso, cada push publica sozinho
+   nos dois endereços (GitHub Pages e Netlify).
+
+`public/_headers` libera o app para ser exibido dentro do hub
+(`frame-ancestors`) e bloqueia qualquer outro site. Se o hub mudar de endereço,
+atualize essa linha.
+
+**No hub**, use um destes dois jeitos (o hub está em outra conta Netlify, então
+não dá para colocar o app num subcaminho do endereço do hub):
+
+- Botão/cartão com link (recomendado, principalmente no celular: instala, funciona
+  offline e ocupa a tela toda):
+  `<a href="https://reframax-tempos-e-metodos.netlify.app/" target="_blank" rel="noopener">REFRAMAX Tempos & Métodos</a>`
+- Embutido na página do hub (bom para o painel no computador):
+  `<iframe src="https://reframax-tempos-e-metodos.netlify.app/" style="width:100%;height:100vh;border:0" allow="clipboard-write; fullscreen"></iframe>`
+  Dentro do hub, o login fica separado do app aberto direto, e não aparece a opção de instalar.
+
+Se o login falhar no endereço novo: no Firebase, *Authentication → Settings →
+Authorized domains*, adicione `reframax-tempos-e-metodos.netlify.app`; se usar App
+Check, inclua o mesmo domínio na chave do reCAPTCHA.
 
 ### Firebase Hosting
 
