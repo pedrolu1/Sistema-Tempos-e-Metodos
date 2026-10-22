@@ -92,64 +92,36 @@ precisa ser liberado manualmente, uma única vez:
 
 ## 5. Publicar (deploy)
 
-O projeto já vem com configuração pronta para os principais provedores —
-escolha um. Em qualquer um deles, o app usa roteamento por hash (`#/...`),
-então não é necessário configurar rewrites de SPA, e o build já usa caminhos
-relativos (`base: './'`), então funciona tanto na raiz de um domínio quanto
-num subcaminho (GitHub Pages de projeto).
+O app fica na **Netlify**: https://reframax-tempos-e-metodos.netlify.app
+(projeto `reframax-tempos-e-metodos`). A cada push em `main` ou na branch
+`claude/industrial-time-methods-system-2sgf0q`, o workflow
+`.github/workflows/deploy.yml` faz o build com as credenciais do Firebase e
+publica na Netlify. O app usa roteamento por hash (`#/...`) e caminhos
+relativos (`base: './'`), então não precisa de regras de redirecionamento.
 
-### GitHub Pages (já configurado — só falta ligar)
+Secrets do GitHub usados (`Settings → Secrets and variables → Actions`):
 
-O repositório já inclui `.github/workflows/deploy.yml`: a cada push em `main`
-(ou na branch `claude/industrial-time-methods-system-2sgf0q`), o GitHub Actions
-builda o projeto e publica o resultado no GitHub Pages automaticamente. Faltam
-dois passos únicos, que só o dono do repositório consegue fazer (não há API
-para isso):
+- `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`,
+  `VITE_FIREBASE_STORAGE_BUCKET`, `VITE_FIREBASE_MESSAGING_SENDER_ID`,
+  `VITE_FIREBASE_APP_ID` — os mesmos valores do `.env`;
+- `VITE_APPCHECK_SITE_KEY` (opcional);
+- `NETLIFY_AUTH_TOKEN` — chave da Netlify (avatar → *User settings → Applications →
+  Personal access tokens → New access token*). Se vencer, crie outra e troque o secret.
 
-1. **Ativar o Pages:** em `Settings → Pages`, em "Build and deployment →
-   Source", selecione **GitHub Actions**. Sem isso o workflow roda mas o
-   último passo (publicar) falha.
-2. **Adicionar as credenciais do Firebase como secrets:** em
-   `Settings → Secrets and variables → Actions → New repository secret`,
-   crie um secret para cada uma destas chaves (os mesmos valores do seu
-   `.env`, veja o passo 1 e 2 deste README):
-   `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`,
-   `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_STORAGE_BUCKET`,
-   `VITE_FIREBASE_MESSAGING_SENDER_ID`, `VITE_FIREBASE_APP_ID`.
+Para publicar sem push: `Actions → Deploy REFRAMAX → Run workflow`.
 
-Depois de configurar os dois itens acima, vá em `Actions → Deploy REFRAMAX →
-Run workflow` para disparar manualmente (ou dê qualquer novo push). O link
-final aparece em `Settings → Pages` e no resumo da execução do workflow.
-Sem os secrets, o site sobe do mesmo jeito, só que mostrando a tela de
-"Configuração pendente" até você preenchê-los.
+**Endereço antigo (GitHub Pages):** não recebe mais versões novas. A última versão
+publicada lá envia o que estiver pendente no aparelho e leva a pessoa para a
+Netlify, junto com os lançamentos "em andamento" e os rascunhos
+(`src/lib/mudancaEndereco.js`). Quando todos já estiverem usando o endereço novo,
+dá para desligar de vez em `Settings → Pages`.
 
-### Vercel
-
-Importe o repositório em [vercel.com/new](https://vercel.com/new). O
-`vercel.json` já define build e output. Adicione as variáveis `VITE_FIREBASE_*`
-em *Project Settings → Environment Variables* com os mesmos valores do `.env`.
-
-### Netlify (para o hub do planejamento)
-
-O projeto já existe na Netlify: **reframax-tempos-e-metodos**
-(https://reframax-tempos-e-metodos.netlify.app). O mesmo workflow do GitHub Actions
-que publica no GitHub Pages publica também na Netlify, reaproveitando os secrets do
-Firebase. Falta só uma chave de acesso, uma vez:
-
-1. Na Netlify: avatar → *User settings → Applications → Personal access tokens →
-   New access token*. Dê um nome (ex.: "GitHub REFRAMAX"), escolha a validade e copie o token.
-2. No GitHub: `Settings → Secrets and variables → Actions → New repository secret`,
-   nome `NETLIFY_AUTH_TOKEN`, valor = o token copiado.
-3. Em `Actions → Deploy REFRAMAX → Run workflow` (ou qualquer novo push).
-
-Sem esse secret, o passo da Netlify é pulado e o GitHub Pages continua normal.
+### No hub do planejamento
 
 `public/_headers` libera o app para ser exibido dentro do hub
 (`frame-ancestors`) e bloqueia qualquer outro site. Se o hub mudar de endereço,
-atualize essa linha.
-
-**No hub**, use um destes dois jeitos (o hub está em outra conta Netlify, então
-não dá para colocar o app num subcaminho do endereço do hub):
+atualize essa linha. No hub, use um destes dois jeitos (o hub está em outra conta
+Netlify, então não dá para colocar o app num subcaminho do endereço do hub):
 
 - Botão/cartão com link (recomendado, principalmente no celular: instala, funciona
   offline e ocupa a tela toda):
@@ -158,13 +130,9 @@ não dá para colocar o app num subcaminho do endereço do hub):
   `<iframe src="https://reframax-tempos-e-metodos.netlify.app/" style="width:100%;height:100vh;border:0" allow="clipboard-write; fullscreen"></iframe>`
   Dentro do hub, o login fica separado do app aberto direto, e não aparece a opção de instalar.
 
-Se o login falhar no endereço novo: no Firebase, *Authentication → Settings →
-Authorized domains*, adicione `reframax-tempos-e-metodos.netlify.app`; se usar App
-Check, inclua o mesmo domínio na chave do reCAPTCHA.
-
-### Firebase Hosting
-
-`firebase deploy --only hosting` (depois de `npm run build`).
+Se o login falhar num endereço novo: no Firebase, *Authentication → Settings →
+Authorized domains*, adicione o domínio; se usar App Check, inclua o mesmo domínio
+na chave do reCAPTCHA.
 
 ## Estrutura do projeto
 

@@ -1,5 +1,8 @@
 name: Deploy REFRAMAX
 
+# Publica o app na Netlify: https://reframax-tempos-e-metodos.netlify.app
+# (o GitHub Pages foi desligado; o endereço antigo só redireciona para cá)
+
 on:
   push:
     branches:
@@ -9,16 +12,17 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: pages
+  group: netlify
   cancel-in-progress: false
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
+    environment:
+      name: netlify
+      url: https://reframax-tempos-e-metodos.netlify.app
     steps:
       - uses: actions/checkout@v4
 
@@ -41,31 +45,8 @@ jobs:
           # opcional: chave do reCAPTCHA v3 para o App Check (vazia = desligado)
           VITE_APPCHECK_SITE_KEY: ${{ secrets.VITE_APPCHECK_SITE_KEY }}
 
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: dist
-
-      # Mesma versão publicada na Netlify (https://reframax-tempos-e-metodos.netlify.app),
-      # reaproveitando as credenciais do Firebase acima. Sem o secret
-      # NETLIFY_AUTH_TOKEN este passo é pulado; se falhar, o GitHub Pages segue normal.
       - name: Publicar na Netlify
-        continue-on-error: true
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: 43bcdadd-1e0c-4860-9beb-53b309fae2e5
-        run: |
-          if [ -z "$NETLIFY_AUTH_TOKEN" ]; then
-            echo "::warning::Secret NETLIFY_AUTH_TOKEN não configurado: publicação na Netlify pulada."
-            exit 0
-          fi
-          npx --yes netlify-cli@17 deploy --dir=dist --prod --message "${GITHUB_SHA::7}"
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+        run: npx --yes netlify-cli@17 deploy --dir=dist --prod --message "${GITHUB_SHA::7}"
