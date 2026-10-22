@@ -5,9 +5,11 @@ import { renderLogin, renderRegister, renderStatusScreen } from './pages/AuthScr
 import { firebaseConfigured } from './lib/firebase.js';
 import { instalarCapturaGlobal, definirContextoSaude } from './lib/saude.js';
 import { definirUsuarioAuditoria } from './lib/auditoria.js';
+import { ENDERECO_NOVO, noEnderecoAntigo, irParaEnderecoNovo, receberDoEnderecoAntigo } from './lib/mudancaEndereco.js';
 
 // primeira coisa: qualquer falha daqui em diante é registrada e, quando dá, recuperada
 instalarCapturaGlobal();
+receberDoEnderecoAntigo();
 
 // O service worker (PWA) atualiza sozinho em segundo plano (skipWaiting +
 // clientsClaim), mas isso só troca quem responde às próximas requisições —
@@ -66,13 +68,40 @@ function renderMisconfigured() {
   ]);
 }
 
+function renderMudanca() {
+  mount(app, [
+    el('div', { class: 'auth-screen' }, [
+      el('div', { class: 'auth-card' }, [
+        el('div', { class: 'auth-pending' }, [
+          el('h3', {}, 'O app mudou de endereço'),
+          el('p', { style: { color: 'var(--text-2)', fontSize: '13.5px' } }, 'Enviando o que estava pendente e abrindo o endereço novo. Lá, entre de novo com sua matrícula e senha. Se você usa o app instalado, instale de novo pelo endereço novo e apague o antigo.'),
+          el('a', { class: 'btn btn-primary btn-block', href: ENDERECO_NOVO }, 'Abrir o endereço novo')
+        ])
+      ])
+    ])
+  ]);
+}
+
 function boot() {
   if (!firebaseConfigured) {
     renderMisconfigured();
     return;
   }
 
+  let mudando = false;
   observeSession(({ user, profile }) => {
+    // endereço antigo (GitHub Pages): com internet, envia o pendente e vai para a Netlify;
+    // sem internet, o app segue funcionando aqui e muda quando a rede voltar
+    if (noEnderecoAntigo && navigator.onLine) {
+      if (!mudando) {
+        mudando = true;
+        teardown();
+        renderMudanca();
+        irParaEnderecoNovo({ comSessao: !!user });
+      }
+      return;
+    }
+    if (noEnderecoAntigo) window.addEventListener('online', () => location.reload(), { once: true });
     teardown();
     perfilAtual = null;
     const ativo = profile && profile.status === 'aprovado' ? profile : null;
