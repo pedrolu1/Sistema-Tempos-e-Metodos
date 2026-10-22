@@ -50,12 +50,12 @@ export function spinner() {
   return el('div', { class: 'spinner' });
 }
 
-export function modal({ title, body, footer, onClose }) {
+export function modal({ title, body, footer, onClose, largo = false }) {
   const backdrop = el('div', { class: 'modal-backdrop' });
   const stop = (e) => e.stopPropagation();
   const box = el(
     'div',
-    { class: 'modal', onclick: stop },
+    { class: `modal${largo ? ' modal-lg' : ''}`, onclick: stop },
     [
       el('div', { class: 'modal-header' }, [
         el('h3', {}, title),
@@ -67,10 +67,17 @@ export function modal({ title, body, footer, onClose }) {
   );
   backdrop.appendChild(box);
   backdrop.addEventListener('click', onClose);
+  // Esc fecha; o ouvinte se remove sozinho quando o modal sai da tela por
+  // qualquer caminho (antes ficava acumulado a cada modal aberto)
   document.addEventListener('keydown', function esc(e) {
+    if (!backdrop.isConnected) {
+      if (backdrop.dataset.aberto) document.removeEventListener('keydown', esc);
+      return;
+    }
+    backdrop.dataset.aberto = '1';
     if (e.key === 'Escape') {
-      onClose();
       document.removeEventListener('keydown', esc);
+      onClose();
     }
   });
   return backdrop;

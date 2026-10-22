@@ -1,7 +1,7 @@
 import { collection, doc, writeBatch, getDocs, query, where, serverTimestamp } from 'firebase/firestore';
 import { db } from './firebase.js';
 import { buildPayload } from './records.js';
-import { sanitizeEtapa } from './projetos.js';
+import { sanitizeEtapa, sanitizeImprodutividade } from './projetos.js';
 import { auditar } from './auditoria.js';
 import { todayISO } from '../utils/format.js';
 import { toleranciasPadrao } from '../utils/estudos.js';
@@ -146,7 +146,9 @@ export function montarCenario(profile, novaRef = (col) => doc(collection(db, col
     const etapas = cfg.etapas.map(([k]) => sanitizeEtapa({ atividadeId: ativ[k].id, codigo: `DEMO-${k}`, nome: ativ[k].nome, classificacao: ativ[k].classificacao, duracaoMin: ativ[k].min, efetivo: ativ[k].ef }));
     const projetoId = novo('projetos', {
       nome: cfg.nome, contratoId: contratos[cfg.contrato], contratoNome: cfg.contrato, clienteId, clienteNome, setor: cfg.setor,
-      dataInicio: diaISO(cfg.inicio), dataFim: diaISO(cfg.fim), status: cfg.status, ficha: cfg.ficha, etapas, ...base, atualizadoEm: serverTimestamp()
+      dataInicio: diaISO(cfg.inicio), dataFim: diaISO(cfg.fim), status: cfg.status, ficha: cfg.ficha, etapas,
+      improdutividades: [...new Set(cfg.improds)].map((k) => sanitizeImprodutividade({ atividadeId: ativ[k].id, nome: ativ[k].nome, classificacao: ativ[k].classificacao })),
+      ...base, atualizadoEm: serverTimestamp()
     });
     const projeto = { id: projetoId, cfg, etapas };
     projetos.push(projeto);

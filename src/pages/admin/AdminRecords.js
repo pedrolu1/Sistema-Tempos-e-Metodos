@@ -1,16 +1,14 @@
 import { el, mount } from '../../utils/dom.js';
-import { badge, button, emptyState, field, modal, cardWithHeader } from '../../components/ui.js';
-import { liderSelect, colaboradoresPicker } from '../../components/PeoplePicker.js';
-import { efetivoInputs } from '../../components/EfetivoInputs.js';
+import { badge, button, emptyState, cardWithHeader } from '../../components/ui.js';
+import { abrirEdicaoLancamento, confirmarExclusaoLancamento } from '../../components/EditarLancamento.js';
 import { icon } from '../../utils/icons.js';
 import { formatDateBR, formatMinutes, efetivoTotal, formatEfetivo, classificacaoDoLancamento, CLASSIFICACAO_INFO } from '../../utils/format.js';
-import { updateLancamento, deleteLancamento, contextoDaEdicao } from '../../lib/records.js';
 import { exportExcel, exportPDF, exportWord } from '../../lib/export.js';
-import { toast } from '../../lib/toast.js';
+
+const PAGINA = 200; // linhas desenhadas por vez (milhares de linhas deixariam a tela lenta)
 
 function leanBadge(l) {
-  const key = classificacaoDoLancamento(l);
-  const info = CLASSIFICACAO_INFO[key];
+  const info = CLASSIFICACAO_INFO[classificacaoDoLancamento(l)];
   return el('span', { title: info.label, style: { display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', fontWeight: '700', color: info.color } }, [
     el('span', { style: { width: '8px', height: '8px', borderRadius: '50%', background: info.color, display: 'inline-block' } }),
     info.short
@@ -18,25 +16,24 @@ function leanBadge(l) {
 }
 
 export function renderRecordsPage(ctx) {
-  let lancamentos = ctx.lancamentos;
-  let colaboradores = ctx.colaboradores;
-  let atividades = ctx.atividades;
-
+  let { lancamentos, atividades, projetos } = ctx;
   const filters = { de: '', ate: '', tipo: 'todos', status: 'todos', busca: '' };
+  let limite = PAGINA;
+  const mudou = (fn) => (e) => { fn(e); limite = PAGINA; paint(); };
 
-  const deInput = el('input', { class: 'input', type: 'date', onchange: (e) => { filters.de = e.target.value; paint(); } });
-  const ateInput = el('input', { class: 'input', type: 'date', onchange: (e) => { filters.ate = e.target.value; paint(); } });
-  const tipoSelect = el('select', { class: 'select', onchange: (e) => { filters.tipo = e.target.value; paint(); } }, [
+  const deInput = el('input', { class: 'input', type: 'date', onchange: mudou((e) => { filters.de = e.target.value; }) });
+  const ateInput = el('input', { class: 'input', type: 'date', onchange: mudou((e) => { filters.ate = e.target.value; }) });
+  const tipoSelect = el('select', { class: 'select', onchange: mudou((e) => { filters.tipo = e.target.value; }) }, [
     el('option', { value: 'todos' }, 'Todos os tipos'),
     el('option', { value: 'atividade' }, 'Atividades'),
     el('option', { value: 'improdutividade' }, 'Improdutividades')
   ]);
-  const statusSelect = el('select', { class: 'select', onchange: (e) => { filters.status = e.target.value; paint(); } }, [
+  const statusSelect = el('select', { class: 'select', onchange: mudou((e) => { filters.status = e.target.value; }) }, [
     el('option', { value: 'todos' }, 'Todos os status'),
     el('option', { value: 'sincronizado' }, 'Sincronizados'),
     el('option', { value: 'pendente' }, 'Pendentes')
   ]);
-  const buscaInput = el('input', { class: 'input', type: 'text', placeholder: 'Buscar por atividade, líder ou colaborador…', oninput: (e) => { filters.busca = e.target.value.toLowerCase(); paint(); } });
+  const buscaInput = el('input', { class: 'input', type: 'text', placeholder: 'Buscar por atividade, projeto ou quem lançou…', oninput: mudou((e) => { filters.busca = e.target.value.toLowerCase(); }) });
 
   const countLabel = el('span', { style: { fontSize: '12.5px', color: 'var(--text-2)' } });
   const tableWrap = el('div');
@@ -49,7 +46,7 @@ export function renderRecordsPage(ctx) {
 
   const node = cardWithHeader({
     title: 'Todos os lançamentos',
-    subtitle: 'Filtre e exporte os apontamentos coletados em campo',
+    subtitle: 'Filtre, corrija e exporte os apontamentos coletados em campo',
     actions: [exportBtns],
     children: [
       el('div', { class: 'toolbar', style: { marginBottom: '16px' } }, [deInput, ateInput, tipoSelect, statusSelect, buscaInput]),
@@ -73,10 +70,7 @@ export function renderRecordsPage(ctx) {
       if (filters.tipo !== 'todos' && l.tipoRegistro !== filters.tipo) return false;
       if (filters.status === 'sincronizado' && l._sincronizado === false) return false;
       if (filters.status === 'pendente' && l._sincronizado !== false) return false;
-      if (filters.busca) {
-        const haystack = [l.atividadeNome, l.projetoNome, l.liderNome, ...(l.colaboradoresNomes || [])].join(' ').toLowerCase();
-        if (!haystack.includes(filters.busca)) return false;
-      }
+      if (filters.busca && ![l.atividadeNome, l.projetoNome, l.criadoPorNome].join(' ').toLowerCase().includes(filters.busca)) return false;
       return true;
     });
   }
@@ -88,172 +82,39 @@ export function renderRecordsPage(ctx) {
       mount(tableWrap, [emptyState({ icon: icon.clock(38), title: 'Nada encontrado', message: 'Ajuste os filtros para ver outros lançamentos.' })]);
       return;
     }
-    const wrap = el('div', { class: 'table-wrap' });
-    mount(wrap, [
-      el('table', { class: 'data-table' }, [
-        el(
-          'thead',
-          {},
-          el('tr', {}, [
-            el('th', {}, 'Data'), el('th', {}, 'Horário'), el('th', {}, 'Duração'), el('th', {}, 'Tipo'), el('th', {}, 'Lean'),
-            el('th', {}, 'Descrição'), el('th', {}, 'Líder'), el('th', {}, 'Colaboradores'), el('th', {}, 'Efetivo'),
-            el('th', {}, 'Lançado por'), el('th', {}, 'Status'), el('th', {}, 'Ações')
-          ])
-        ),
-        el(
-          'tbody',
-          {},
-          rows.map((l) =>
+    const visiveis = rows.slice(0, limite);
+    mount(tableWrap, [
+      el('div', { class: 'table-wrap' }, [
+        el('table', { class: 'data-table' }, [
+          el('thead', {}, el('tr', {}, ['Data', 'Horário', 'Duração', 'Tipo', 'Lean', 'Atividade', 'Equipe', 'Lançado por', 'Status', 'Ações'].map((h) => el('th', {}, h)))),
+          el('tbody', {}, visiveis.map((l) =>
             el('tr', {}, [
               el('td', {}, formatDateBR(l.data)),
               el('td', { class: 'mono' }, `${l.horaInicio}–${l.horaTermino}`),
               el('td', { class: 'mono' }, formatMinutes(l.duracaoMinutos)),
-              el('td', {}, badge(l.tipoRegistro === 'improdutividade' ? 'Improd.' : 'Atividade', l.tipoRegistro === 'improdutividade' ? 'danger' : 'info')),
+              el('td', {}, badge(l.tipoRegistro === 'improdutividade' ? 'Improd.' : 'Atividade', l.tipoRegistro === 'improdutividade' ? 'danger' : 'ok')),
               el('td', {}, leanBadge(l)),
               el('td', { class: 'strong' }, [
                 l.atividadeNome || '—',
                 l.projetoNome ? el('div', { style: { fontSize: '11.5px', fontWeight: '500', color: 'var(--text-2)' } }, l.projetoNome) : null
               ]),
-              el('td', {}, l.liderNome || '—'),
-              el('td', {}, colabCell(l.colaboradoresNomes || [])),
               el('td', { class: 'mono', title: formatEfetivo(l.efetivo) }, String(efetivoTotal(l.efetivo))),
               el('td', {}, l.criadoPorNome || '—'),
               el('td', {}, badge(l._sincronizado === false ? 'Pendente' : 'Sincronizado', l._sincronizado === false ? 'warn' : 'ok', true)),
               el('td', {}, el('div', { class: 'toolbar' }, [
-                button({ iconOnly: true, size: 'sm', variant: 'ghost', icon: icon.edit(15), onClick: () => openEdit(l) }),
-                button({ iconOnly: true, size: 'sm', variant: 'danger', icon: icon.trash(15), onClick: () => confirmDelete(l) })
+                button({ iconOnly: true, size: 'sm', variant: 'ghost', icon: icon.edit(15), onClick: () => abrirEdicaoLancamento(l, { projetos, atividades }) }),
+                button({ iconOnly: true, size: 'sm', variant: 'danger', icon: icon.trash(15), onClick: () => confirmarExclusaoLancamento(l) })
               ]))
             ])
-          )
-        )
-      ])
+          ))
+        ])
+      ]),
+      rows.length > limite
+        ? el('div', { style: { display: 'flex', justifyContent: 'center', marginTop: '14px' } }, [
+            button({ label: `Mostrar mais (${rows.length - limite} restantes)`, variant: 'outline', size: 'sm', onClick: () => { limite += PAGINA; paint(); } })
+          ])
+        : null
     ]);
-    mount(tableWrap, [wrap]);
-  }
-
-  function colabCell(names) {
-    if (names.length === 0) return '—';
-    if (names.length <= 2) return names.join(', ');
-    return el('span', { title: names.join(', ') }, `${names.slice(0, 2).join(', ')} +${names.length - 2}`);
-  }
-
-  function confirmDelete(l) {
-    const close = () => backdrop.remove();
-    const backdrop = modal({
-      title: 'Excluir lançamento?',
-      body: [el('p', { style: { fontSize: '13.5px', color: 'var(--text-1)' } }, 'Esta ação é permanente.')],
-      footer: [
-        button({ label: 'Cancelar', variant: 'ghost', onClick: close }),
-        button({
-          label: 'Excluir',
-          variant: 'danger',
-          onClick: async () => {
-            try {
-              await deleteLancamento(l.id, `${l.atividadeNome || ''} · ${l.data} ${l.horaInicio}–${l.horaTermino} · ${l.criadoPorNome || ''}`);
-              toast('Lançamento excluído.', 'ok');
-            } catch {
-              toast('Não foi possível excluir.', 'error');
-            }
-            close();
-          }
-        })
-      ],
-      onClose: close
-    });
-    document.body.appendChild(backdrop);
-  }
-
-  function openEdit(l) {
-    let liderId = l.liderId;
-    let colaboradoresIds = [...(l.colaboradoresIds || [])];
-    let tipoRegistro = l.tipoRegistro;
-
-    const dataInput = el('input', { class: 'input', type: 'date', value: l.data });
-    const inicioInput = el('input', { class: 'input', type: 'time', value: l.horaInicio });
-    const terminoInput = el('input', { class: 'input', type: 'time', value: l.horaTermino });
-    const obsInput = el('textarea', { class: 'textarea', value: l.observacoes || '' });
-    const tipoSel = el('select', { class: 'select' }, [
-      el('option', { value: 'atividade', selected: tipoRegistro === 'atividade' }, 'Atividade'),
-      el('option', { value: 'improdutividade', selected: tipoRegistro === 'improdutividade' }, 'Improdutividade')
-    ]);
-
-    const atividadeWrap = el('div');
-    const liderWrap = el('div');
-    const colabWrap = el('div');
-    const efetivo = efetivoInputs(l.efetivo || {});
-
-    function buildAtividade() {
-      const opts = atividades.filter((a) => a.tipo === (tipoRegistro === 'atividade' ? 'produtiva' : 'improdutiva'));
-      mount(atividadeWrap, [el('select', { class: 'select' }, [
-        el('option', { value: '' }, 'Selecione…'),
-        ...opts.map((a) => el('option', { value: a.id, selected: a.id === l.atividadeId }, a.nome))
-      ])]);
-    }
-    function buildLider() {
-      mount(liderWrap, [liderSelect({ options: colaboradores, value: liderId, onChange: (v) => { liderId = v; buildColab(); } })]);
-    }
-    function buildColab() {
-      mount(colabWrap, [colaboradoresPicker({ options: colaboradores, selected: colaboradoresIds, excludeId: liderId || undefined, onChange: (ids) => (colaboradoresIds = ids) })]);
-    }
-    tipoSel.addEventListener('change', (e) => { tipoRegistro = e.target.value; buildAtividade(); });
-    buildAtividade();
-    buildLider();
-    buildColab();
-
-    const close = () => backdrop.remove();
-    const backdrop = modal({
-      title: 'Editar lançamento',
-      body: [
-        el('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' } }, [
-          field({ label: 'Início', input: inicioInput }),
-          field({ label: 'Término', input: terminoInput })
-        ]),
-        field({ label: 'Data', input: dataInput }),
-        field({ label: 'Tipo', input: tipoSel }),
-        field({ label: 'Descrição', input: atividadeWrap }),
-        field({ label: 'Líder da atividade', input: liderWrap }),
-        field({ label: 'Colaboradores', input: colabWrap }),
-        field({ label: 'Efetivo utilizado', input: efetivo.node }),
-        field({ label: 'Observações', input: obsInput })
-      ],
-      footer: [
-        button({ label: 'Cancelar', variant: 'ghost', onClick: close }),
-        button({
-          label: 'Salvar alterações',
-          variant: 'primary',
-          onClick: async () => {
-            const atividadeId = atividadeWrap.querySelector('select').value;
-            const atividade = atividades.find((a) => a.id === atividadeId);
-            const lider = colaboradores.find((c) => c.id === liderId);
-            if (!atividadeId || !liderId || colaboradoresIds.length === 0) {
-              toast('Preencha todos os campos obrigatórios.', 'error');
-              return;
-            }
-            try {
-              await updateLancamento(l.id, {
-                data: dataInput.value,
-                horaInicio: inicioInput.value,
-                horaTermino: terminoInput.value,
-                tipoRegistro,
-                ...contextoDaEdicao(l, atividadeId, atividade),
-                liderId,
-                liderNome: lider?.nomeCompleto || '',
-                colaboradoresIds,
-                colaboradoresNomes: colaboradoresIds.map((id) => colaboradores.find((c) => c.id === id)?.nomeCompleto || ''),
-                efetivo: efetivo.getValue(),
-                observacoes: obsInput.value
-              });
-              toast('Lançamento atualizado.', 'ok');
-              close();
-            } catch {
-              toast('Não foi possível salvar.', 'error');
-            }
-          }
-        })
-      ],
-      onClose: close
-    });
-    document.body.appendChild(backdrop);
   }
 
   paint();
@@ -261,9 +122,7 @@ export function renderRecordsPage(ctx) {
   return {
     node,
     update(newCtx) {
-      lancamentos = newCtx.lancamentos;
-      colaboradores = newCtx.colaboradores;
-      atividades = newCtx.atividades;
+      ({ lancamentos, atividades, projetos } = newCtx);
       paint();
     }
   };

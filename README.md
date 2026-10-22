@@ -3,8 +3,9 @@
 Sistema de lançamento, gestão e análise de dados de Tempos e Métodos industriais.
 Um único app web (PWA) que funciona como **aplicativo mobile instalável** para
 quem lança apontamentos em campo — online ou offline, com sincronização
-automática — e como **painel administrador** para quem gerencia cadastros,
-aprova acessos, acompanha o dashboard e exporta relatórios.
+automática — e como **painel administrador** para quem planeja os projetos
+(com as atividades, VA/DN/DNN, tempo padrão e equipe de cada uma), aprova
+acessos, acompanha o dashboard e exporta relatórios.
 
 ## Stack
 
@@ -148,8 +149,8 @@ src/
   pages/
     AuthScreens.js   # login, cadastro, tela de aprovação pendente
     mobile/          # app de campo: lançar, estudos, consultar
-    admin/           # painel: dashboard, assistente, projetos, estudos, lançamentos,
-                     # cadastros, setores, usuários, sistema
+    admin/           # painel: dashboard, assistente, projetos (com o editor de
+                     # atividades), estudos, lançamentos, setores, usuários, sistema
     estudos/         # assistentes de cronoanálise, amostragem, MTM, takt/lead, histórico
   styles/         # design system (tokens, componentes, layout)
   utils/          # cálculos puros: formatação, planejamento, indicadores, estudos
@@ -193,7 +194,11 @@ O Firestore é inicializado com cache local persistente
 - O botão de sincronizar (no centro da barra inferior do app mobile) dá uma
   confirmação visual explícita e mostra quantos lançamentos ainda estão
   pendentes.
-- Um lançamento só pode ser editado/excluído pelo app mobile **antes** de ser
-  confirmado pelo servidor (badge "Pendente"); depois de sincronizado
-  ("Sincronizado"), só o administrador pode alterá-lo — pela tela
-  **Lançamentos** do painel desktop.
+- Na aba **Consultar** do celular, quem lançou pode editar ou excluir os
+  próprios lançamentos a qualquer momento (o badge mostra "No celular" ou
+  "Enviado"). O gestor edita qualquer um pela tela **Lançamentos** do painel.
+  Toda alteração e exclusão fica registrada na auditoria.
+- **Terminar depois**: ao lançar, a chave "Terminar depois" guarda o
+  apontamento como "Em andamento" (só no celular de quem lançou, funciona sem
+  internet e não entra nos indicadores). Ao tocar em **Finalizar**, o término
+  vem com o horário atual e ele vira um lançamento normal.

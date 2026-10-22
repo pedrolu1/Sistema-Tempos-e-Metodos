@@ -2,8 +2,6 @@ import './styles/main.css';
 import { el, mount } from './utils/dom.js';
 import { observeSession } from './lib/auth.js';
 import { renderLogin, renderRegister, renderStatusScreen } from './pages/AuthScreens.js';
-import { mountMobileApp } from './pages/mobile/MobileApp.js';
-import { mountAdminApp } from './pages/admin/AdminApp.js';
 import { firebaseConfigured } from './lib/firebase.js';
 import { instalarCapturaGlobal, definirContextoSaude } from './lib/saude.js';
 import { definirUsuarioAuditoria } from './lib/auditoria.js';
@@ -41,8 +39,10 @@ if ('serviceWorker' in navigator) {
 const app = document.getElementById('app');
 let authMode = 'login';
 let cleanupApp = null;
+let geracao = 0; // invalida uma montagem que ainda estava carregando
 
 function teardown() {
+  geracao++;
   if (cleanupApp) {
     cleanupApp();
     cleanupApp = null;
@@ -111,9 +111,27 @@ function visaoCampo() {
     return false;
   }
 }
+// cada versão é carregada só quando usada: o celular do apontador não baixa
+// nem processa o código do painel (e vice-versa)
 function montarApp() {
+  const minha = ++geracao;
   const gestor = perfilAtual.role === 'admin' || perfilAtual.role === 'planejador';
-  cleanupApp = gestor && !visaoCampo() ? mountAdminApp(app, { profile: perfilAtual }) : mountMobileApp(app, { profile: perfilAtual });
+  const carregar = gestor && !visaoCampo()
+    ? import('./pages/admin/AdminApp.js').then((m) => m.mountAdminApp)
+    : import('./pages/mobile/MobileApp.js').then((m) => m.mountMobileApp);
+  carregar
+    .then((montar) => {
+      if (minha !== geracao || !perfilAtual) return; // a sessão mudou enquanto carregava
+      cleanupApp = montar(app, { profile: perfilAtual });
+    })
+    .catch((err) => {
+      mount(app, [el('div', { class: 'auth-screen' }, [el('div', { class: 'auth-card' }, [el('div', { class: 'auth-pending' }, [
+        el('h3', {}, 'Não foi possível abrir o app'),
+        el('p', { style: { color: 'var(--text-2)', fontSize: '13.5px' } }, 'Confira a internet e toque para tentar de novo.'),
+        el('button', { class: 'btn btn-primary btn-block', type: 'button', onclick: () => location.reload() }, 'Tentar de novo')
+      ])])])]);
+      throw err; // a captura global registra e, se for versão nova, recarrega sozinha
+    });
 }
 window.addEventListener('rfx:trocar-visao', (e) => {
   try {

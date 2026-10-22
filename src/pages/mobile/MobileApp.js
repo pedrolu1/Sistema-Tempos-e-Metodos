@@ -209,7 +209,8 @@ export function mountMobileApp(root, { profile }) {
     } else {
       const { node, refresh } = renderHistoryPage({
         lancamentos: state.lancamentos,
-        atividades: state.atividades
+        atividades: state.atividades,
+        projetos: state.projetos
       });
       mount(content, [node]);
       historyRefresh = refresh;

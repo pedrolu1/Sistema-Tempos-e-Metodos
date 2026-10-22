@@ -5,7 +5,7 @@ import { icon } from '../../utils/icons.js';
 import { formatMinutes, nowHHMM } from '../../utils/format.js';
 import { minutosUteisDia } from '../../utils/planejamento.js';
 import { amostragem as calcular, pct } from '../../utils/estudos.js';
-import { alvoPicker, alvoTexto, inputNum, precisaoEditor, resultadoTile, resultadoGrid } from './comum.js';
+import { alvoPicker, alvoTexto, precisaoEditor, resultadoTile, resultadoGrid } from './comum.js';
 
 const CATEGORIAS_PADRAO = ['Trabalhando', 'Aguardando material', 'Aguardando liberação (APR/PT)', 'Deslocamento', 'Parado / ocioso', 'Outros'];
 
@@ -18,7 +18,8 @@ function resultadoDe(st) {
 function barras(st) {
   const r = resultadoDe(st);
   return rankingBars({
-    data: st.categorias.map((c) => ({ id: c, label: c, value: r.proporcoes[c] || 0 })),
+    // 1ª categoria = produtiva (verde); as demais são perda de tempo (vermelho)
+    data: st.categorias.map((c, i) => ({ id: c, label: c, value: r.proporcoes[c] || 0, color: i === 0 ? 'var(--ok-500)' : 'var(--danger-500)' })),
     valueFmt: (v) => pct(v, 1),
     emptyLabel: 'Nenhuma observação ainda.'
   });

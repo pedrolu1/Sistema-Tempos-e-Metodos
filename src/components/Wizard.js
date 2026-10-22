@@ -140,7 +140,7 @@ export function wizard({ titulo, iconeHtml, passos, estado, rascunhoChave, aoCon
       if (draft) draft.limpar();
       destruir();
     } catch {
-      toast('Não foi possível salvar o estudo. Seus dados continuam aqui — tente de novo.', 'error');
+      toast('Não foi possível salvar. Seus dados continuam aqui — tente de novo.', 'error');
     } finally {
       salvando = false;
     }

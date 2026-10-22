@@ -44,7 +44,7 @@ export async function executarAcao(acao, ctx) {
     }
     if (acao.tipo === 'definirPadrao') {
       await updateAtividade(acao.atividadeId, { duracaoPadraoMin: acao.min });
-      return toast('Tempo padrão definido no catálogo.', 'ok');
+      return toast('Tempo padrão definido.', 'ok');
     }
   } catch {
     toast('Não foi possível aplicar. Tente novamente.', 'error');
@@ -105,7 +105,7 @@ export function renderAssistentePage(ctxInicial) {
         el('span', { class: 'assist-hero-icon', html: icon.lightbulb(26) }),
         el('div', {}, [
           el('strong', {}, todos.length ? `${conta('critico')} crítico(s), ${conta('atencao')} de atenção e ${conta('oportunidade')} oportunidade(s)` : 'Tudo em ordem'),
-          el('p', {}, 'O assistente revisa projetos, apontamentos, catálogo e estudos sempre que os dados mudam. Ele só sugere — nada é alterado sem o seu clique.')
+          el('p', {}, 'O assistente revisa projetos, apontamentos, atividades e estudos sempre que os dados mudam. Ele só sugere — nada é alterado sem o seu clique.')
         ])
       ]),
       el('div', { class: 'toolbar', style: { justifyContent: 'space-between' } }, [

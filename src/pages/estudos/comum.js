@@ -56,7 +56,7 @@ export function alvoPicker(st, ctx, atualizar) {
     Object.assign(a, { projetoId: p?.id || '', projetoNome: p?.nome || '', contratoNome: p?.contratoNome || '', clienteNome: p?.clienteNome || '', etapaId: '', atividadeId: '', atividadeNome: '' });
     atualizar();
   } }, [
-    el('option', { value: '' }, projetos.length ? 'Sem projeto (escolher do catálogo)' : 'Nenhum projeto aberto'),
+    el('option', { value: '' }, projetos.length ? 'Sem projeto (atividade avulsa)' : 'Nenhum projeto aberto'),
     ...projetos.map((p) => el('option', { value: p.id, selected: p.id === a.projetoId }, `${p.nome} — ${p.contratoNome}`))
   ]);
 
@@ -145,12 +145,12 @@ export function acoesAplicar(estudo, ctx, minutos, rotulo = 'tempo da etapa') {
     } }));
   }
   if (atividade) {
-    botoes.push(button({ label: `Usar como padrão do catálogo`, variant: 'outline', size: 'sm', icon: icon.briefcase(14), onClick: async () => {
+    botoes.push(button({ label: 'Usar como padrão geral', variant: 'outline', size: 'sm', icon: icon.briefcase(14), onClick: async () => {
       try {
         await updateAtividade(atividade.id, { duracaoPadraoMin: min });
-        toast(`Padrão de "${atividade.nome}" atualizado para ${formatMinutes(min)}.`, 'ok');
+        toast(`Padrão geral de "${atividade.nome}" atualizado para ${formatMinutes(min)} (vale para lançamentos sem projeto).`, 'ok');
       } catch {
-        toast('Não foi possível atualizar o catálogo.', 'error');
+        toast('Não foi possível atualizar o padrão.', 'error');
       }
     } }));
   }

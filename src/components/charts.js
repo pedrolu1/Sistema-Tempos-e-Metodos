@@ -128,7 +128,7 @@ export function rankingBars({ data, color = 'var(--accent-500)', valueFmt = form
             el('span', { class: 'mono', style: { color: 'var(--text-2)' } }, valueFmt(d.value))
           ]),
           el('div', { style: { height: '10px', borderRadius: '4px', background: 'var(--bg-4)', overflow: 'hidden' } }, [
-            el('div', { style: { height: '100%', width: `${pct}%`, background: isActive ? color : color, opacity: isActive ? '1' : '0.85', borderRadius: '4px 0 0 4px', transition: 'width 420ms var(--ease-out)' } })
+            el('div', { style: { height: '100%', width: `${pct}%`, background: d.color || color, borderRadius: '4px 0 0 4px', transition: 'width 420ms var(--ease-out)' } })
           ])
         ]
       );
@@ -185,7 +185,7 @@ export function stackedTrend({ data, seriesA, seriesB, onSelect, activeKey }) {
           })
         : null,
       svg('rect', { x: cx - barW / 2 - 4, y: padT, width: barW + 8, height: innerH, fill: 'transparent' }),
-      svg('text', { x: cx, y: H - 8, 'text-anchor': 'middle', fill: 'var(--text-3)', 'font-size': '10' }, d.label)
+      i % passoRotulo(data.length) ? null : svg('text', { x: cx, y: H - 8, 'text-anchor': 'middle', fill: 'var(--text-3)', 'font-size': '10' }, d.label)
     ]);
     group.addEventListener('mouseenter', (e) =>
       showTooltip(e, [
@@ -230,6 +230,18 @@ export function stackedTrendN({ data, series, onSelect, activeKey }) {
   const niceMax = niceCeil(max);
   const bandW = innerW / data.length;
   const barW = Math.min(24, bandW * 0.55);
+  // série com textura (ex.: DN) ganha listras diagonais: a identificação não
+  // depende só da cor
+  const hachura = `hachura-${++hachuraSeq}`;
+  const serieTextura = series.find((ser) => ser.textura);
+  const defs = serieTextura
+    ? svg('defs', {}, [
+        svg('pattern', { id: hachura, width: '6', height: '6', patternUnits: 'userSpaceOnUse', patternTransform: 'rotate(45)' }, [
+          svg('rect', { width: '6', height: '6', fill: serieTextura.color }),
+          svg('rect', { width: '2.2', height: '6', fill: 'rgba(0,0,0,0.38)' })
+        ])
+      ])
+    : null;
 
   const gridLines = [0, 0.25, 0.5, 0.75, 1].map((t) => {
     const y = padT + innerH * (1 - t);
@@ -239,8 +251,7 @@ export function stackedTrendN({ data, series, onSelect, activeKey }) {
     ]);
   });
 
-  const bars = data.map((d) => {
-    const idx = data.indexOf(d);
+  const bars = data.map((d, idx) => {
     const cx = padL + bandW * idx + bandW / 2;
     const yBase = padT + innerH;
     const isActive = !activeKey || activeKey === d.key;
@@ -253,13 +264,13 @@ export function stackedTrendN({ data, series, onSelect, activeKey }) {
       cursor += gap;
       const y = yBase - cursor - h;
       cursor += h;
-      return val > 0 ? svg('rect', { x: cx - barW / 2, y, width: barW, height: Math.max(h, 0), rx: '4', fill: ser.color }) : null;
+      return val > 0 ? svg('rect', { x: cx - barW / 2, y, width: barW, height: Math.max(h, 0), rx: '4', fill: ser.textura ? `url(#${hachura})` : ser.color }) : null;
     });
 
     const group = svg('g', { style: `cursor:${onSelect ? 'pointer' : 'default'}; opacity:${isActive ? 1 : 0.35}; transition: opacity 160ms ease;` }, [
       ...segments,
       svg('rect', { x: cx - barW / 2 - 4, y: padT, width: barW + 8, height: innerH, fill: 'transparent' }),
-      svg('text', { x: cx, y: H - 8, 'text-anchor': 'middle', fill: 'var(--text-3)', 'font-size': '10' }, d.label)
+      idx % passoRotulo(data.length) ? null : svg('text', { x: cx, y: H - 8, 'text-anchor': 'middle', fill: 'var(--text-3)', 'font-size': '10' }, d.label)
     ]);
     group.addEventListener('mouseenter', (e) =>
       showTooltip(e, [[d.fullLabel || d.label, ''], ...series.map((ser) => [ser.label, formatMinutes(d[ser.key] || 0), ser.color])])
@@ -270,17 +281,23 @@ export function stackedTrendN({ data, series, onSelect, activeKey }) {
     return group;
   });
 
-  const chart = svg('svg', { viewBox: `0 0 ${W} ${H}`, width: '100%', height: H, style: 'display:block; overflow: visible;' }, [...gridLines, ...bars]);
+  const chart = svg('svg', { viewBox: `0 0 ${W} ${H}`, width: '100%', height: H, style: 'display:block; overflow: visible;' }, [defs, ...gridLines, ...bars]);
 
   return el('div', { style: { display: 'flex', flexDirection: 'column', gap: '14px' } }, [
     chart,
-    el('div', { style: { display: 'flex', gap: '18px', fontSize: '12px', color: 'var(--text-2)', flexWrap: 'wrap' } }, series.map((ser) => legendKey(ser.color, ser.label)))
+    el('div', { style: { display: 'flex', gap: '18px', fontSize: '12px', color: 'var(--text-2)', flexWrap: 'wrap' } }, series.map((ser) => legendKey(ser.color, ser.label, ser.textura)))
   ]);
 }
 
-function legendKey(color, label) {
+let hachuraSeq = 0;
+
+/** Com muitos dias no eixo, mostra só 1 rótulo a cada N (no máximo ~12) para não encavalar. */
+const passoRotulo = (n) => Math.max(1, Math.ceil(n / 12));
+
+function legendKey(color, label, textura = false) {
+  const fundo = textura ? `repeating-linear-gradient(45deg, ${color} 0 3px, rgba(0,0,0,0.38) 3px 5px)` : color;
   return el('span', { style: { display: 'inline-flex', alignItems: 'center', gap: '7px' } }, [
-    el('span', { style: { width: '10px', height: '10px', borderRadius: '3px', background: color, display: 'inline-block' } }),
+    el('span', { style: { width: '12px', height: '12px', borderRadius: '3px', background: fundo, display: 'inline-block' } }),
     label
   ]);
 }

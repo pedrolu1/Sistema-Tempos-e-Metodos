@@ -32,6 +32,8 @@ export const icon = {
   upload: (sz) => s('<path d="M12 15V3"/><path d="M7 8l5-5 5 5"/><path d="M5 21h14"/>', sz),
   target: (sz) => s('<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/>', sz),
   folder: (sz) => s('<path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>', sz),
+  menu: (sz) => s('<path d="M4 7h16M4 12h16M4 17h16"/>', sz),
+  chevronLeft: (sz) => s('<path d="m15 18-6-6 6-6"/>', sz),
   arrowLeft: (sz) => s('<path d="M19 12H5"/><path d="M11 18l-6-6 6-6"/>', sz),
   calendar: (sz) => s('<rect x="3.5" y="5" width="17" height="15.5" rx="1.8"/><path d="M3.5 10h17M8 3v4M16 3v4"/>', sz),
   shield: (sz) => s('<path d="M12 3 4.5 6v5.5c0 4.6 3.2 8.4 7.5 9.5 4.3-1.1 7.5-4.9 7.5-9.5V6z"/><path d="m9 12 2 2 4-4"/>', sz),

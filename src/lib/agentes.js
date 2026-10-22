@@ -91,7 +91,7 @@ export function analisarPlanejamento({ lancamentos = [], projetos = [], atividad
     if (!(p.etapas || []).length) {
       add({ id: `sem-etapas:${p.id}`, nivel: 'atencao', area: 'Dados', titulo: `"${p.nome}" não tem etapas planejadas`,
         detalhe: 'Sem etapas, o apontador lança como avulso e não há como comparar planejado × real.',
-        sugestao: 'Abra o projeto e adicione as etapas do catálogo.', acao: { tipo: 'abrir', label: 'Abrir projetos', page: 'projetos' } });
+        sugestao: 'Abra o projeto e clique em "Editar atividades".', acao: { tipo: 'abrir', label: 'Abrir projetos', page: 'projetos' } });
     }
     const semDuracao = (p.etapas || []).filter((e) => !(e.duracaoMin > 0));
     if (semDuracao.length) {
@@ -204,12 +204,12 @@ export function analisarPlanejamento({ lancamentos = [], projetos = [], atividad
     }
   }
 
-  // ---- 3. catálogo sem padrão, mas com histórico suficiente
+  // ---- 3. atividade (catálogo interno) sem padrão, mas com histórico suficiente
   atividades.filter((a) => a.tipo === 'produtiva' && a.ativo !== false && !(a.duracaoPadraoMin > 0)).forEach((a) => {
     const tempos = lancamentos.filter((l) => l.atividadeId === a.id && l.tipoRegistro !== 'improdutividade').map((l) => l.duracaoMinutos);
     if (tempos.length < 5) return;
     const mediana = Math.round(percentil(tempos, 0.5));
-    add({ id: `padrao:${a.id}`, nivel: 'oportunidade', area: 'Catálogo', titulo: `"${a.nome}" ainda não tem tempo padrão`,
+    add({ id: `padrao:${a.id}`, nivel: 'oportunidade', area: 'Atividades', titulo: `"${a.nome}" ainda não tem tempo padrão`,
       detalhe: `Já são ${tempos.length} apontamentos; a mediana é ${formatMinutes(mediana)}.`,
       sugestao: 'Com um padrão, o app passa a detectar desperdício nessa atividade.',
       acao: { tipo: 'definirPadrao', label: `Definir ${formatMinutes(mediana)}`, atividadeId: a.id, min: mediana } });

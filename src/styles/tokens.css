@@ -35,11 +35,16 @@
 
   /* ---- semânticas (nunca seguem o azul da marca — são sinais universais
      que a pessoa reconhece por hábito, independente da cor de marca) ---- */
-  --ok-500: #2fd07d;
-  --ok-glow: rgba(47, 208, 125, 0.28);
+  /* verde claro x vermelho escuro: além da cor, a CLARIDADE é bem diferente —
+     assim produtivo e improdutivo se distinguem mesmo para quem tem
+     dificuldade de enxergar tons de vermelho/verde */
+  --ok-500: #4ade80;
+  --ok-glow: rgba(74, 222, 128, 0.26);
   --warn-500: #ffcc4d;
-  --danger-500: #ff5c72;
-  --danger-glow: rgba(255, 92, 114, 0.28);
+  --danger-500: #ef4444;
+  --danger-glow: rgba(239, 68, 68, 0.26);
+  /* desperdício necessário (DN) nos gráficos: âmbar com listras diagonais */
+  --dn-500: #f59e0b;
   /* info: um ciano-esverdeado — deliberadamente distinto do azul de marca,
      pra "isso é uma informação neutra" nunca ser confundido com "isso é
      uma ação/destaque da marca" */

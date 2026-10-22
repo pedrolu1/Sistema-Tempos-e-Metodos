@@ -55,6 +55,15 @@ export const EFETIVO_CAMPOS = [
   { key: 'caminhaoMunk', label: 'Caminhão munk' }
 ];
 
+/** Inteiros não-negativos para as 5 funções fixas de efetivo (único lugar que normaliza). */
+export function sanitizeEfetivo(efetivo = {}) {
+  const out = {};
+  EFETIVO_CAMPOS.forEach((c) => {
+    out[c.key] = Math.max(0, Math.round(Number(efetivo?.[c.key]) || 0));
+  });
+  return out;
+}
+
 export function efetivoTotal(efetivo) {
   if (!efetivo) return 0;
   return EFETIVO_CAMPOS.reduce((sum, c) => sum + (Number(efetivo[c.key]) || 0), 0);
@@ -131,14 +140,14 @@ export function capacidadeMinutosSetor(setor, fromISO, toISO) {
  * Classificação Lean de cada minuto apontado — VA (Valor Agregado), DN
  * (Desperdício Necessário / semi valor agregado) ou DNN (Desperdício Não
  * Necessário). Toda improdutividade é DNN por definição; dentro do que é
- * "atividade" (produtiva), cada etapa do catálogo é marcada como VA ou DN
- * pelo admin (ver Cadastros). Cor reaproveita as semânticas do sistema:
+ * "atividade" (produtiva), cada atividade do projeto é marcada como VA ou DN
+ * pelo planejador (ver Projetos). Cor reaproveita as semânticas do sistema:
  * verde = bom/valor, amarelo = atenção/necessário mas não ideal,
  * vermelho = desperdício a eliminar.
  */
 export const CLASSIFICACAO_INFO = {
   VA: { label: 'Valor Agregado', short: 'VA', color: 'var(--ok-500)' },
-  DN: { label: 'Desperdício Necessário', short: 'DN', color: 'var(--warn-500)' },
+  DN: { label: 'Desperdício Necessário', short: 'DN', color: 'var(--dn-500)', textura: true },
   DNN: { label: 'Desperdício Não Necessário', short: 'DNN', color: 'var(--danger-500)' }
 };
 

@@ -12,21 +12,13 @@ import {
   serverTimestamp
 } from 'firebase/firestore';
 import { db } from './firebase.js';
-import { durationMinutes, EFETIVO_CAMPOS, efetivoExcedido } from '../utils/format.js';
+import { durationMinutes, sanitizeEfetivo, efetivoExcedido } from '../utils/format.js';
 import { reportSnapshotError } from './errors.js';
 import { gravacaoLocal } from './sync.js';
-import { auditar, camposAlterados } from './auditoria.js';
+import { auditar } from './auditoria.js';
 
 const COL = 'lancamentos';
 
-/** Garante inteiros não-negativos para as 5 categorias fixas de efetivo. */
-function sanitizeEfetivo(efetivo = {}) {
-  const out = {};
-  EFETIVO_CAMPOS.forEach((c) => {
-    out[c.key] = Math.max(0, Math.round(Number(efetivo[c.key]) || 0));
-  });
-  return out;
-}
 
 /**
  * Monta o payload de um lançamento. `criadoEmLocal` é um número (Date.now()),
@@ -141,30 +133,4 @@ export function subscribeMeusLancamentos(uid, callback) {
 export function subscribeTodosLancamentos(callback, { max = 3000 } = {}) {
   const q = query(collection(db, COL), orderBy('criadoEmLocal', 'desc'), fsLimit(max));
   return onSnapshot(q, { includeMetadataChanges: true }, (snap) => callback(mapSnapshot(snap)), reportSnapshotError('lançamentos'));
-}
-
-/**
- * Campos herdados ao editar um lançamento existente. Se a atividade não
- * mudou, preserva o "retrato" gravado no lançamento (padrões planejados,
- * etapa do projeto, classificação) — assim editar só o horário não troca o
- * planejado do projeto pelo padrão genérico do catálogo. Se a atividade
- * mudou, passa a valer o padrão da nova atividade do catálogo.
- */
-export function contextoDaEdicao(l, atividadeId, atividade) {
-  const mesma = atividadeId === l.atividadeId;
-  return {
-    contrato: l.contrato || '',
-    setor: l.setor || '',
-    projetoId: l.projetoId || '',
-    projetoNome: l.projetoNome || '',
-    clienteNome: l.clienteNome || '',
-    etapaId: mesma ? l.etapaId || '' : '',
-    atividadeId,
-    atividadeNome: mesma ? l.atividadeNome : atividade?.nome || '',
-    atividadeTipo: atividade?.tipo || l.atividadeTipo || '',
-    classificacao: mesma ? l.classificacao || '' : atividade?.classificacao || '',
-    duracaoPadraoMin: mesma ? l.duracaoPadraoMin || 0 : atividade?.duracaoPadraoMin || 0,
-    efetivoPadrao: mesma ? l.efetivoPadrao || {} : atividade?.efetivoPadrao || {},
-    justificativa: l.justificativa || ''
-  };
 }

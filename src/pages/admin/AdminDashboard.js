@@ -18,7 +18,7 @@ import { navigate } from '../../router.js';
 import { toast } from '../../lib/toast.js';
 import { achadosAtivos, cartaoAchado } from './AdminAssistente.js';
 
-const CLASSIFICACAO_SERIES = ['VA', 'DN', 'DNN'].map((k) => ({ key: k, label: CLASSIFICACAO_INFO[k].label, color: CLASSIFICACAO_INFO[k].color }));
+const CLASSIFICACAO_SERIES = ['VA', 'DN', 'DNN'].map((k) => ({ key: k, label: CLASSIFICACAO_INFO[k].label, color: CLASSIFICACAO_INFO[k].color, textura: CLASSIFICACAO_INFO[k].textura }));
 
 const PRESETS = {
   hoje: 0,

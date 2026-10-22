@@ -2,6 +2,10 @@ import { el, mount } from '../../utils/dom.js';
 import { badge, button, emptyState, field, modal, cardWithHeader } from '../../components/ui.js';
 import { statTile, meter } from '../../components/charts.js';
 import { efetivoInputs } from '../../components/EfetivoInputs.js';
+import { wizard, rascunho } from '../../components/Wizard.js';
+import { editorAtividades, validarAtividades } from './EditorAtividades.js';
+import { vincularAtividades } from '../../lib/activities.js';
+import { SEED_ATIVIDADES } from '../../data/seedAtividades.js';
 import { icon } from '../../utils/icons.js';
 import {
   ESCALAS,
@@ -30,6 +34,16 @@ import {
 import { toast } from '../../lib/toast.js';
 
 const statusInfo = (v) => STATUS_PROJETO.find((s) => s.value === v) || STATUS_PROJETO[0];
+
+/** Modelos prontos de atividades (catálogo padrão da Reframax), agrupados por serviço. */
+const MODELOS = Object.entries(
+  SEED_ATIVIDADES.reduce((grupos, a) => {
+    (grupos[a.contrato] ||= []).push({ nome: a.nome, codigo: a.codigo, classificacao: a.classificacao });
+    return grupos;
+  }, {})
+).map(([nome, itens]) => ({ nome, itens }));
+
+const copia = (x) => JSON.parse(JSON.stringify(x));
 
 /** Abre um modal simples e devolve a função que o fecha. */
 function openModal({ title, body, onSave, saveLabel = 'Salvar', danger }) {
@@ -75,10 +89,13 @@ export function renderProjetosPage(ctx) {
   const profile = ctx.profile;
   let abertoId = null; // projeto aberto no detalhe (null = lista)
   let filtroContrato = 'todos';
+  let criando = null; // assistente de novo projeto aberto
+  const chaveRascunho = `projeto.${profile.uid}`;
 
   const node = el('div', { style: { display: 'flex', flexDirection: 'column', gap: '20px' } });
 
   function paint() {
+    if (criando) return; // o assistente se redesenha sozinho
     const aberto = abertoId && projetos.find((p) => p.id === abertoId);
     if (aberto) mount(node, renderDetalhe(aberto));
     else {
@@ -153,7 +170,7 @@ export function renderProjetosPage(ctx) {
       ? emptyState({
           icon: icon.folder(36),
           title: projetos.length ? 'Nenhum projeto neste contrato' : 'Nenhum projeto planejado',
-          message: contratos.length ? 'Clique em "Novo projeto" para montar a ficha e as etapas.' : 'Cadastre um cliente e um contrato primeiro.'
+          message: contratos.length ? 'Clique em "Novo projeto": o assistente monta a ficha e as atividades passo a passo.' : 'Cadastre um cliente e um contrato primeiro.'
         })
       : el('div', { class: 'project-grid' }, lista.map(projetoCard));
 
@@ -162,7 +179,8 @@ export function renderProjetosPage(ctx) {
       subtitle: 'Clique em um projeto para ver a ficha, as etapas e o planejado × real',
       actions: [
         contratos.length ? filtroSel : null,
-        button({ label: 'Novo projeto', size: 'sm', variant: 'primary', icon: icon.plus(15), disabled: contratos.length === 0, onClick: () => modalProjeto() })
+        rascunho(chaveRascunho).ler() ? button({ label: 'Continuar projeto em criação', size: 'sm', variant: 'outline', icon: icon.bolt(15), onClick: () => abrirAssistente(true) }) : null,
+        button({ label: 'Novo projeto', size: 'sm', variant: 'primary', icon: icon.plus(15), disabled: contratos.length === 0, onClick: () => abrirAssistente(false) })
       ],
       children: [body]
     });
@@ -176,19 +194,19 @@ export function renderProjetosPage(ctx) {
       if (!file) return;
       try {
         const { lerBase } = await import('../../lib/planilhaBase.js');
-        mostrarPlano(await lerBase(file, { atividades, projetos }));
+        mostrarPlano(await lerBase(file, { projetos }));
       } catch {
         toast('Não foi possível ler a planilha. Confira se é o arquivo baixado aqui.', 'error');
       }
     } });
-    const passos = ['Baixe a planilha', 'Edite no Excel: durações, MOD, horários, restrições e catálogo', 'Envie de volta — o app mostra o que vai mudar antes de gravar'];
+    const passos = ['Baixe a planilha', 'Edite no Excel: horários, equipe, restrições e as atividades de cada projeto', 'Envie de volta — o app mostra o que vai mudar antes de gravar'];
     return cardWithHeader({
       title: 'Planilha de planejamento (Excel)',
       subtitle: 'Para editar muita coisa de uma vez, fora do app',
       actions: [
         button({ label: 'Baixar planilha', size: 'sm', variant: 'outline', icon: icon.download(15), onClick: async () => {
           const { exportarBase } = await import('../../lib/planilhaBase.js');
-          await exportarBase({ atividades, projetos, lancamentos });
+          await exportarBase({ projetos, lancamentos });
         } }),
         button({ label: 'Enviar planilha editada', size: 'sm', variant: 'primary', icon: icon.upload(15), onClick: () => arquivo.click() }),
         arquivo
@@ -200,10 +218,7 @@ export function renderProjetosPage(ctx) {
   /** Prévia do que a planilha vai mudar; só grava após confirmação. */
   function mostrarPlano(plano) {
     const linha = (texto) => el('li', {}, texto);
-    const NOMES = { codigo: 'código', nome: 'nome', classificacao: 'Lean', contrato: 'grupo', setor: 'setor', duracaoPadraoMin: 'duração padrão', efetivoPadrao: 'MOD', ativo: 'ativa' };
     const blocos = [];
-    if (plano.atividadesNovas.length) blocos.push(el('div', {}, [el('strong', {}, `${plano.atividadesNovas.length} atividade(s) nova(s) no catálogo`), el('ul', { class: 'plan-ul' }, plano.atividadesNovas.slice(0, 8).map((a) => linha(a.nome)))]));
-    if (plano.atividadesAlteradas.length) blocos.push(el('div', {}, [el('strong', {}, `${plano.atividadesAlteradas.length} atividade(s) alterada(s)`), el('ul', { class: 'plan-ul' }, plano.atividadesAlteradas.slice(0, 8).map((x) => linha(`${x.atividade.nome}: ${Object.keys(x.patch).map((k) => NOMES[k] || k).join(', ')}`)))]));
     if (plano.projetosAlterados.length) blocos.push(el('div', {}, [el('strong', {}, `${plano.projetosAlterados.length} projeto(s) alterado(s)`), el('ul', { class: 'plan-ul' }, plano.projetosAlterados.map((x) => linha(`${x.projeto.nome} — ${x.itens.join('; ')}`)))]));
     const erros = plano.erros.length
       ? el('div', { class: 'inline-alert warn' }, [el('span', { html: icon.alert(15), style: { display: 'inline-flex' } }), el('div', {}, [el('div', {}, `${plano.erros.length} linha(s) ignorada(s):`), ...plano.erros.slice(0, 6).map((e) => el('div', {}, e))])])
@@ -218,7 +233,7 @@ export function renderProjetosPage(ctx) {
       saveLabel: 'Aplicar alterações',
       onSave: async () => {
         const { aplicarBase } = await import('../../lib/planilhaBase.js');
-        await aplicarBase(plano, profile);
+        await aplicarBase(plano, { atividades, profile });
         toast('Planejamento atualizado pela planilha.', 'ok');
       }
     });
@@ -231,7 +246,7 @@ export function renderProjetosPage(ctx) {
       el('div', { class: 'project-card-top' }, [badge(st.label, st.tone, true), r.divergencias.length ? badge(`${r.divergencias.length} divergência(s)`, 'warn') : null]),
       el('strong', { class: 'project-card-title' }, p.nome),
       el('span', { class: 'muted', style: { fontSize: '12px' } }, `${p.clienteNome} › ${p.contratoNome}`),
-      meter({ label: 'Etapas iniciadas', ratio: r.progresso, valueLabel: `${r.iniciadas}/${r.etapas.length}` }),
+      meter({ label: 'Etapas iniciadas', ratio: r.progresso, valueLabel: `${r.iniciadas}/${r.etapas.length}`, color: 'var(--ok-500)' }),
       el('div', { class: 'project-card-foot' }, [
         el('span', {}, ['Planejado ', el('b', { class: 'mono' }, formatMinutes(r.planejadoMin))]),
         el('span', {}, ['Apontado ', el('b', { class: 'mono' }, formatMinutes(r.realMin))])
@@ -297,12 +312,12 @@ export function renderProjetosPage(ctx) {
     });
   }
 
-  // ---------------- modal de projeto (criação + ficha) ----------------
+  // ---------------- edição da ficha de um projeto existente ----------------
   function modalProjeto(item) {
     const ficha = { ...fichaPadrao(), ...(item?.ficha || {}) };
     const nome = input({ value: item?.nome || '', placeholder: 'Ex.: Reparo bateria 3 — parada de maio' });
-    const contratoSel = el('select', { class: 'select', disabled: !!item }, contratos.map((c) =>
-      el('option', { value: c.id, selected: c.id === (item?.contratoId || (filtroContrato !== 'todos' ? filtroContrato : '')) }, `${c.nome} · ${c.clienteNome}`)
+    const contratoSel = el('select', { class: 'select', disabled: true }, contratos.map((c) =>
+      el('option', { value: c.id, selected: c.id === item.contratoId }, `${c.nome} · ${c.clienteNome}`)
     ));
     const setorSel = el('select', { class: 'select' }, [
       el('option', { value: '' }, 'Sem setor'),
@@ -338,7 +353,7 @@ export function renderProjetosPage(ctx) {
     });
 
     openModal({
-      title: item ? 'Editar ficha do projeto' : 'Novo projeto',
+      title: 'Editar ficha do projeto',
       body: [
         el('div', { class: 'section-title' }, 'Identificação'),
         field({ label: 'Nome do projeto', input: nome }),
@@ -370,14 +385,8 @@ export function renderProjetosPage(ctx) {
           efetivo: efetivo.getValue(),
           restricoes: restricoes.value.split('\n')
         };
-        const base = { nome: nome.value.trim(), setor: setorSel.value, dataInicio: inicio.value, dataFim: fim.value, ficha: novaFicha };
-        if (item) await updateProjeto(item.id, base);
-        else {
-          const ref = await addProjeto({ ...base, contrato, cliente: clientes.find((c) => c.id === contrato.clienteId), criadoPor: profile.uid });
-          abertoId = ref.id; // abre direto no projeto recém-criado para montar as etapas
-          paint();
-        }
-        toast(item ? 'Ficha atualizada.' : 'Projeto criado! Agora adicione as etapas.', 'ok');
+        await updateProjeto(item.id, { nome: nome.value.trim(), setor: setorSel.value, dataInicio: inicio.value, dataFim: fim.value, ficha: novaFicha });
+        toast('Ficha atualizada.', 'ok');
       }
     });
   }
@@ -431,7 +440,7 @@ export function renderProjetosPage(ctx) {
       statTile({ label: 'Improdutivo', value: formatMinutes(r.improdutivoMin), iconHtml: icon.x(15), tone: 'warn' })
     ]);
 
-    return [header, kpis, el('div', { class: 'grid grid-2' }, [fichaCard, cardDivergencias(r)]), cardEtapas(p, r)];
+    return [header, kpis, el('div', { class: 'grid grid-2' }, [fichaCard, cardDivergencias(r)]), cardEtapas(p, r), cardImprodutividades(p)];
   }
 
   function kv(k, v, wide) {
@@ -464,7 +473,7 @@ export function renderProjetosPage(ctx) {
     const salvarEtapas = (novas, msg) => updateProjeto(p.id, { etapas: novas }).then(() => msg && toast(msg, 'ok')).catch(() => toast('Não foi possível salvar.', 'error'));
 
     const body = etapas.length === 0
-      ? emptyState({ icon: icon.list(34), title: 'Nenhuma etapa planejada', message: 'Adicione as etapas a partir do catálogo de atividades. Depois ajuste a duração e a MOD de cada uma.' })
+      ? emptyState({ icon: icon.list(34), title: 'Nenhuma atividade planejada', message: 'Clique em "Editar atividades" para montar a lista: nome, VA/DN, tempo padrão e colaboradores.' })
       : el('div', { class: 'table-wrap' }, [
           el('table', { class: 'data-table' }, [
             el('thead', {}, el('tr', {}, ['#', 'Etapa', 'Lean', 'Duração plan.', 'MOD plan.', 'Real (por execução)', 'Desvio', 'Efetivo real', ''].map((h) => el('th', {}, h)))),
@@ -496,9 +505,9 @@ export function renderProjetosPage(ctx) {
         ]);
 
     return cardWithHeader({
-      title: 'Etapas planejadas × realizado',
-      subtitle: 'Duração e MOD de cada etapa chegam pré-preenchidas no celular do apontador',
-      actions: [button({ label: 'Adicionar etapas', size: 'sm', variant: 'primary', icon: icon.plus(15), onClick: () => modalAddEtapas(p) })],
+      title: 'Atividades planejadas × realizado',
+      subtitle: 'Tempo padrão e colaboradores de cada atividade chegam pré-preenchidos no celular do apontador',
+      actions: [button({ label: 'Editar atividades', size: 'sm', variant: 'primary', icon: icon.edit(14), onClick: () => modalAtividades(p, 'produtiva') })],
       children: [body]
     });
   }
@@ -522,66 +531,197 @@ export function renderProjetosPage(ctx) {
     });
   }
 
-  /** Escolhe etapas do catálogo (produtivas) para o projeto, com busca e filtro por grupo. */
-  function modalAddEtapas(p) {
-    const jaTem = new Set((p.etapas || []).map((e) => e.atividadeId));
-    const catalogo = atividades.filter((a) => a.tipo === 'produtiva' && a.ativo !== false && !jaTem.has(a.id));
-    const grupos = [...new Set(catalogo.map((a) => a.contrato).filter(Boolean))].sort();
-    const marcadas = new Set();
-    let grupo = grupos.includes(p.contratoNome) ? p.contratoNome : 'todos';
-    let busca = '';
+  // =====================================================================
+  // ATIVIDADES DO PROJETO (criação e edição)
+  // =====================================================================
 
-    const lista = el('div', { class: 'check-list' });
-    const contador = el('span', { class: 'muted', style: { fontSize: '12.5px' } }, '0 selecionada(s)');
-    const buscaInput = input({ placeholder: 'Buscar etapa…', oninput: (e) => { busca = e.target.value.toLowerCase(); pintar(); } });
-    const grupoSel = el('select', { class: 'select', onchange: (e) => { grupo = e.target.value; pintar(); } }, [
-      el('option', { value: 'todos' }, 'Todos os grupos'),
-      ...grupos.map((g) => el('option', { value: g, selected: g === grupo }, g))
-    ]);
-
-    function visiveis() {
-      return catalogo.filter((a) => (grupo === 'todos' || a.contrato === grupo) && (!busca || `${a.codigo} ${a.nome}`.toLowerCase().includes(busca)));
-    }
-    function pintar() {
-      const vs = visiveis();
-      contador.textContent = `${marcadas.size} selecionada(s)`;
-      mount(lista, vs.length
-        ? vs.map((a) => el('label', { class: 'check-item' }, [
-            el('input', { type: 'checkbox', checked: marcadas.has(a.id), onchange: (e) => { e.target.checked ? marcadas.add(a.id) : marcadas.delete(a.id); contador.textContent = `${marcadas.size} selecionada(s)`; } }),
-            el('span', { class: 'mono muted' }, a.codigo || ''),
-            el('span', {}, a.nome),
-            a.duracaoPadraoMin ? el('span', { class: 'mono muted', style: { marginLeft: 'auto' } }, formatMinutes(a.duracaoPadraoMin)) : null
-          ]))
-        : [el('div', { class: 'muted', style: { padding: '18px', textAlign: 'center', fontSize: '13px' } }, catalogo.length ? 'Nada encontrado.' : 'Todas as atividades do catálogo já estão no projeto — cadastre novas em Cadastros.')]);
-    }
-    pintar();
-
-    openModal({
-      title: 'Adicionar etapas do catálogo',
-      saveLabel: 'Adicionar',
+  /** Edita a lista de atividades (produtivas ou improdutividades) de um projeto existente. */
+  function modalAtividades(p, tipo) {
+    const produtiva = tipo === 'produtiva';
+    const itens = copia((produtiva ? p.etapas : p.improdutividades) || []);
+    const editor = editorAtividades({ itens, tipo, equipePadrao: p.ficha?.efetivo, modelos: MODELOS, projetos: projetos.filter((x) => x.id !== p.id) });
+    const close = () => backdrop.remove();
+    const salvar = button({ label: 'Salvar', variant: 'primary', onClick: async () => {
+      const erro = validarAtividades(itens, tipo);
+      if (erro) return toast(erro, 'error');
+      salvar.disabled = true;
+      try {
+        const vinculados = await vincularAtividades(itens, tipo, atividades, { contrato: p.contratoNome, criadoPor: profile.uid });
+        await updateProjeto(p.id, produtiva ? { etapas: vinculados } : { improdutividades: vinculados });
+        toast(produtiva ? 'Atividades do projeto salvas.' : 'Improdutividades do projeto salvas.', 'ok');
+        close();
+      } catch {
+        salvar.disabled = false;
+        toast('Não foi possível salvar. Tente novamente.', 'error');
+      }
+    } });
+    const backdrop = modal({
+      title: produtiva ? `Atividades — ${p.nome}` : `Improdutividades — ${p.nome}`,
+      largo: true,
       body: [
-        grid2([grupoSel, buscaInput]),
-        el('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } }, [
-          contador,
-          button({ label: 'Marcar todas visíveis', size: 'sm', variant: 'ghost', onClick: () => { visiveis().forEach((a) => marcadas.add(a.id)); pintar(); } })
-        ]),
-        lista
+        el('p', { class: 'muted', style: { fontSize: '13px', lineHeight: '1.5' } }, produtiva
+          ? 'O que a equipe vai executar. Tempo padrão e colaboradores chegam pré-preenchidos no celular do apontador.'
+          : 'Paradas que podem acontecer neste projeto. O apontador escolhe entre elas ao lançar uma improdutividade.'),
+        editor.node
       ],
-      onSave: async () => {
-        if (!marcadas.size) { toast('Marque pelo menos uma etapa.', 'error'); return false; }
-        // mantém a ordem do catálogo (código) e herda o padrão da atividade como ponto de partida
-        const novas = catalogo.filter((a) => marcadas.has(a.id)).map((a) => ({
-          atividadeId: a.id,
-          codigo: a.codigo || '',
-          nome: a.nome,
-          classificacao: a.classificacao,
-          duracaoMin: a.duracaoPadraoMin || 0,
-          efetivo: efetivoTotal(a.efetivoPadrao) ? a.efetivoPadrao : (p.ficha?.efetivo || {})
-        }));
-        await updateProjeto(p.id, { etapas: [...(p.etapas || []), ...novas] });
-        toast(`${novas.length} etapa(s) adicionada(s).`, 'ok');
+      footer: [button({ label: 'Cancelar', variant: 'ghost', onClick: close }), salvar],
+      onClose: close
+    });
+    document.body.appendChild(backdrop);
+  }
+
+  function cardImprodutividades(p) {
+    const lista = p.improdutividades || [];
+    return cardWithHeader({
+      title: 'Improdutividades previstas',
+      subtitle: 'Paradas que o apontador pode registrar neste projeto — DN inevitável, DNN evitável',
+      actions: [button({ label: 'Editar improdutividades', size: 'sm', variant: 'outline', icon: icon.edit(14), onClick: () => modalAtividades(p, 'improdutiva') })],
+      children: [lista.length
+        ? el('div', { class: 'chip-row' }, lista.map((i) => el('span', { class: `chip chip-classe chip-${i.classificacao}` }, [el('b', {}, i.classificacao), i.nome])))
+        : el('div', { class: 'muted', style: { fontSize: '13px' } }, 'Nenhuma definida — o celular mostra a lista geral de improdutividades.')]
+    });
+  }
+
+  /** Assistente de criação: ficha + atividades + improdutividades, passo a passo. */
+  function abrirAssistente(continuar) {
+    const draft = rascunho(chaveRascunho);
+    if (!continuar) draft.limpar();
+    const estado = (continuar && draft.ler()) || {
+      nome: '',
+      contratoId: filtroContrato !== 'todos' ? filtroContrato : contratos[0]?.id || '',
+      setor: '',
+      dataInicio: '',
+      dataFim: '',
+      ficha: fichaPadrao(),
+      etapas: [],
+      improdutividades: []
+    };
+    criando = wizard({
+      titulo: 'Novo projeto',
+      iconeHtml: icon.folder(22),
+      passos: passosNovoProjeto(),
+      estado,
+      rascunhoChave: chaveRascunho,
+      rotuloConcluir: 'Criar projeto',
+      aoSair: () => { criando = null; paint(); },
+      aoConcluir: async (st) => {
+        const contrato = contratos.find((c) => c.id === st.contratoId);
+        const etapas = await vincularAtividades(st.etapas, 'produtiva', atividades, { contrato: contrato.nome, criadoPor: profile.uid });
+        const improdutividades = await vincularAtividades(st.improdutividades, 'improdutiva', atividades, { criadoPor: profile.uid });
+        abertoId = await addProjeto({
+          nome: st.nome, contrato, cliente: clientes.find((c) => c.id === contrato.clienteId), setor: st.setor,
+          dataInicio: st.dataInicio, dataFim: st.dataFim, ficha: st.ficha, etapas, improdutividades, criadoPor: profile.uid
+        });
+        toast('Projeto criado! Ele já aparece no celular dos apontadores.', 'ok');
+        criando = null;
+        paint();
       }
     });
+    mount(node, [criando.node]);
+    window.scrollTo?.({ top: 0 });
+  }
+
+  function passosNovoProjeto() {
+    const texto = (st, chave, props = {}) => input({ value: st[chave] || '', oninput: (e) => { st[chave] = e.target.value; }, ...props });
+    return [
+      {
+        titulo: 'Identificação',
+        ajuda: 'Dê um nome fácil de reconhecer em campo (ex.: "Reparo do duto coletor — Bateria 3") e escolha o contrato. As datas servem para o Assistente avisar se o prazo estiver em risco.',
+        render: (st, atualizar) => {
+          const guardar = () => atualizar({ repintar: false });
+          const setorSel = el('select', { class: 'select', onchange: (e) => {
+            st.setor = e.target.value;
+            const s = setores.find((x) => x.nome === st.setor);
+            if (s) Object.assign(st.ficha, { escala: s.escala || 'adm', horasPorTurno: s.horasPorTurno || escalaInfo(s.escala).horasPadrao, turmas: s.turmas || 1 });
+            guardar();
+          } }, [el('option', { value: '' }, 'Sem setor'), ...setores.map((x) => el('option', { value: x.nome, selected: x.nome === st.setor }, x.nome))]);
+          return el('div', { class: 'wiz-form' }, [
+            field({ label: 'Nome do projeto', input: texto(st, 'nome', { placeholder: 'Ex.: Reparo do duto coletor — Bateria 3', oninput: (e) => { st.nome = e.target.value; guardar(); } }) }),
+            grid2([
+              field({ label: 'Contrato', input: el('select', { class: 'select', onchange: (e) => { st.contratoId = e.target.value; guardar(); } }, contratos.map((c) => el('option', { value: c.id, selected: c.id === st.contratoId }, `${c.nome} · ${c.clienteNome}`))) }),
+              field({ label: 'Setor', input: setorSel })
+            ]),
+            grid2([
+              field({ label: 'Início previsto', input: texto(st, 'dataInicio', { type: 'date', onchange: (e) => { st.dataInicio = e.target.value; guardar(); } }) }),
+              field({ label: 'Término previsto', input: texto(st, 'dataFim', { type: 'date', onchange: (e) => { st.dataFim = e.target.value; guardar(); } }) })
+            ])
+          ]);
+        },
+        validar: (st) => (!st.nome.trim() ? 'Dê um nome ao projeto.' : !contratos.some((c) => c.id === st.contratoId) ? 'Escolha o contrato.' : st.dataInicio && st.dataFim && st.dataFim < st.dataInicio ? 'O término não pode ser antes do início.' : null)
+      },
+      {
+        titulo: 'Turno e horários',
+        ajuda: 'A escala e os horários definem o tempo útil por dia — base do takt time e da capacidade. O almoço é descontado automaticamente.',
+        render: (st, atualizar) => {
+          const f = st.ficha;
+          const uteis = el('div', { class: 'field-hint mono' });
+          const mostrarUteis = () => { uteis.textContent = `Tempo útil por dia: ${formatMinutes(minutosUteisDia(f))} · ${f.turmas || 1} turma(s)`; };
+          const campo = (chave, props) => input({ value: String(f[chave] ?? ''), onchange: (e) => { f[chave] = e.target.value; mostrarUteis(); atualizar({ repintar: false }); }, ...props });
+          const horas = campo('horasPorTurno', { type: 'number', class: 'input mono', min: '1', max: '24' });
+          mostrarUteis();
+          return el('div', { class: 'wiz-form' }, [
+            grid2([
+              field({ label: 'Escala', input: el('select', { class: 'select', onchange: (e) => { f.escala = e.target.value; f.horasPorTurno = escalaInfo(f.escala).horasPadrao; horas.value = String(f.horasPorTurno); atualizar({ repintar: false }); } }, ESCALAS.map((x) => el('option', { value: x.value, selected: x.value === f.escala }, x.label))) }),
+              field({ label: 'Jornada (h/turno)', input: horas })
+            ]),
+            grid2([field({ label: 'Chegada', input: campo('horaChegada', { type: 'time' }) }), field({ label: 'Saída', input: campo('horaSaida', { type: 'time' }) })]),
+            grid2([field({ label: 'Almoço — início', input: campo('almocoInicio', { type: 'time' }) }), field({ label: 'Almoço — fim', input: campo('almocoFim', { type: 'time' }) })]),
+            field({ label: 'Turmas (equipes ao mesmo tempo)', input: campo('turmas', { type: 'number', class: 'input mono', min: '1' }) }),
+            uteis
+          ]);
+        }
+      },
+      {
+        titulo: 'Equipe e restrições',
+        ajuda: 'A equipe (MOD) de cada turma vira o ponto de partida das atividades. Restrições aparecem em destaque no celular do apontador (ex.: APR, permissão de trabalho).',
+        render: (st, atualizar) => {
+          const ef = efetivoInputs(st.ficha.efetivo || {}, () => { st.ficha.efetivo = ef.getValue(); atualizar({ repintar: false }); });
+          return el('div', { class: 'wiz-form' }, [
+            el('div', { class: 'field-label' }, 'Equipe planejada por turma'),
+            ef.node,
+            field({ label: 'Restrições (uma por linha)', input: el('textarea', { class: 'textarea', placeholder: 'Ex.:\nLiberação de APR antes de iniciar\nTrabalho em altura — exige PT', value: (st.ficha.restricoes || []).join('\n'),
+              oninput: (e) => { st.ficha.restricoes = e.target.value.split('\n'); atualizar({ repintar: false }); } }) })
+          ]);
+        }
+      },
+      {
+        titulo: 'Atividades',
+        ajuda: [
+          'Liste o que a equipe vai executar. Para cada atividade diga se ela agrega valor (VA — transforma o serviço) ou é necessária (DN — prepara: andaime, demolição, limpeza).',
+          'Informe o tempo padrão e quantas pessoas de cada função. Dá para começar de um modelo pronto ou copiar de outro projeto.'
+        ],
+        render: (st, atualizar) => editorAtividades({ itens: st.etapas, tipo: 'produtiva', equipePadrao: st.ficha.efetivo, modelos: MODELOS, projetos, aoMudar: () => atualizar({ repintar: false }) }).node,
+        validar: (st) => (st.etapas.length ? validarAtividades(st.etapas, 'produtiva') : 'Inclua pelo menos uma atividade.')
+      },
+      {
+        titulo: 'Improdutividades',
+        ajuda: 'Paradas que podem acontecer neste projeto. DN é inevitável hoje (chuva, DDS); DNN é desperdício evitável (espera de APR, falta de material). Toque nas sugestões para incluir.',
+        render: (st, atualizar) => editorAtividades({ itens: st.improdutividades, tipo: 'improdutiva', projetos, aoMudar: () => atualizar({ repintar: false }) }).node,
+        validar: (st) => validarAtividades(st.improdutividades, 'improdutiva')
+      },
+      {
+        titulo: 'Revisar',
+        ajuda: 'Confira e clique em "Criar projeto". Tudo pode ser alterado depois, dentro do projeto.',
+        render: (st) => {
+          const f = st.ficha;
+          const contrato = contratos.find((c) => c.id === st.contratoId);
+          const totalMin = st.etapas.reduce((x, e) => x + (Number(e.duracaoMin) || 0), 0);
+          return el('div', { class: 'wiz-form' }, [
+            el('div', { class: 'kv-grid' }, [
+              kv('Projeto', st.nome || '—', true),
+              kv('Contrato', contrato ? `${contrato.nome} · ${contrato.clienteNome}` : '—'),
+              kv('Período', st.dataInicio ? `${formatDateBR(st.dataInicio)} a ${formatDateBR(st.dataFim)}` : '—'),
+              kv('Turno', `${escalaLabel(f.escala)} · ${f.horaChegada} às ${f.horaSaida}`),
+              kv('Tempo útil/dia', formatMinutes(minutosUteisDia(f))),
+              kv('Equipe por turma', efetivoTotal(f.efetivo) ? formatEfetivo(f.efetivo) : '—', true),
+              kv('Atividades', `${st.etapas.length} (${formatMinutes(totalMin)} planejados)`),
+              kv('Improdutividades', String(st.improdutividades.length))
+            ]),
+            el('div', { class: 'chip-row' }, st.etapas.map((e) => el('span', { class: `chip chip-classe chip-${e.classificacao}` }, [el('b', {}, e.classificacao), `${e.nome} · ${formatMinutes(e.duracaoMin)}`])))
+          ]);
+        }
+      }
+    ];
   }
 
   paint();
@@ -590,6 +730,7 @@ export function renderProjetosPage(ctx) {
     node,
     update(newCtx) {
       ({ clientes, contratos, projetos, atividades, setores, lancamentos } = newCtx);
+      if (criando) return; // não interrompe o assistente de novo projeto
       // não repinta enquanto há um campo em edição na página (evita perder o foco)
       if (node.contains(document.activeElement) && document.activeElement.tagName === 'INPUT') return;
       paint();

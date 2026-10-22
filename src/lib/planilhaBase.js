@@ -1,48 +1,43 @@
 import { EFETIVO_CAMPOS, ESCALAS, formatDateBR } from '../utils/format.js';
-import { STATUS_PROJETO, updateProjeto, sanitizeEtapa } from './projetos.js';
-import { addAtividade, updateAtividade } from './activities.js';
+import { STATUS_PROJETO, updateProjeto, sanitizeEtapa, sanitizeImprodutividade } from './projetos.js';
+import { vincularAtividades } from './activities.js';
 import { auditar } from './auditoria.js';
 
 /**
  * Base de planejamento editável no Excel: o planejador baixa a planilha,
- * altera durações, MOD, horários e o catálogo, e envia de volta. Antes de
+ * altera horários, equipe e as atividades dos projetos, e envia de volta. Antes de
  * gravar, o app mostra exatamente o que vai mudar. Linhas são casadas pelo
  * ID — por isso a coluna de ID não deve ser alterada.
  */
 
 const MOD_COLS = EFETIVO_CAMPOS.map((c) => ({ key: c.key, label: `MOD ${c.label}` }));
-const COLS_ATIV = ['ID (não alterar)', 'Código', 'Nome', 'Tipo', 'Lean', 'Grupo / contrato', 'Setor', 'Duração padrão (min)', ...MOD_COLS.map((m) => m.label), 'Ativa'];
 const COLS_PROJ = ['ID (não alterar)', 'Projeto', 'Cliente', 'Contrato', 'Setor', 'Situação', 'Início', 'Término', 'Escala', 'Jornada (h)', 'Chegada', 'Saída', 'Almoço início', 'Almoço fim', 'Turmas', ...MOD_COLS.map((m) => m.label), 'Restrições (separe com ;)'];
-const COLS_ETAPA = ['ID projeto (não alterar)', 'Projeto', 'ID etapa (não alterar)', 'Ordem', 'Código', 'Etapa', 'Lean', 'Duração (min)', ...MOD_COLS.map((m) => m.label)];
+const COLS_ATV = ['ID projeto (não alterar)', 'Projeto', 'ID atividade (não alterar)', 'Tipo', 'Ordem', 'Código', 'Atividade', 'Lean', 'Tempo padrão (min)', ...MOD_COLS.map((m) => m.label)];
 
 const LEIA_ME = [
   ['REFRAMAX Tempos & Métodos — base de planejamento'],
   [''],
   ['Como usar'],
-  ['1. Edite as abas Atividades, Projetos e Etapas: durações, MOD (equipe), horários, situação, restrições.'],
-  ['2. Não altere as colunas de ID — é por elas que o app reconhece cada linha.'],
-  ['3. Para criar uma atividade nova no catálogo, preencha uma linha nova em Atividades deixando o ID vazio.'],
-  ['4. Para incluir uma etapa num projeto, crie uma linha em Etapas com o ID do projeto, ID da etapa vazio e o código ou nome de uma atividade do catálogo.'],
+  ['1. Aba Projetos: horários, equipe (MOD), situação, datas e restrições de cada projeto.'],
+  ['2. Aba Atividades: as atividades de cada projeto — Tipo (Produtiva ou Improdutividade), Lean (VA/DN ou DN/DNN), tempo padrão e equipe.'],
+  ['3. Não altere as colunas de ID — é por elas que o app reconhece cada linha.'],
+  ['4. Para incluir uma atividade num projeto, crie uma linha com o ID do projeto e deixe o ID da atividade vazio.'],
   ['5. Volte ao app (Projetos → Enviar planilha editada). O app mostra tudo o que vai mudar antes de gravar.'],
   [''],
   ['O que a planilha não faz (use o app)'],
-  ['• Apagar atividades, projetos ou etapas — linhas apagadas aqui são simplesmente ignoradas.'],
+  ['• Apagar projetos ou atividades — linhas apagadas aqui são simplesmente ignoradas.'],
   ['• Criar projetos novos (é preciso escolher cliente e contrato no app).'],
   [''],
   ['A aba Lançamentos é só para consulta e análise: alterações nela não voltam para o app.']
 ];
 
 // ------------------------------------------------------------ exportar
-export async function exportarBase({ atividades = [], projetos = [], lancamentos = [] }) {
+export async function exportarBase({ projetos = [], lancamentos = [] }) {
   const XLSX = await import('xlsx');
   const mod = (ef = {}) => MOD_COLS.map((m) => Number(ef[m.key]) || 0);
   const status = (v) => STATUS_PROJETO.find((s) => s.value === v)?.label || 'Planejado';
   const escala = (v) => ESCALAS.find((e) => e.value === v)?.label || v || '';
 
-  const ativ = atividades.map((a) => [
-    a.id, a.codigo || '', a.nome, a.tipo === 'improdutiva' ? 'Improdutividade' : 'Produtiva', a.classificacao || '', a.contrato || '', a.setor || '',
-    Number(a.duracaoPadraoMin) || 0, ...mod(a.efetivoPadrao), a.ativo === false ? 'Não' : 'Sim'
-  ]);
   const proj = projetos.map((p) => {
     const f = p.ficha || {};
     return [
@@ -51,7 +46,10 @@ export async function exportarBase({ atividades = [], projetos = [], lancamentos
       ...mod(f.efetivo), (f.restricoes || []).join('; ')
     ];
   });
-  const etapas = projetos.flatMap((p) => (p.etapas || []).map((e, i) => [p.id, p.nome, e.id, i + 1, e.codigo || '', e.nome, e.classificacao || '', Number(e.duracaoMin) || 0, ...mod(e.efetivo)]));
+  const atividadesProj = projetos.flatMap((p) => [
+    ...(p.etapas || []).map((e, i) => [p.id, p.nome, e.id, 'Produtiva', i + 1, e.codigo || '', e.nome, e.classificacao || '', Number(e.duracaoMin) || 0, ...mod(e.efetivo)]),
+    ...(p.improdutividades || []).map((m, i) => [p.id, p.nome, m.id, 'Improdutividade', i + 1, '', m.nome, m.classificacao || '', 0, ...mod({})])
+  ]);
   const lanc = lancamentos.map((l) => [
     formatDateBR(l.data), l.horaInicio, l.horaTermino, Number(l.duracaoMinutos) || 0, l.tipoRegistro === 'improdutividade' ? 'Improdutividade' : 'Atividade',
     l.projetoNome || 'Avulso', l.contrato || '', l.setor || '', l.atividadeNome || '', l.classificacao || '', Number(l.duracaoPadraoMin) || 0, Number(l.excedenteMin) || 0,
@@ -65,9 +63,8 @@ export async function exportarBase({ atividades = [], projetos = [], lancamentos
     XLSX.utils.book_append_sheet(wb, ws, nome);
   };
   aba('Leia-me', LEIA_ME, [110]);
-  aba('Atividades', [COLS_ATIV, ...ativ], [22, 9, 44, 15, 6, 28, 16, 12, ...MOD_COLS.map(() => 11), 7]);
   aba('Projetos', [COLS_PROJ, ...proj], [22, 34, 18, 18, 14, 14, 11, 11, 12, 9, 8, 8, 10, 10, 7, ...MOD_COLS.map(() => 11), 50]);
-  aba('Etapas', [COLS_ETAPA, ...etapas], [22, 30, 18, 7, 9, 44, 6, 12, ...MOD_COLS.map(() => 11)]);
+  aba('Atividades', [COLS_ATV, ...atividadesProj], [22, 30, 18, 15, 7, 9, 44, 6, 12, ...MOD_COLS.map(() => 11)]);
   aba('Lançamentos (consulta)', [
     ['Data', 'Início', 'Término', 'Duração (min)', 'Tipo', 'Projeto', 'Contrato', 'Setor', 'Atividade', 'Lean', 'Planejado (min)', 'Excedente (min)', ...MOD_COLS.map((m) => m.label.replace('MOD', 'Real')), 'Justificativa', 'Lançado por'],
     ...lanc
@@ -121,53 +118,22 @@ const mesmoEfetivo = (a = {}, b = {}) => EFETIVO_CAMPOS.every((c) => (Number(a[c
  * Lê a planilha enviada e compara com os dados atuais. Não grava nada:
  * devolve um "plano" com as alterações e os erros encontrados.
  */
-export async function lerBase(file, { atividades = [], projetos = [] }) {
+export async function lerBase(file, { projetos = [] }) {
   const XLSX = await import('xlsx');
   const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
   const linhas = (nome) => (wb.Sheets[nome] ? XLSX.utils.sheet_to_json(wb.Sheets[nome], { defval: '', raw: true }) : []);
-  const plano = { atividadesNovas: [], atividadesAlteradas: [], projetosAlterados: new Map(), erros: [], resumo: [] };
+  const plano = { projetosAlterados: new Map(), erros: [] };
   const mudancaProjeto = (p) => {
     if (!plano.projetosAlterados.has(p.id)) plano.projetosAlterados.set(p.id, { projeto: p, patch: {}, itens: [] });
     return plano.projetosAlterados.get(p.id);
   };
 
-  if (!wb.Sheets.Atividades && !wb.Sheets.Projetos && !wb.Sheets.Etapas) {
-    plano.erros.push('Esta não parece ser a planilha de planejamento do app (faltam as abas Atividades, Projetos e Etapas).');
+  if (!wb.Sheets.Projetos && !wb.Sheets.Atividades) {
+    plano.erros.push('Esta não parece ser a planilha de planejamento do app (faltam as abas Projetos e Atividades). Baixe uma nova em "Baixar planilha".');
+    plano.projetosAlterados = [];
+    plano.total = 0;
     return plano;
   }
-
-  // ---- Atividades
-  linhas('Atividades').forEach((r, i) => {
-    const id = txt(r[COLS_ATIV[0]]);
-    const nome = txt(r.Nome);
-    if (!id && !nome) return;
-    const tipo = /improd/i.test(txt(r.Tipo)) ? 'improdutiva' : 'produtiva';
-    const novo = {
-      codigo: txt(r['Código']),
-      nome,
-      classificacao: lean(r.Lean, tipo),
-      contrato: txt(r['Grupo / contrato']),
-      setor: txt(r.Setor),
-      duracaoPadraoMin: tipo === 'produtiva' ? Math.max(0, Math.round(numero(r['Duração padrão (min)']))) : 0,
-      efetivoPadrao: efetivoDe(r),
-      ativo: !/^n/i.test(txt(r.Ativa))
-    };
-    if (!id) {
-      if (!nome) return;
-      plano.atividadesNovas.push({ ...novo, tipo });
-      return;
-    }
-    const atual = atividades.find((a) => a.id === id);
-    if (!atual) return plano.erros.push(`Atividades, linha ${i + 2}: ID "${id}" não existe no app (a atividade pode ter sido apagada).`);
-    if (!nome) return plano.erros.push(`Atividades, linha ${i + 2}: o nome não pode ficar vazio.`);
-    const patch = {};
-    ['codigo', 'nome', 'classificacao', 'contrato', 'setor', 'duracaoPadraoMin'].forEach((k) => {
-      if ((atual[k] ?? '') !== novo[k] && !(k === 'duracaoPadraoMin' && (Number(atual[k]) || 0) === novo[k])) patch[k] = novo[k];
-    });
-    if ((atual.ativo !== false) !== novo.ativo) patch.ativo = novo.ativo;
-    if (!mesmoEfetivo(atual.efetivoPadrao, novo.efetivoPadrao) && atual.tipo === 'produtiva') patch.efetivoPadrao = novo.efetivoPadrao;
-    if (Object.keys(patch).length) plano.atividadesAlteradas.push({ atividade: atual, patch });
-  });
 
   // ---- Projetos (ficha)
   linhas('Projetos').forEach((r, i) => {
@@ -212,68 +178,67 @@ export async function lerBase(file, { atividades = [], projetos = [] }) {
     }
   });
 
-  // ---- Etapas
+  // ---- Atividades dos projetos (produtivas e improdutividades)
   const porProjeto = new Map();
-  linhas('Etapas').forEach((r, i) => {
-    const pid = txt(r[COLS_ETAPA[0]]);
+  linhas('Atividades').forEach((r, i) => {
+    const pid = txt(r[COLS_ATV[0]]);
     if (!pid) return;
     if (!porProjeto.has(pid)) porProjeto.set(pid, []);
     porProjeto.get(pid).push({ r, linha: i + 2 });
   });
   porProjeto.forEach((rows, pid) => {
     const p = projetos.find((x) => x.id === pid);
-    if (!p) return plano.erros.push(`Etapas: projeto com ID "${pid}" não existe no app.`);
-    const atuais = p.etapas || [];
-    const usadas = new Set();
-    const novas = [];
-    let alteradas = 0;
-    let incluidas = 0;
-    rows.sort((a, b) => numero(a.r.Ordem) - numero(b.r.Ordem)).forEach(({ r, linha }) => {
-      const eid = txt(r['ID etapa (não alterar)']);
-      const campos = {
-        codigo: txt(r['Código']),
-        nome: txt(r.Etapa),
-        classificacao: lean(r.Lean, 'produtiva'),
-        duracaoMin: Math.max(0, Math.round(numero(r['Duração (min)']))),
-        efetivo: efetivoDe(r)
-      };
-      if (eid) {
-        const atual = atuais.find((e) => e.id === eid);
-        if (!atual) return plano.erros.push(`Etapas, linha ${linha}: etapa "${eid}" não existe no projeto "${p.nome}".`);
-        usadas.add(eid);
-        const nova = { ...atual, ...campos, nome: campos.nome || atual.nome };
-        if (nova.codigo !== (atual.codigo || '') || nova.nome !== atual.nome || nova.classificacao !== (atual.classificacao || 'DN') ||
-            nova.duracaoMin !== (Number(atual.duracaoMin) || 0) || !mesmoEfetivo(nova.efetivo, atual.efetivo)) alteradas++;
-        novas.push(nova);
-        return;
+    if (!p) return plano.erros.push(`Atividades: projeto com ID "${pid}" não existe no app.`);
+    rows.sort((a, b) => numero(a.r.Ordem) - numero(b.r.Ordem));
+    [['produtiva', 'etapas'], ['improdutiva', 'improdutividades']].forEach(([tipo, campo]) => {
+      const atuais = p[campo] || [];
+      const usadas = new Set();
+      const lista = [];
+      let alteradas = 0;
+      let incluidas = 0;
+      rows.filter(({ r }) => /improd/i.test(txt(r.Tipo)) === (tipo === 'improdutiva')).forEach(({ r, linha }) => {
+        const id = txt(r['ID atividade (não alterar)']);
+        const nome = txt(r.Atividade);
+        const campos = tipo === 'produtiva'
+          ? { codigo: txt(r['Código']), nome, classificacao: lean(r.Lean, tipo), duracaoMin: Math.max(0, Math.round(numero(r['Tempo padrão (min)']))), efetivo: efetivoDe(r) }
+          : { nome, classificacao: lean(r.Lean, tipo) };
+        if (id) {
+          const atual = atuais.find((e) => e.id === id);
+          if (!atual) return plano.erros.push(`Atividades, linha ${linha}: a atividade "${id}" não existe no projeto "${p.nome}".`);
+          usadas.add(id);
+          const nova = { ...atual, ...campos, nome: nome || atual.nome };
+          const mudou = Object.keys(campos).some((k) => (k === 'efetivo' ? !mesmoEfetivo(nova.efetivo, atual.efetivo) : String(nova[k] ?? '') !== String(atual[k] ?? '')));
+          if (mudou) alteradas++;
+          lista.push(nova);
+          return;
+        }
+        if (!nome) return plano.erros.push(`Atividades, linha ${linha}: informe o nome da atividade.`);
+        incluidas++;
+        lista.push(tipo === 'produtiva' ? sanitizeEtapa(campos) : sanitizeImprodutividade(campos));
+      });
+      // o que sumiu da planilha continua no projeto (apagar só pelo app)
+      atuais.filter((e) => !usadas.has(e.id)).forEach((e) => lista.push(e));
+      const reordenou = lista.filter((e) => atuais.some((a) => a.id === e.id)).map((e) => e.id).join() !== atuais.map((e) => e.id).join();
+      if (alteradas || incluidas || reordenou) {
+        const m = mudancaProjeto(p);
+        m.patch[campo] = lista;
+        m.itens.push(`${tipo === 'produtiva' ? 'atividades' : 'improdutividades'}: ${[alteradas && `${alteradas} alterada(s)`, incluidas && `${incluidas} nova(s)`, reordenou && 'ordem'].filter(Boolean).join(', ')}`);
       }
-      // etapa nova: precisa existir no catálogo (é a atividade que o apontador vai lançar)
-      const cat = atividades.find((a) => a.tipo === 'produtiva' && ((campos.codigo && a.codigo === campos.codigo) || (campos.nome && a.nome.toLowerCase() === campos.nome.toLowerCase())));
-      if (!cat) return plano.erros.push(`Etapas, linha ${linha}: "${campos.codigo || campos.nome}" não existe no catálogo de atividades — cadastre-a primeiro.`);
-      incluidas++;
-      novas.push(sanitizeEtapa({ atividadeId: cat.id, codigo: campos.codigo || cat.codigo, nome: campos.nome || cat.nome, classificacao: campos.classificacao, duracaoMin: campos.duracaoMin || cat.duracaoPadraoMin, efetivo: campos.efetivo }));
     });
-    // etapas que sumiram da planilha continuam no projeto (apagar só pelo app)
-    atuais.filter((e) => !usadas.has(e.id)).forEach((e) => novas.push(e));
-    const reordenou = novas.filter((e) => atuais.some((a) => a.id === e.id)).map((e) => e.id).join() !== atuais.map((e) => e.id).join();
-    if (alteradas || incluidas || reordenou) {
-      const m = mudancaProjeto(p);
-      m.patch.etapas = novas;
-      m.itens.push(`etapas: ${[alteradas && `${alteradas} alterada(s)`, incluidas && `${incluidas} nova(s)`, reordenou && 'ordem'].filter(Boolean).join(', ')}`);
-    }
   });
 
   plano.projetosAlterados = [...plano.projetosAlterados.values()];
-  plano.total = plano.atividadesNovas.length + plano.atividadesAlteradas.length + plano.projetosAlterados.length;
+  plano.total = plano.projetosAlterados.length;
   return plano;
 }
 
-/** Grava o plano aprovado. */
-export async function aplicarBase(plano, profile) {
-  auditar('importou', 'planilha', '', `${plano.atividadesNovas.length} atividade(s) nova(s), ${plano.atividadesAlteradas.length} alterada(s), ${plano.projetosAlterados.length} projeto(s)`);
-  await Promise.all([
-    ...plano.atividadesAlteradas.map((x) => updateAtividade(x.atividade.id, x.patch)),
-    ...plano.atividadesNovas.map((a) => addAtividade({ ...a, criadoPor: profile.uid })),
-    ...plano.projetosAlterados.map((x) => updateProjeto(x.projeto.id, x.patch))
-  ]);
+/** Grava o plano aprovado (atividades novas entram no catálogo interno automaticamente). */
+export async function aplicarBase(plano, { atividades = [], profile }) {
+  auditar('importou', 'planilha', '', `${plano.projetosAlterados.length} projeto(s) alterado(s)`);
+  for (const x of plano.projetosAlterados) {
+    const patch = { ...x.patch };
+    if (patch.etapas) patch.etapas = await vincularAtividades(patch.etapas, 'produtiva', atividades, { contrato: x.projeto.contratoNome, criadoPor: profile.uid });
+    if (patch.improdutividades) patch.improdutividades = await vincularAtividades(patch.improdutividades, 'improdutiva', atividades, { criadoPor: profile.uid });
+    await updateProjeto(x.projeto.id, patch);
+  }
 }

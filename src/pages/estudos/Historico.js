@@ -129,7 +129,7 @@ export const historicoDef = {
       },
       {
         titulo: 'Confirmar',
-        ajuda: 'Ao salvar, o estudo fica registrado. Se a opção abaixo estiver marcada, o padrão das atividades escolhidas é atualizado no catálogo — e os próximos lançamentos já usam o novo tempo.',
+        ajuda: 'Ao salvar, o estudo fica registrado. Se a opção abaixo estiver marcada, o tempo padrão geral das atividades escolhidas é atualizado (vale para lançamentos sem projeto). Para mudar um projeto, ajuste a duração dentro dele.',
         render: (st, atualizar) => {
           const escolhidas = calcular(st, ctx).linhas.filter((l) => st.aplicar[l.atividadeId]);
           return el('div', { style: { display: 'flex', flexDirection: 'column', gap: '14px' } }, [
@@ -143,7 +143,7 @@ export const historicoDef = {
             escolhidas.length
               ? el('label', { class: 'tol-item' }, [
                   el('input', { type: 'checkbox', checked: st.aplicarAoSalvar, onchange: (e) => { st.aplicarAoSalvar = e.target.checked; atualizar({ repintar: false }); } }),
-                  el('span', {}, `Atualizar o padrão de ${escolhidas.length} atividade(s) no catálogo`)
+                  el('span', {}, `Atualizar o tempo padrão geral de ${escolhidas.length} atividade(s)`)
                 ])
               : null
           ]);
@@ -162,7 +162,7 @@ export const historicoDef = {
     };
   },
 
-  /** Aplica no catálogo os padrões marcados (só quando o gestor confirma). */
+  /** Aplica os padrões gerais marcados (só quando o gestor confirma). */
   async aposSalvar(st, ctx) {
     if (!st.aplicarAoSalvar) return;
     const escolhidas = calcular(st, ctx).linhas.filter((l) => st.aplicar[l.atividadeId] && l.noCatalogo && l.sugerido > 0);

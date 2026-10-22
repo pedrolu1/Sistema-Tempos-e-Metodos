@@ -210,6 +210,7 @@
 
 .desktop-sidebar {
   width: var(--shell-sidebar-w);
+  transition: width var(--dur-med) var(--ease-out), padding var(--dur-med) var(--ease-out);
   flex-shrink: 0;
   background: var(--bg-1);
   border-right: 1px solid var(--border-soft);
@@ -221,7 +222,28 @@
   top: 0;
   height: 100vh;
 }
-.sidebar-brand { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 6px 8px 16px; }
+.sidebar-brand { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; padding: 6px 4px 16px 8px; }
+.sidebar-brand-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; overflow: hidden; }
+.sidebar-toggle {
+  flex-shrink: 0; width: 34px; height: 34px; border-radius: var(--r-md);
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--bg-2); border: 1px solid var(--border); color: var(--text-1); cursor: pointer;
+  transition: background var(--dur-fast), color var(--dur-fast);
+}
+.sidebar-toggle:hover { background: var(--bg-3); color: var(--text-0); }
+.sidebar-icon { display: inline-flex; flex-shrink: 0; }
+.sidebar-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* menu recolhido: só os ícones, o conteúdo ganha a largura da tela */
+.menu-recolhido .desktop-sidebar { width: 72px; padding: 22px 10px; }
+.menu-recolhido .sidebar-brand { flex-direction: column; align-items: center; padding: 6px 0 16px; }
+.menu-recolhido .sidebar-brand-text { display: none; }
+.menu-recolhido .sidebar-label { display: none; }
+.menu-recolhido .sidebar-link { justify-content: center; padding: 11px 0; }
+.menu-recolhido .sidebar-link.active::before { left: -10px; }
+.menu-recolhido .sidebar-link .badge { position: absolute; top: 2px; right: 2px; height: 17px; min-width: 17px; padding: 0 4px; font-size: 10px; }
+.menu-recolhido .sidebar-user { justify-content: center; padding: 6px 0; }
+.menu-recolhido .sidebar-footer .btn { padding: 0; justify-content: center; }
 
 .sidebar-nav { display: flex; flex-direction: column; gap: 3px; flex: 1; overflow-y: auto; }
 .sidebar-link {

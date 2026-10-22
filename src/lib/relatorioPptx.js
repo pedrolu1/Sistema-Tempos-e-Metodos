@@ -17,9 +17,11 @@ const COR = {
   cartao: 'EEF3FF',
   linha: 'E3E6EE',
   branco: 'FFFFFF',
-  VA: '1E9E5A',
-  DN: 'C98500',
-  DNN: 'D64553'
+  // verde médio, âmbar claro e vermelho escuro: claridades bem diferentes,
+  // para não depender só do tom (daltonismo vermelho/verde)
+  VA: '2EAD5F',
+  DN: 'F2B705',
+  DNN: 'B91C1C'
 };
 const CABECALHO = 'Arial';
 const CORPO = 'Calibri';
@@ -146,7 +148,7 @@ export function montarApresentacao(pptx, { lancamentos, periodo, filtros, projet
   lean.addText('Como o tempo foi usado', { placeholder: 'title' });
   lean.addChart(pptx.ChartType.doughnut, [{ name: 'Lean', labels: ['Valor Agregado', 'Desperdício Necessário', 'Desperdício Não Necessário'], values: [horas(ind.lean.VA), horas(ind.lean.DN), horas(ind.lean.DNN)] }], {
     x: 0.6, y: 1.4, w: 5.6, h: 5.3, holeSize: 58, chartColors: [COR.VA, COR.DN, COR.DNN],
-    showPercent: true, showValue: false, showLegend: false, dataLabelColor: COR.branco, dataLabelFontSize: 13, dataLabelFontFace: CORPO, dataBorder: { pt: 2, color: COR.branco }
+    showPercent: false, showValue: false, showLegend: false, dataBorder: { pt: 2, color: COR.branco } // os % ficam na legenda ao lado, legíveis
   });
   const leanLinhas = [
     ['VA', 'Valor Agregado', 'o que transforma o serviço: aplicar, montar, assentar'],

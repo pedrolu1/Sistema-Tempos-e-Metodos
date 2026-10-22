@@ -1,14 +1,14 @@
 /**
- * Catálogo padrão de etapas produtivas, organizado por contrato — usado pelo
- * botão "Importar catálogo padrão" em Admin → Cadastros. Importar é seguro
- * de rodar mais de uma vez: itens que já existem (mesmo código) são ignorados.
+ * Modelos de etapas produtivas, organizados por contrato — usados pelo botão
+ * "Usar modelo" ao montar as atividades de um projeto (Projetos → Novo
+ * projeto / Editar atividades).
  *
  * classificacao: 'VA' (Valor Agregado) marca as etapas que efetivamente
  * transformam a peça/estrutura (instalação, recomposição, acabamento); tudo
  * o mais (montagem/desmontagem de andaime, demolição/remoção de acesso,
  * limpeza, inspeção/medição) é 'DN' — necessário para viabilizar o trabalho,
  * mas não agrega valor por si só. É só um ponto de partida: revise e ajuste
- * item a item em Cadastros conforme o critério da sua operação.
+ * item a item no projeto conforme o critério da sua operação.
  */
 export const SEED_ATIVIDADES = [
   // ---- Reparo de Dutos Coletores (MONOLÍTICO) ----

@@ -12,8 +12,6 @@ const COLUMNS = [
   { key: 'classificacao', label: 'Classificação Lean', map: (r) => CLASSIFICACAO_INFO[classificacaoDoLancamento(r)].short },
   { key: 'projetoNome', label: 'Projeto', map: (r) => r.projetoNome || 'Avulso' },
   { key: 'atividadeNome', label: 'Descrição', map: (r) => r.atividadeNome || '' },
-  { key: 'liderNome', label: 'Líder', map: (r) => r.liderNome || '' },
-  { key: 'colaboradores', label: 'Colaboradores', map: (r) => (r.colaboradoresNomes || []).join(', ') },
   { key: 'efetivo', label: 'Efetivo utilizado', map: (r) => formatEfetivo(r.efetivo) },
   { key: 'criadoPorNome', label: 'Lançado por', map: (r) => r.criadoPorNome || '' },
   { key: 'status', label: 'Status', map: (r) => (r._sincronizado === false ? 'Pendente' : 'Sincronizado') }

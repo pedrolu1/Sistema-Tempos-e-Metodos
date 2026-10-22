@@ -1,7 +1,7 @@
 import {
   collection,
   doc,
-  addDoc,
+  setDoc,
   updateDoc,
   deleteDoc,
   onSnapshot,
@@ -11,8 +11,9 @@ import {
   serverTimestamp
 } from 'firebase/firestore';
 import { db } from './firebase.js';
-import { EFETIVO_CAMPOS, escalaInfo } from '../utils/format.js';
+import { sanitizeEfetivo, escalaInfo } from '../utils/format.js';
 import { reportSnapshotError } from './errors.js';
+import { gravacaoLocal } from './sync.js';
 import { auditar, camposAlterados } from './auditoria.js';
 
 /**
@@ -26,12 +27,14 @@ import { auditar, camposAlterados } from './auditoria.js';
  * documento chega inteiro no celular e funciona offline sem consultas extras.
  */
 
-function sanitizeEfetivo(efetivo = {}) {
-  const out = {};
-  EFETIVO_CAMPOS.forEach((c) => {
-    out[c.key] = Math.max(0, Math.round(Number(efetivo[c.key]) || 0));
-  });
-  return out;
+
+const novoId = (prefixo) => `${prefixo}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+
+/** Cria um documento com id gerado no aparelho (não trava sem internet). */
+async function criar(col, dados) {
+  const ref = doc(collection(db, col));
+  await gravacaoLocal(setDoc(ref, dados), col);
+  return ref.id;
 }
 
 function subscribeCol(col, label, callback) {
@@ -43,11 +46,11 @@ function subscribeCol(col, label, callback) {
 export const subscribeClientes = (cb) => subscribeCol('clientes', 'clientes', cb);
 
 export function addCliente({ nome, unidade = '', criadoPor }) {
-  return addDoc(collection(db, 'clientes'), { nome: nome.trim(), unidade: unidade.trim(), ativo: true, criadoPor, criadoEm: serverTimestamp() });
+  return criar('clientes', { nome: nome.trim(), unidade: unidade.trim(), ativo: true, criadoPor, criadoEm: serverTimestamp() });
 }
 export function updateCliente(id, data) {
   auditar('alterou', 'cliente', id, camposAlterados(data));
-  return updateDoc(doc(db, 'clientes', id), data);
+  return gravacaoLocal(updateDoc(doc(db, 'clientes', id), data), 'cliente');
 }
 export function deleteCliente(id, nome = '') {
   auditar('excluiu', 'cliente', id, nome);
@@ -58,7 +61,7 @@ export function deleteCliente(id, nome = '') {
 export const subscribeContratos = (cb) => subscribeCol('contratos', 'contratos', cb);
 
 export function addContrato({ nome, numero = '', clienteId, clienteNome, criadoPor }) {
-  return addDoc(collection(db, 'contratos'), {
+  return criar('contratos', {
     nome: nome.trim(),
     numero: numero.trim(),
     clienteId,
@@ -70,7 +73,7 @@ export function addContrato({ nome, numero = '', clienteId, clienteNome, criadoP
 }
 export function updateContrato(id, data) {
   auditar('alterou', 'contrato', id, camposAlterados(data));
-  return updateDoc(doc(db, 'contratos', id), data);
+  return gravacaoLocal(updateDoc(doc(db, 'contratos', id), data), 'contrato');
 }
 export function deleteContrato(id, nome = '') {
   auditar('excluiu', 'contrato', id, nome);
@@ -128,7 +131,7 @@ function sanitizeFicha(f = {}) {
 
 export function sanitizeEtapa(e = {}) {
   return {
-    id: e.id || `e${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
+    id: e.id || novoId('e'),
     atividadeId: e.atividadeId || '',
     codigo: (e.codigo || '').trim(),
     nome: (e.nome || '').trim(),
@@ -138,8 +141,20 @@ export function sanitizeEtapa(e = {}) {
   };
 }
 
-export function addProjeto({ nome, contrato, cliente, setor = '', dataInicio = '', dataFim = '', ficha, etapas = [], criadoPor }) {
-  return addDoc(collection(db, 'projetos'), {
+/** Improdutividade prevista no projeto: DN (inevitável) ou DNN (evitável). */
+export function sanitizeImprodutividade(i = {}) {
+  return {
+    id: i.id || novoId('i'),
+    atividadeId: i.atividadeId || '',
+    nome: (i.nome || '').trim(),
+    classificacao: i.classificacao === 'DN' ? 'DN' : 'DNN'
+  };
+}
+
+/** Cria o projeto e devolve o id na hora (gerado no aparelho). */
+export async function addProjeto({ nome, contrato, cliente, setor = '', dataInicio = '', dataFim = '', ficha, etapas = [], improdutividades = [], criadoPor }) {
+  const ref = doc(collection(db, 'projetos'));
+  await gravacaoLocal(setDoc(ref, {
     nome: nome.trim(),
     contratoId: contrato.id,
     contratoNome: contrato.nome,
@@ -151,10 +166,12 @@ export function addProjeto({ nome, contrato, cliente, setor = '', dataInicio = '
     status: 'planejado',
     ficha: sanitizeFicha(ficha),
     etapas: etapas.map(sanitizeEtapa),
+    improdutividades: improdutividades.map(sanitizeImprodutividade),
     criadoPor,
     criadoEm: serverTimestamp(),
     atualizadoEm: serverTimestamp()
-  });
+  }), 'projeto');
+  return ref.id;
 }
 
 export function updateProjeto(id, data) {
@@ -162,7 +179,8 @@ export function updateProjeto(id, data) {
   const patch = { ...data, atualizadoEm: serverTimestamp() };
   if (data.ficha) patch.ficha = sanitizeFicha(data.ficha);
   if (data.etapas) patch.etapas = data.etapas.map(sanitizeEtapa);
-  return updateDoc(doc(db, 'projetos', id), patch);
+  if (data.improdutividades) patch.improdutividades = data.improdutividades.map(sanitizeImprodutividade);
+  return gravacaoLocal(updateDoc(doc(db, 'projetos', id), patch), 'projeto');
 }
 
 export function deleteProjeto(id, nome = '') {
