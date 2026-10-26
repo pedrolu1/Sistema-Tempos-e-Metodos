@@ -6,6 +6,7 @@ import { firebaseConfigured } from './lib/firebase.js';
 import { instalarCapturaGlobal, definirContextoSaude } from './lib/saude.js';
 import { definirUsuarioAuditoria } from './lib/auditoria.js';
 import { ENDERECO_NOVO, noEnderecoAntigo, irParaEnderecoNovo, receberDoEnderecoAntigo } from './lib/mudancaEndereco.js';
+import { renderNovaSenha } from './components/Senha.js';
 
 // primeira coisa: qualquer falha daqui em diante é registrada e, quando dá, recuperada
 instalarCapturaGlobal();
@@ -147,10 +148,25 @@ function boot() {
       return;
     }
 
+    // senha redefinida pelo administrador: cria a senha nova antes de entrar
+    if (profile.trocarSenha && !senhaJaTrocada()) {
+      renderNovaSenha(app, { nome: profile.nomeCompleto, aoConcluir: () => {
+        marcarSenhaTrocada();
+        perfilAtual = profile;
+        montarApp();
+      } });
+      return;
+    }
+
     perfilAtual = profile;
     montarApp();
   });
 }
+
+// Depois de trocar a senha provisória, não pede de novo nesta sessão, mesmo
+// que a marcação no perfil demore a chegar (ou seja recusada por regras antigas).
+const senhaJaTrocada = () => { try { return sessionStorage.getItem('rfx.senha-trocada') === '1'; } catch { return false; } };
+const marcarSenhaTrocada = () => { try { sessionStorage.setItem('rfx.senha-trocada', '1'); } catch { /* sem sessionStorage: segue */ } };
 
 // admin e planejador usam o painel; o apontador, o app de campo. O gestor
 // pode alternar para ver o app de campo (ex.: conferir o que o apontador vê).

@@ -8,7 +8,8 @@ import { subscribeAtividades } from '../../lib/activities.js';
 import { subscribeSetores } from '../../lib/setores.js';
 import { subscribeClientes, subscribeContratos, subscribeProjetos } from '../../lib/projetos.js';
 import { subscribeTodosLancamentos } from '../../lib/records.js';
-import { subscribeAllUsers } from '../../lib/auth.js';
+import { subscribeAllUsers, subscribeAdminPrincipal } from '../../lib/auth.js';
+import { abrirAlterarMinhaSenha } from '../../components/Senha.js';
 import { logoutUser } from '../../lib/auth.js';
 import { renderDashboardPage } from './AdminDashboard.js';
 import { renderRecordsPage } from './AdminRecords.js';
@@ -53,7 +54,7 @@ export function mountAdminApp(root, { profile }) {
   // o planejador vê o mesmo painel, menos a aprovação de usuários (só admin)
   const navItems = NAV.filter((n) => isAdmin || !n.soAdmin);
   const state = {
-    atividades: [], setores: [], lancamentos: [], usuarios: [], clientes: [], contratos: [], projetos: [], estudos: [], saude: [], auditoria: [], ultimoBackup: null,
+    atividades: [], setores: [], lancamentos: [], usuarios: [], clientes: [], contratos: [], projetos: [], estudos: [], saude: [], auditoria: [], ultimoBackup: null, adminPrincipal: null,
     loaded: { a: false, s: false, l: false, u: !isAdmin, cl: false, ct: false, p: false, e: false }
   };
 
@@ -123,6 +124,7 @@ export function mountAdminApp(root, { profile }) {
           ])
         ]),
         el('button', { class: 'btn btn-outline btn-sm btn-block', title: 'Ver o app como o apontador vê no celular', onclick: () => window.dispatchEvent(new CustomEvent('rfx:trocar-visao', { detail: 'campo' })) }, [el('span', { class: 'sidebar-icon', html: icon.clock(15) }), el('span', { class: 'sidebar-label' }, 'Ver app de campo')]),
+        el('button', { class: 'btn btn-ghost btn-sm btn-block', title: 'Alterar minha senha', onclick: () => abrirAlterarMinhaSenha() }, [el('span', { class: 'sidebar-icon', html: icon.key(15) }), el('span', { class: 'sidebar-label' }, 'Alterar senha')]),
         el('button', { class: 'btn btn-ghost btn-sm btn-block', title: 'Sair', onclick: () => logoutUser() }, [el('span', { class: 'sidebar-icon', html: icon.logout(15) }), el('span', { class: 'sidebar-label' }, 'Sair')]),
         credito('credito-sidebar')
       ])
@@ -172,6 +174,7 @@ export function mountAdminApp(root, { profile }) {
       saude: state.saude,
       auditoria: state.auditoria,
       ultimoBackup: state.ultimoBackup,
+      adminPrincipal: state.adminPrincipal,
       profile
     };
   }
@@ -273,6 +276,7 @@ export function mountAdminApp(root, { profile }) {
     subscribeEstudos((list) => { state.estudos = list; state.loaded.e = true; renderPage(); }),
     subscribeSaude((list) => { state.saude = list; renderPage(); }),
     subscribeAuditoria((list) => { state.auditoria = list; renderPage(); }),
+    subscribeAdminPrincipal((uid) => { state.adminPrincipal = uid; renderPage(); }),
     subscribeUltimoBackup((b) => { state.ultimoBackup = b; renderPage(); })
   ];
   const unsubRoute = onRouteChange(renderPage);

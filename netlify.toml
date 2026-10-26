@@ -5,3 +5,10 @@
   command = "npm run build"
   publish = "dist"
   environment = { NODE_VERSION = "22" }
+
+# Funções do servidor (ex.: /api/senha, redefinição de senha pelo administrador).
+# O firebase-admin vai inteiro, sem empacotar, porque carrega arquivos em tempo de execução.
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+  external_node_modules = ["firebase-admin"]

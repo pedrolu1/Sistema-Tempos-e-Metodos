@@ -38,10 +38,19 @@ service cloud.firestore {
       return v is string && v.size() <= max;
     }
 
+    // administrador principal: conta fixa, que ninguém bloqueia, rebaixa,
+    // apaga ou altera pelo app (só pelo console do Firebase)
+    function ehPrincipal(uid) {
+      return exists(/databases/$(database)/documents/config/admin)
+        && get(/databases/$(database)/documents/config/admin).data.principal == uid;
+    }
+
     // ---------------------------------------------------------------
     // usuarios — cada pessoa lê o próprio perfil; só o admin lê a lista,
     // aprova, nega ou muda papéis/contratos. O cadastro nasce sempre como
-    // "pendente" e "lider" — é isso que impede autoaprovação.
+    // "pendente" e "lider" — é isso que impede autoaprovação. A conta do
+    // administrador principal não pode ser alterada nem apagada pelo app.
+    // A própria pessoa só pode marcar que já trocou a senha provisória.
     // ---------------------------------------------------------------
     match /usuarios/{uid} {
       allow get: if isSignedIn() && (request.auth.uid == uid || isAdmin());
@@ -54,10 +63,15 @@ service cloud.firestore {
         && request.resource.data.nomeCompleto.size() >= 3
         && request.resource.data.matricula is string
         && request.resource.data.matricula.matches('[0-9]{6}');
-      allow update: if isAdmin()
-        && request.resource.data.role in ['lider', 'planejador', 'admin']
-        && request.resource.data.status in ['pendente', 'aprovado', 'negado'];
-      allow delete: if isAdmin();
+      allow update: if (isAdmin()
+          && !ehPrincipal(uid)
+          && request.resource.data.role in ['lider', 'planejador', 'admin']
+          && request.resource.data.status in ['pendente', 'aprovado', 'negado'])
+        || (isSignedIn()
+          && request.auth.uid == uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['trocarSenha'])
+          && request.resource.data.trocarSenha == false);
+      allow delete: if isAdmin() && !ehPrincipal(uid);
     }
 
     // ---------------------------------------------------------------
@@ -170,9 +184,19 @@ service cloud.firestore {
       allow update: if false;
     }
 
+    // quem é o administrador principal: definido uma única vez, pelo próprio
+    // admin; depois disso só muda pelo console do Firebase
+    match /config/admin {
+      allow read: if isAprovado();
+      allow create: if isAdmin()
+        && request.resource.data.keys().hasOnly(['principal', 'definidoEm'])
+        && request.resource.data.principal == request.auth.uid;
+      allow update, delete: if false;
+    }
+
     // configurações do sistema (ex.: data do último backup)
     match /config/{id} {
-      allow read, write: if isGestor();
+      allow read, write: if isGestor() && id != 'admin';
     }
   }
 }

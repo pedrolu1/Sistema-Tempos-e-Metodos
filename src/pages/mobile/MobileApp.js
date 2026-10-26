@@ -14,6 +14,7 @@ import { toast } from '../../lib/toast.js';
 import { renderLaunchPage } from './MobileLaunch.js';
 import { renderHistoryPage } from './MobileHistory.js';
 import { renderEstudosPage } from '../estudos/EstudosPage.js';
+import { abrirAlterarMinhaSenha } from '../../components/Senha.js';
 
 export function mountMobileApp(root, { profile }) {
   const state = {
@@ -90,6 +91,10 @@ export function mountMobileApp(root, { profile }) {
                 el('div', {}, [el('strong', {}, 'Voltar ao painel'), el('small', {}, 'Você está vendo o app de campo como o apontador vê.')])
               ])
             : null,
+          el('button', { class: 'menu-item', type: 'button', onclick: () => { close(); abrirAlterarMinhaSenha(); } }, [
+            el('span', { html: icon.key(20) }),
+            el('div', {}, [el('strong', {}, 'Alterar minha senha'), el('small', {}, 'Troque a senha que você usa para entrar.')])
+          ]),
           el('button', { class: 'menu-item', type: 'button', onclick: () => { close(); repararApp(); } }, [
             el('span', { html: icon.sync(20) }),
             el('div', {}, [el('strong', {}, 'Reparar o app'), el('small', {}, 'Use se algo estiver estranho ou travado. Seus lançamentos não são apagados.')])

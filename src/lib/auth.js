@@ -3,7 +3,10 @@ import {
   signInWithEmailAndPassword,
   signOut as fbSignOut,
   onAuthStateChanged,
-  updateProfile
+  updateProfile,
+  updatePassword,
+  reauthenticateWithCredential,
+  EmailAuthProvider
 } from 'firebase/auth';
 import { doc, setDoc, updateDoc, onSnapshot, serverTimestamp, collection } from 'firebase/firestore';
 import { auth, db } from './firebase.js';
@@ -53,6 +56,7 @@ export function friendlyAuthError(err) {
     'auth/invalid-credential': 'Matrícula ou senha incorretos.',
     'auth/email-already-in-use': 'Essa matrícula já está cadastrada.',
     'auth/weak-password': 'A senha precisa ter pelo menos 6 caracteres.',
+    'auth/requires-recent-login': 'Por segurança, saia e entre de novo antes de trocar a senha.',
     'auth/network-request-failed': 'Sem conexão — verifique sua internet.',
     'auth/too-many-requests': 'Muitas tentativas. Aguarde alguns minutos.',
     'auth/timeout': 'O servidor demorou demais para responder. Verifique sua conexão e tente novamente.',
@@ -138,4 +142,63 @@ export function setUserRole(uid, role) {
 export function setUserContratos(uid, contratos) {
   auditar('alterou', 'usuário', uid, `contratos → ${contratos.length ? contratos.length : 'todos'}`);
   return updateDoc(doc(db, USERS, uid), { contratos });
+}
+
+// ---------------------------------------------------------------------------
+// Senhas e administrador principal
+// ---------------------------------------------------------------------------
+
+/** A própria pessoa troca a senha; a atual confirma que é ela mesma. */
+export async function alterarMinhaSenha(atual, nova) {
+  const user = auth.currentUser;
+  try {
+    await withTimeout(reauthenticateWithCredential(user, EmailAuthProvider.credential(user.email, atual)));
+  } catch (err) {
+    // aqui "credencial inválida" quer dizer só que a senha atual não confere
+    if (['auth/wrong-password', 'auth/invalid-credential'].includes(err?.code)) throw Object.assign(new Error('senha-atual'), { code: 'senha-atual' });
+    throw err;
+  }
+  await withTimeout(updatePassword(user, nova));
+}
+
+/** Depois de uma senha provisória: grava a nova e desmarca a troca obrigatória. */
+export async function concluirTrocaDeSenha(nova) {
+  const user = auth.currentUser;
+  await withTimeout(updatePassword(user, nova));
+  await updateDoc(doc(db, USERS, user.uid), { trocarSenha: false }).catch(() => {});
+}
+
+/**
+ * O administrador redefine a senha de outra pessoa. O navegador não pode
+ * fazer isso no Firebase; quem faz é a função /api/senha na Netlify, que
+ * confere se quem pede é administrador. Sem `novaSenha`, ela gera uma senha
+ * provisória e a devolve para ser entregue à pessoa.
+ */
+export async function redefinirSenhaDe(uid, { novaSenha = '', exigirTroca = true } = {}) {
+  const token = await auth.currentUser.getIdToken();
+  let resposta;
+  try {
+    resposta = await fetch('/api/senha', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ uid, novaSenha, exigirTroca })
+    });
+  } catch {
+    throw Object.assign(new Error('rede'), { code: 'rede' });
+  }
+  const corpo = await resposta.json().catch(() => ({}));
+  if (!resposta.ok) throw Object.assign(new Error(corpo.erro || 'falhou'), { code: corpo.erro || (resposta.status === 404 ? 'nao-configurado' : 'falhou') });
+  auditar('alterou', 'usuário', uid, novaSenha ? 'senha definida pelo administrador' : 'senha provisória gerada');
+  return corpo.senha || '';
+}
+
+/** Quem é o administrador principal (conta fixa). `null` enquanto ninguém foi definido. */
+export function subscribeAdminPrincipal(callback) {
+  return onSnapshot(doc(db, 'config', 'admin'), (snap) => callback(snap.exists() ? snap.data().principal : null), () => callback(null));
+}
+
+/** Define a própria conta como administrador principal. Só vale uma vez. */
+export function definirAdminPrincipal(uid) {
+  auditar('alterou', 'usuário', uid, 'definido como administrador principal');
+  return setDoc(doc(db, 'config', 'admin'), { principal: uid, definidoEm: serverTimestamp() });
 }

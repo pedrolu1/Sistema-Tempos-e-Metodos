@@ -2,7 +2,8 @@ import { el, mount } from '../../utils/dom.js';
 import { badge, button, emptyState, segmented, cardWithHeader, modal } from '../../components/ui.js';
 import { icon } from '../../utils/icons.js';
 import { initials } from '../../utils/format.js';
-import { setUserStatus, setUserRole, setUserContratos } from '../../lib/auth.js';
+import { setUserStatus, setUserRole, setUserContratos, definirAdminPrincipal } from '../../lib/auth.js';
+import { abrirRedefinirSenha, abrirAlterarMinhaSenha } from '../../components/Senha.js';
 import { toast } from '../../lib/toast.js';
 
 const STATUS_TONE = { pendente: 'warn', aprovado: 'ok', negado: 'danger' };
@@ -11,6 +12,8 @@ const STATUS_LABEL = { pendente: 'Pendente', aprovado: 'Aprovado', negado: 'Nega
 export function renderUsersPage(ctx) {
   let usuarios = ctx.usuarios;
   let contratos = ctx.contratos || [];
+  let principal = ctx.adminPrincipal || null;
+  const eu = ctx.profile;
   let filter = 'pendente';
 
   const tabs = segmented(
@@ -29,12 +32,48 @@ export function renderUsersPage(ctx) {
   );
 
   const body = el('div');
+  const avisoPrincipal = el('div');
   const node = cardWithHeader({
     title: 'Controle de acesso',
     subtitle: 'Aprove ou negue solicitações de acesso ao REFRAMAX',
     actions: [tabs],
-    children: [body]
+    children: [avisoPrincipal, body]
   });
+
+  /** Enquanto ninguém é o administrador principal, convida o admin a proteger a própria conta. */
+  function pintarAvisoPrincipal() {
+    if (principal) return mount(avisoPrincipal, []);
+    mount(avisoPrincipal, [el('div', { class: 'inline-alert info', style: { marginBottom: '16px', alignItems: 'center' } }, [
+      el('span', { html: icon.shield(18), style: { display: 'inline-flex', flexShrink: '0' } }),
+      el('div', { style: { flex: '1' } }, [
+        el('strong', {}, 'Proteja sua conta de administrador'),
+        el('div', {}, 'Torne sua conta o administrador principal: ninguém consegue tirar seu acesso, bloquear, mudar seu perfil ou sua senha pelo app.')
+      ]),
+      button({ label: 'Tornar minha conta principal', size: 'sm', variant: 'primary', icon: icon.lock(14), onClick: confirmarPrincipal })
+    ])]);
+  }
+
+  function confirmarPrincipal() {
+    const close = () => backdrop.remove();
+    const backdrop = modal({
+      title: 'Tornar sua conta o administrador principal?',
+      body: [el('p', { style: { fontSize: '13.5px', lineHeight: '1.5' } }, `A conta de ${eu.nomeCompleto} (matrícula ${eu.matricula || '—'}) fica travada como administrador principal. Isso vale uma única vez e só pode ser desfeito no console do Firebase.`)],
+      footer: [
+        button({ label: 'Cancelar', variant: 'ghost', onClick: close }),
+        button({ label: 'Confirmar', variant: 'primary', icon: icon.lock(14), onClick: async () => {
+          try {
+            await definirAdminPrincipal(eu.uid);
+            toast('Sua conta agora é o administrador principal.', 'ok');
+            close();
+          } catch {
+            toast('Não foi possível. Confira se as regras novas do Firestore já foram publicadas.', 'error', 6000);
+          }
+        } })
+      ],
+      onClose: close
+    });
+    document.body.appendChild(backdrop);
+  }
 
   function act(fn, okMsg) {
     return async () => {
@@ -48,6 +87,7 @@ export function renderUsersPage(ctx) {
   }
 
   function paint() {
+    pintarAvisoPrincipal();
     const list = filter === 'todos' ? usuarios : usuarios.filter((u) => u.status === filter);
     if (list.length === 0) {
       mount(body, [emptyState({ icon: icon.users(38), title: 'Nada por aqui', message: 'Nenhum usuário nesta categoria.' })]);
@@ -82,6 +122,9 @@ export function renderUsersPage(ctx) {
   }
 
   function roleSelect(u) {
+    if (u.uid === principal) {
+      return el('span', { class: 'badge-principal', title: 'Conta fixa: não pode ser alterada pelo app' }, [el('span', { html: icon.lock(13), style: { display: 'inline-flex' } }), 'Administrador principal']);
+    }
     return el(
       'select',
       {
@@ -95,7 +138,8 @@ export function renderUsersPage(ctx) {
             toast('Não foi possível atualizar o papel.', 'error');
           }
         },
-        disabled: u.status !== 'aprovado'
+        // ninguém muda o próprio papel (evita se trancar fora do painel)
+        disabled: u.status !== 'aprovado' || u.uid === eu.uid
       },
       [
         el('option', { value: 'lider', selected: u.role === 'lider' }, 'Apontador (celular)'),
@@ -107,7 +151,7 @@ export function renderUsersPage(ctx) {
 
   /** Permissão por contrato: vale para o apontador (planejador e admin veem tudo). */
   function contratosCell(u) {
-    if (u.role === 'admin' || u.role === 'planejador') return el('span', { class: 'muted', style: { fontSize: '12.5px' } }, 'Todos');
+    if (u.uid === principal || u.role === 'admin' || u.role === 'planejador') return el('span', { class: 'muted', style: { fontSize: '12.5px' } }, 'Todos');
     const ids = u.contratos || [];
     const nomes = ids.map((id) => contratos.find((c) => c.id === id)?.nome).filter(Boolean);
     return el('button', { class: 'chip', type: 'button', style: { height: '30px', fontSize: '12.5px' }, disabled: u.status !== 'aprovado', onclick: () => editarContratos(u) },
@@ -146,6 +190,17 @@ export function renderUsersPage(ctx) {
   }
 
   function actionsFor(u) {
+    if (u.uid === eu.uid) {
+      return button({ label: 'Alterar minha senha', size: 'sm', variant: 'outline', icon: icon.key(14), onClick: abrirAlterarMinhaSenha });
+    }
+    if (u.uid === principal) return el('span', { class: 'muted', style: { fontSize: '12.5px' } }, 'Conta protegida');
+    return el('div', { class: 'toolbar' }, [
+      acessoFor(u),
+      button({ label: 'Senha', size: 'sm', variant: 'ghost', icon: icon.key(14), onClick: () => abrirRedefinirSenha(u) })
+    ]);
+  }
+
+  function acessoFor(u) {
     if (u.status === 'pendente') {
       return el('div', { class: 'toolbar' }, [
         button({ label: 'Aprovar', size: 'sm', variant: 'primary', icon: icon.check(14), onClick: act(() => setUserStatus(u.uid, 'aprovado'), 'Acesso aprovado.') }),
@@ -165,6 +220,7 @@ export function renderUsersPage(ctx) {
     update(newCtx) {
       usuarios = newCtx.usuarios;
       contratos = newCtx.contratos || [];
+      principal = newCtx.adminPrincipal || null;
       paint();
     }
   };

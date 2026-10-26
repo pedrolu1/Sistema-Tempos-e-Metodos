@@ -180,6 +180,32 @@ a experiência exibida após o login —
 - `role: "lider"` → app de campo (apontador). Em **Usuários** o admin pode limitar
   os contratos que cada apontador enxerga.
 
+## Usuários e senhas
+
+- **Administrador principal:** em *Usuários*, o administrador clica uma vez em
+  "Tornar minha conta principal". Essa conta fica travada: ninguém (nem outro
+  administrador) consegue bloquear, mudar o papel, apagar ou trocar a senha dela pelo
+  app. Para mudar quem é o principal, só no console do Firebase (Firestore → coleção
+  `config` → documento `admin`).
+- **Alterar a própria senha:** qualquer pessoa, pelo botão "Alterar senha" do menu
+  lateral (painel) ou "⋯ → Alterar minha senha" (celular). Pede a senha atual.
+- **Redefinir a senha de alguém:** em *Usuários → Senha*, o administrador gera uma
+  senha provisória (ou define uma). No próximo acesso, a pessoa cria uma senha só dela.
+  Quem faz a troca é a função `netlify/functions/senha.mjs` (`/api/senha`), porque o
+  navegador não pode trocar a senha de outra conta no Firebase.
+
+**Configuração única da redefinição de senha:**
+
+1. Firebase → ⚙ *Configurações do projeto → Contas de serviço → Gerar nova chave
+   privada* (baixa um arquivo `.json`).
+2. Netlify → projeto `reframax-tempos-e-metodos` → *Project configuration →
+   Environment variables → Add a variable*: chave `FIREBASE_SERVICE_ACCOUNT`, valor = o
+   conteúdo inteiro do arquivo `.json`; marque *Contains secret values* e o escopo
+   *Functions*.
+3. Publique de novo (`Actions → Deploy REFRAMAX → Run workflow`) e apague o arquivo
+   `.json` do computador. Essa chave dá acesso total ao Firebase: nunca a envie a
+   ninguém nem a coloque no repositório.
+
 ## Segurança e manutenção
 
 - **Regras do Firestore**: sempre que `firestore.rules` mudar, copie o arquivo
