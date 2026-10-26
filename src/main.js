@@ -11,24 +11,36 @@ import { ENDERECO_NOVO, noEnderecoAntigo, irParaEnderecoNovo, receberDoEnderecoA
 instalarCapturaGlobal();
 receberDoEnderecoAntigo();
 
-// O service worker (PWA) atualiza sozinho em segundo plano (skipWaiting +
-// clientsClaim), mas isso só troca quem responde às próximas requisições —
-// a aba já aberta continua rodando o JS antigo até recarregar. Sem isto, o
-// app instalado no celular "trava" numa versão antiga até o usuário fechar
-// e abrir de novo manualmente. Recarrega uma única vez assim que o novo
-// service worker assume o controle da página.
+// Versão nova publicada: o service worker novo baixa em segundo plano e assume
+// sozinho (skipWaiting + clientsClaim), mas a tela aberta continua com o
+// código antigo até recarregar. Recarregar na hora poderia apagar um
+// lançamento que a pessoa está digitando, então:
+//   - com o app em segundo plano e sem nada digitado nos últimos 15 min,
+//     recarrega na hora (ninguém está usando);
+//   - com o app em uso, mostra um aviso discreto com "Atualizar" e aplica
+//     sozinho quando a pessoa sair do app sem estar no meio de um lançamento.
+// Quem abre o app do zero já recebe a versão nova direto.
 if ('serviceWorker' in navigator) {
-  let reloaded = false;
+  const tinhaVersao = Boolean(navigator.serviceWorker.controller); // na 1ª visita não há o que trocar
+  let ultimaDigitacao = 0;
+  let pronta = false;
+  document.addEventListener('input', () => { ultimaDigitacao = Date.now(); }, true);
+  const livre = () => Date.now() - ultimaDigitacao > 15 * 60 * 1000;
+  const recarregar = () => window.location.reload();
+
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (reloaded) return;
-    reloaded = true;
-    window.location.reload();
+    if (!tinhaVersao || pronta) return;
+    pronta = true;
+    if (document.visibilityState === 'hidden' && livre()) return recarregar();
+    avisoVersaoNova(recarregar);
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (pronta && document.visibilityState === 'hidden' && livre()) recarregar();
   });
 
-  // o registro automático do plugin PWA só checa por atualização quando a
-  // página carrega — quem deixa o app aberto o turno inteiro nunca recebe
-  // versões novas. Reforça checando de novo sempre que a aba volta a ficar
-  // visível (ex.: usuário volta pro app) e a cada hora enquanto ativo.
+  // o registro automático do plugin PWA só procura versão nova quando a
+  // página carrega — quem deixa o app aberto o turno inteiro não receberia.
+  // Procura de novo sempre que o app volta a ficar visível e a cada hora.
   navigator.serviceWorker.ready.then((reg) => {
     const check = () => reg.update().catch(() => {});
     setInterval(check, 60 * 60 * 1000);
@@ -36,6 +48,16 @@ if ('serviceWorker' in navigator) {
       if (document.visibilityState === 'visible') check();
     });
   });
+}
+
+function avisoVersaoNova(atualizar) {
+  if (document.querySelector('.aviso-versao')) return;
+  document.body.appendChild(
+    el('div', { class: 'aviso-versao', role: 'status' }, [
+      el('span', {}, 'Versão nova do app pronta'),
+      el('button', { type: 'button', class: 'btn btn-primary btn-sm', onclick: atualizar }, 'Atualizar')
+    ])
+  );
 }
 
 const app = document.getElementById('app');

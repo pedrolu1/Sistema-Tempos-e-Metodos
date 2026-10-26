@@ -1,7 +1,14 @@
 name: Deploy REFRAMAX
 
-# Publica o app na Netlify: https://reframax-tempos-e-metodos.netlify.app
-# (o GitHub Pages foi desligado; o endereço antigo só redireciona para cá)
+# Atualização com aprovação, sem tirar o app do ar:
+#   1. "Gerar prévia": cada push monta a versão nova e a publica num endereço
+#      de prévia (https://previa--reframax-tempos-e-metodos.netlify.app), que
+#      só abre para quem está logado na Netlify. O app no ar não muda.
+#   2. "Publicar no app": espera a aprovação do dono (environment "producao",
+#      com revisor obrigatório) e então coloca exatamente essa prévia no ar em
+#      https://reframax-tempos-e-metodos.netlify.app — troca instantânea, mesmo link.
+# Um push novo enquanto outro espera aprovação substitui o anterior: fica
+# sempre só a versão mais recente aguardando.
 
 on:
   push:
@@ -15,14 +22,17 @@ permissions:
 
 concurrency:
   group: netlify
-  cancel-in-progress: false
+  cancel-in-progress: true
+
+env:
+  NETLIFY_SITE_ID: 43bcdadd-1e0c-4860-9beb-53b309fae2e5
 
 jobs:
-  deploy:
+  previa:
+    name: Gerar prévia
     runs-on: ubuntu-latest
-    environment:
-      name: netlify
-      url: https://reframax-tempos-e-metodos.netlify.app
+    outputs:
+      deploy_id: ${{ steps.netlify.outputs.deploy_id }}
     steps:
       - uses: actions/checkout@v4
 
@@ -45,8 +55,43 @@ jobs:
           # opcional: chave do reCAPTCHA v3 para o App Check (vazia = desligado)
           VITE_APPCHECK_SITE_KEY: ${{ secrets.VITE_APPCHECK_SITE_KEY }}
 
-      - name: Publicar na Netlify
+      - name: Enviar a prévia para a Netlify
+        id: netlify
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: 43bcdadd-1e0c-4860-9beb-53b309fae2e5
-        run: npx --yes netlify-cli@17 deploy --dir=dist --prod --message "${GITHUB_SHA::7}"
+          MENSAGEM: ${{ github.event.head_commit.message }}
+        run: |
+          titulo="$(printf '%s' "${MENSAGEM:-Atualização manual}" | head -n 1)"
+          npx --yes netlify-cli@17 deploy --dir=dist --alias previa --message "Prévia ${GITHUB_SHA::7}: ${titulo}" --json > deploy.json
+          node -e '
+            const fs = require("fs");
+            const bruto = fs.readFileSync("deploy.json", "utf8");
+            const d = JSON.parse(bruto.slice(bruto.indexOf("{")));
+            if (!d.deploy_id) throw new Error("A Netlify não devolveu o id da prévia");
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `deploy_id=${d.deploy_id}\n`);
+          '
+          {
+            echo "## Prévia pronta: ${titulo}"
+            echo
+            echo "Abra a prévia (é preciso estar logado na Netlify): https://previa--reframax-tempos-e-metodos.netlify.app"
+            echo
+            echo "A prévia usa o mesmo banco de dados do app: dá para navegar e conferir, mas o que for lançado nela é real."
+            echo
+            echo "Se estiver tudo certo, clique em **Review deployments → producao → Approve and deploy** no topo desta página."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  publicar:
+    name: Publicar no app
+    needs: previa
+    runs-on: ubuntu-latest
+    environment:
+      name: producao
+      url: https://reframax-tempos-e-metodos.netlify.app
+    steps:
+      - name: Colocar a prévia aprovada no ar
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          DEPLOY_ID: ${{ needs.previa.outputs.deploy_id }}
+        run: |
+          npx --yes netlify-cli@17 api restoreSiteDeploy --data "{\"site_id\":\"$NETLIFY_SITE_ID\",\"deploy_id\":\"$DEPLOY_ID\"}" > /dev/null
+          echo "Versão publicada em https://reframax-tempos-e-metodos.netlify.app" >> "$GITHUB_STEP_SUMMARY"

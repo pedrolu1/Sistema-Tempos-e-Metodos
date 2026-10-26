@@ -12,7 +12,7 @@ import {
   capacidadeMinutosSetor,
   CLASSIFICACAO_INFO
 } from '../../utils/format.js';
-import { exportExcel, exportPDF, exportWord } from '../../lib/export.js';
+import { exportExcel, exportWord } from '../../lib/export.js';
 import { calcularIndicadores, planejadoRealPorProjeto } from '../../utils/indicadores.js';
 import { navigate } from '../../router.js';
 import { toast } from '../../lib/toast.js';
@@ -63,10 +63,25 @@ export function renderDashboardPage(ctx) {
 
   const exportBtns = el('div', { class: 'toolbar' }, [
     button({ label: 'Excel', size: 'sm', variant: 'outline', icon: icon.fileSpreadsheet(15), onClick: () => exportExcel(dataset()) }),
-    button({ label: 'PDF', size: 'sm', variant: 'outline', icon: icon.fileText(15), onClick: () => exportPDF(dataset(), undefined, { periodo: periodoLabel() }) }),
+    button({ label: 'PDF', size: 'sm', variant: 'outline', icon: icon.fileText(15), onClick: gerarPdf }),
     button({ label: 'Word', size: 'sm', variant: 'outline', icon: icon.fileWord(15), onClick: () => exportWord(dataset(), undefined, { periodo: periodoLabel() }) }),
     button({ label: 'PowerPoint', size: 'sm', variant: 'primary', icon: icon.fileText(15), onClick: gerarPptx })
   ]);
+
+  /** Relatório gerencial em PDF: indicadores, gráficos, sugestões e o anexo com os lançamentos. */
+  async function gerarPdf() {
+    const rows = dataset();
+    if (!rows.length) return toast('Sem lançamentos no período/filtros para o relatório.', 'error');
+    toast('Montando o relatório em PDF…', 'info');
+    try {
+      const { gerarRelatorioPdf } = await import('../../lib/relatorioPdf.js');
+      await gerarRelatorioPdf({ lancamentos: rows, periodo: periodoLabel(), filtros: filtrosLabel(), projetos: fullCtx.projetos || [], achados: achadosAtivos(fullCtx) });
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error(err);
+      toast('Não foi possível gerar o PDF.', 'error');
+    }
+  }
 
   async function gerarPptx() {
     const rows = dataset();

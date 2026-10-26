@@ -93,11 +93,39 @@ precisa ser liberado manualmente, uma única vez:
 ## 5. Publicar (deploy)
 
 O app fica na **Netlify**: https://reframax-tempos-e-metodos.netlify.app
-(projeto `reframax-tempos-e-metodos`). A cada push em `main` ou na branch
-`claude/industrial-time-methods-system-2sgf0q`, o workflow
-`.github/workflows/deploy.yml` faz o build com as credenciais do Firebase e
-publica na Netlify. O app usa roteamento por hash (`#/...`) e caminhos
-relativos (`base: './'`), então não precisa de regras de redirecionamento.
+(projeto `reframax-tempos-e-metodos`). O app usa roteamento por hash (`#/...`) e
+caminhos relativos (`base: './'`), então não precisa de regras de redirecionamento.
+
+### Atualizações com aprovação (sem tirar o app do ar)
+
+A cada push em `main` ou na branch `claude/industrial-time-methods-system-2sgf0q`,
+o workflow `.github/workflows/deploy.yml` faz duas etapas:
+
+1. **Gerar prévia** — monta a versão nova e publica em
+   https://previa--reframax-tempos-e-metodos.netlify.app (só abre para quem está
+   logado na Netlify). O app no ar não muda. A prévia usa o mesmo banco de dados:
+   dá para conferir, mas o que for lançado nela é real.
+2. **Publicar no app** — espera a aprovação do dono. Em `Actions`, abra a execução e
+   clique em **Review deployments → producao → Approve and deploy** (o GitHub também
+   avisa por e-mail e pelo app do celular). A prévia aprovada entra no ar no mesmo
+   link, numa troca instantânea. **Reject** descarta a prévia.
+
+Um push novo enquanto outro espera aprovação substitui o anterior.
+
+No aparelho de quem usa, a versão nova baixa sozinha em segundo plano. Se a pessoa
+estiver com o app aberto, aparece o aviso "Versão nova do app pronta · Atualizar",
+e a troca acontece sozinha quando ela sair do app sem estar no meio de um
+lançamento; quem abre o app do zero já recebe a versão nova.
+
+**Configuração única da aprovação:** `Settings → Environments → producao →
+Required reviewers` → marque o seu usuário → *Save protection rules*. Sem essa
+regra, a versão é publicada sem esperar aprovação.
+
+**Voltar para uma versão anterior:** na Netlify, *Deploys* → clique na versão
+anterior → *Publish deploy*. Vale na hora, sem build.
+
+**Regras do Firestore** (`firestore.rules`) não vão pelo workflow: quando mudarem,
+publique no console do Firebase (Firestore Database → Regras → Publicar).
 
 Secrets do GitHub usados (`Settings → Secrets and variables → Actions`):
 
@@ -108,7 +136,7 @@ Secrets do GitHub usados (`Settings → Secrets and variables → Actions`):
 - `NETLIFY_AUTH_TOKEN` — chave da Netlify (avatar → *User settings → Applications →
   Personal access tokens → New access token*). Se vencer, crie outra e troque o secret.
 
-Para publicar sem push: `Actions → Deploy REFRAMAX → Run workflow`.
+Para gerar uma prévia sem push: `Actions → Deploy REFRAMAX → Run workflow`.
 
 **Endereço antigo (GitHub Pages):** não recebe mais versões novas. A última versão
 publicada lá envia o que estiver pendente no aparelho e leva a pessoa para a

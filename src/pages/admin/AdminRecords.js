@@ -3,7 +3,9 @@ import { badge, button, emptyState, cardWithHeader } from '../../components/ui.j
 import { abrirEdicaoLancamento, confirmarExclusaoLancamento } from '../../components/EditarLancamento.js';
 import { icon } from '../../utils/icons.js';
 import { formatDateBR, formatMinutes, efetivoTotal, formatEfetivo, classificacaoDoLancamento, CLASSIFICACAO_INFO } from '../../utils/format.js';
-import { exportExcel, exportPDF, exportWord } from '../../lib/export.js';
+import { exportExcel, exportWord } from '../../lib/export.js';
+import { achadosAtivos } from './AdminAssistente.js';
+import { toast } from '../../lib/toast.js';
 
 const PAGINA = 200; // linhas desenhadas por vez (milhares de linhas deixariam a tela lenta)
 
@@ -17,6 +19,7 @@ function leanBadge(l) {
 
 export function renderRecordsPage(ctx) {
   let { lancamentos, atividades, projetos } = ctx;
+  let ctxAtual = ctx; // para as sugestões do assistente no relatório
   const filters = { de: '', ate: '', tipo: 'todos', status: 'todos', busca: '' };
   let limite = PAGINA;
   const mudou = (fn) => (e) => { fn(e); limite = PAGINA; paint(); };
@@ -40,7 +43,7 @@ export function renderRecordsPage(ctx) {
 
   const exportBtns = el('div', { class: 'toolbar' }, [
     button({ label: 'Excel', size: 'sm', variant: 'outline', icon: icon.fileSpreadsheet(15), onClick: () => exportExcel(filtered()) }),
-    button({ label: 'PDF', size: 'sm', variant: 'outline', icon: icon.fileText(15), onClick: () => exportPDF(filtered(), undefined, { periodo: periodoLabel() }) }),
+    button({ label: 'PDF', size: 'sm', variant: 'outline', icon: icon.fileText(15), onClick: gerarPdf }),
     button({ label: 'Word', size: 'sm', variant: 'outline', icon: icon.fileWord(15), onClick: () => exportWord(filtered(), undefined, { periodo: periodoLabel() }) })
   ]);
 
@@ -61,6 +64,29 @@ export function renderRecordsPage(ctx) {
     if (filters.de) return `a partir de ${formatDateBR(filters.de)}`;
     if (filters.ate) return `até ${formatDateBR(filters.ate)}`;
     return 'todo o período';
+  }
+
+  function filtrosLabel() {
+    const partes = [];
+    if (filters.tipo !== 'todos') partes.push(filters.tipo === 'atividade' ? 'Só atividades' : 'Só improdutividades');
+    if (filters.status !== 'todos') partes.push(filters.status === 'pendente' ? 'Só pendentes' : 'Só sincronizados');
+    if (filters.busca) partes.push(`Busca: "${filters.busca}"`);
+    return partes.join(' · ') || 'Todos os lançamentos';
+  }
+
+  /** Relatório gerencial em PDF com os lançamentos filtrados nesta tela. */
+  async function gerarPdf() {
+    const rows = filtered();
+    if (!rows.length) return toast('Nenhum lançamento com esses filtros.', 'error');
+    toast('Montando o relatório em PDF…', 'info');
+    try {
+      const { gerarRelatorioPdf } = await import('../../lib/relatorioPdf.js');
+      await gerarRelatorioPdf({ lancamentos: rows, periodo: periodoLabel(), filtros: filtrosLabel(), projetos, achados: achadosAtivos(ctxAtual) });
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error(err);
+      toast('Não foi possível gerar o PDF.', 'error');
+    }
   }
 
   function filtered() {
@@ -123,6 +149,7 @@ export function renderRecordsPage(ctx) {
     node,
     update(newCtx) {
       ({ lancamentos, atividades, projetos } = newCtx);
+      ctxAtual = newCtx;
       paint();
     }
   };

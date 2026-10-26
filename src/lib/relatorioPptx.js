@@ -1,4 +1,4 @@
-import { calcularIndicadores, planejadoRealPorProjeto } from '../utils/indicadores.js';
+import { calcularIndicadores, planejadoRealPorProjeto, serieTemporal } from '../utils/indicadores.js';
 import { formatMinutes } from '../utils/format.js';
 import { contramedida, NIVEIS } from './agentes.js';
 
@@ -30,22 +30,6 @@ const NIVEL_COR = { critico: 'D64553', atencao: 'C98500', oportunidade: '1E9E5A'
 const horas = (min) => Math.round(((Number(min) || 0) / 60) * 10) / 10;
 const pctTxt = (v) => (v == null ? '—' : `${Math.round(v * 100)}%`);
 const corta = (t = '', max) => (t.length > max ? `${t.slice(0, max - 1).trimEnd()}…` : t);
-const dataBR = (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
-
-/** Agrupa por semana quando o período é longo, para o gráfico não virar um pente. */
-function serieTemporal(porDia) {
-  if (porDia.length <= 31) return porDia.map((d) => ({ label: dataBR(d.data), prod: d.prod, improd: d.improd }));
-  const semanas = new Map();
-  porDia.forEach((d) => {
-    const dt = new Date(`${d.data}T12:00:00`);
-    dt.setDate(dt.getDate() - ((dt.getDay() + 6) % 7)); // segunda-feira da semana
-    const k = dt.toISOString().slice(0, 10);
-    if (!semanas.has(k)) semanas.set(k, { label: `Sem ${dataBR(k)}`, prod: 0, improd: 0 });
-    semanas.get(k).prod += d.prod;
-    semanas.get(k).improd += d.improd;
-  });
-  return [...semanas.values()];
-}
 
 function definirLayouts(pptx) {
   pptx.defineSlideMaster({
@@ -107,6 +91,7 @@ export function montarApresentacao(pptx, { lancamentos, periodo, filtros, projet
   const ind = calcularIndicadores(lancamentos);
   const total = ind.totalMin || 1;
   const va = ind.lean.VA / total;
+  achados = achados.filter((a) => a.area !== 'Sistema'); // backup e saúde do app não são assunto do relatório
   const principal = achados[0];
 
   // 1 — capa

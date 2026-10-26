@@ -103,6 +103,10 @@ export function switchToggle(checked, onChange) {
 }
 
 /** Aviso amigável no lugar de uma tela que falhou (o erro já foi registrado). */
+/** Crédito de quem criou o app — discreto, no login, no menu lateral e no menu do celular. */
+export const CREDITO = 'Criado por Pedro · Planejamento Coqueria · Ternium RJ';
+export const credito = (classe = '') => el('div', { class: `credito ${classe}`.trim() }, CREDITO);
+
 export function avisoFalha({ aoTentar, aoReparar }) {
   return el('div', { class: 'card card-pad', style: { display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'flex-start' } }, [
     el('strong', { style: { fontFamily: 'var(--font-display)', fontSize: '15px' } }, 'Esta tela teve um problema'),

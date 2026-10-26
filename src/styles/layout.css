@@ -271,6 +271,9 @@
 .sidebar-link .badge { margin-left: auto; height: 20px; padding: 0 7px; }
 
 .sidebar-footer { display: flex; flex-direction: column; gap: 10px; padding-top: 14px; border-top: 1px solid var(--border-soft); }
+.credito { font-size: 11px; line-height: 1.45; color: var(--text-3); text-align: center; }
+.credito-sidebar { font-size: 10px; padding: 0 4px; opacity: 0.75; }
+.menu-recolhido .credito-sidebar { display: none; }
 .sidebar-user { display: flex; align-items: center; gap: 10px; padding: 6px 8px; }
 .sidebar-user-name { font-size: 13px; font-weight: 700; color: var(--text-0); }
 .sidebar-user-role { font-size: 11px; color: var(--text-2); }

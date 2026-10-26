@@ -1,5 +1,5 @@
 import { el, mount } from '../../utils/dom.js';
-import { avisoFalha, modal, button } from '../../components/ui.js';
+import { avisoFalha, modal, button, CREDITO } from '../../components/ui.js';
 import { protegerTela, repararApp, VERSAO } from '../../lib/saude.js';
 import { icon } from '../../utils/icons.js';
 import { navigate, currentRoute, onRouteChange } from '../../router.js';
@@ -103,7 +103,7 @@ export function mountMobileApp(root, { profile }) {
             el('div', {}, [el('strong', {}, 'Sair'), el('small', {}, pendentes ? `Atenção: ${pendentes} lançamento(s) ainda no celular.` : 'Encerra a sessão neste celular.')])
           ])
         ]),
-        el('div', { class: 'muted', style: { fontSize: '11.5px', textAlign: 'center' } }, `Versão ${VERSAO}`)
+        el('div', { class: 'credito' }, [CREDITO, el('br'), `Versão ${VERSAO}`])
       ],
       footer: [button({ label: 'Fechar', variant: 'ghost', onClick: close })],
       onClose: close

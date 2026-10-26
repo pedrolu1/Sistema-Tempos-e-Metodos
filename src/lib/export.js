@@ -1,6 +1,6 @@
 import { formatDateBR, formatMinutes, formatEfetivo, classificacaoDoLancamento, CLASSIFICACAO_INFO } from '../utils/format.js';
 
-// As bibliotecas de exportação (xlsx/jsPDF/docx) só são carregadas quando o
+// As bibliotecas de exportação (xlsx/docx) só são carregadas quando o
 // usuário realmente exporta algo — mantém o bundle inicial leve para o app
 // mobile, que é o caminho crítico de carregamento offline-first.
 
@@ -30,30 +30,6 @@ export async function exportExcel(rows, filename = `reframax-lancamentos-${stamp
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, sheet, 'Lançamentos');
   XLSX.writeFile(wb, filename);
-}
-
-export async function exportPDF(rows, filename = `reframax-lancamentos-${stamp()}.pdf`, meta = {}) {
-  const [{ jsPDF }, { default: autoTable }] = await Promise.all([import('jspdf'), import('jspdf-autotable')]);
-  const docPdf = new jsPDF({ orientation: 'landscape', unit: 'pt' });
-  docPdf.setFontSize(15);
-  docPdf.setTextColor(20, 20, 24);
-  docPdf.text('REFRAMAX — Relatório de Tempos e Métodos', 40, 42);
-  docPdf.setFontSize(9.5);
-  docPdf.setTextColor(110, 110, 118);
-  const sub = meta.periodo ? `Período: ${meta.periodo} · Gerado em ${new Date().toLocaleString('pt-BR')}` : `Gerado em ${new Date().toLocaleString('pt-BR')}`;
-  docPdf.text(sub, 40, 60);
-
-  autoTable(docPdf, {
-    startY: 76,
-    head: [COLUMNS.map((c) => c.label)],
-    body: rows.map((r) => COLUMNS.map((c) => c.map(r))),
-    styles: { fontSize: 8.2, cellPadding: 5, textColor: [30, 30, 34] },
-    headStyles: { fillColor: [43, 95, 234], textColor: [255, 255, 255], fontStyle: 'bold' },
-    alternateRowStyles: { fillColor: [246, 246, 248] },
-    margin: { left: 40, right: 40 }
-  });
-
-  docPdf.save(filename);
 }
 
 export async function exportWord(rows, filename = `reframax-lancamentos-${stamp()}.docx`, meta = {}) {

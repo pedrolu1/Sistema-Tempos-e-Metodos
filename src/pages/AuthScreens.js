@@ -1,5 +1,5 @@
 import { el, mount } from '../utils/dom.js';
-import { field, button, spinner } from '../components/ui.js';
+import { field, button, spinner, credito } from '../components/ui.js';
 import { icon } from '../utils/icons.js';
 import { loginUser, registerUser, friendlyAuthError, logoutUser, isMatriculaValida } from '../lib/auth.js';
 import { toast } from '../lib/toast.js';
@@ -68,7 +68,8 @@ export function renderLogin(root, { onSwitch }) {
         el('div', { class: 'auth-switch' }, [
           'Ainda não tem conta? ',
           el('button', { type: 'button', onclick: onSwitch }, 'Criar acesso')
-        ])
+        ]),
+        credito()
       ])
     ])
   ]);
@@ -133,7 +134,8 @@ export function renderRegister(root, { onSwitch }) {
         el('div', { class: 'auth-switch' }, [
           'Já tem conta? ',
           el('button', { type: 'button', onclick: onSwitch }, 'Entrar')
-        ])
+        ]),
+        credito()
       ])
     ])
   ]);

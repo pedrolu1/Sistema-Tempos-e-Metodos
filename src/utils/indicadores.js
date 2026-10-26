@@ -84,3 +84,20 @@ export function planejadoRealPorProjeto(projetos, lancamentos) {
     })
     .filter((x) => x.iniciadas > 0);
 }
+
+const diaMes = (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
+
+/** Produtivo × improdutivo por dia; agrupa por semana quando o período é longo, para o gráfico não virar um pente. */
+export function serieTemporal(porDia) {
+  if (porDia.length <= 31) return porDia.map((d) => ({ label: diaMes(d.data), prod: d.prod, improd: d.improd }));
+  const semanas = new Map();
+  porDia.forEach((d) => {
+    const dt = new Date(`${d.data}T12:00:00`);
+    dt.setDate(dt.getDate() - ((dt.getDay() + 6) % 7)); // segunda-feira da semana
+    const k = dt.toISOString().slice(0, 10);
+    if (!semanas.has(k)) semanas.set(k, { label: `Sem ${diaMes(k)}`, prod: 0, improd: 0 });
+    semanas.get(k).prod += d.prod;
+    semanas.get(k).improd += d.improd;
+  });
+  return [...semanas.values()];
+}

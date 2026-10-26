@@ -1,5 +1,5 @@
 import { el, mount } from '../../utils/dom.js';
-import { avisoFalha } from '../../components/ui.js';
+import { avisoFalha, credito } from '../../components/ui.js';
 import { protegerTela, registrarErro, repararApp } from '../../lib/saude.js';
 import { icon } from '../../utils/icons.js';
 import { initials } from '../../utils/format.js';
@@ -123,7 +123,8 @@ export function mountAdminApp(root, { profile }) {
           ])
         ]),
         el('button', { class: 'btn btn-outline btn-sm btn-block', title: 'Ver o app como o apontador vê no celular', onclick: () => window.dispatchEvent(new CustomEvent('rfx:trocar-visao', { detail: 'campo' })) }, [el('span', { class: 'sidebar-icon', html: icon.clock(15) }), el('span', { class: 'sidebar-label' }, 'Ver app de campo')]),
-        el('button', { class: 'btn btn-ghost btn-sm btn-block', title: 'Sair', onclick: () => logoutUser() }, [el('span', { class: 'sidebar-icon', html: icon.logout(15) }), el('span', { class: 'sidebar-label' }, 'Sair')])
+        el('button', { class: 'btn btn-ghost btn-sm btn-block', title: 'Sair', onclick: () => logoutUser() }, [el('span', { class: 'sidebar-icon', html: icon.logout(15) }), el('span', { class: 'sidebar-label' }, 'Sair')]),
+        credito('credito-sidebar')
       ])
     ]),
     el('main', { class: 'desktop-main' }, [

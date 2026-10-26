@@ -718,3 +718,27 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13.5px; mi
 .aberto-tempo { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--accent-300); font-weight: 700; margin-top: 2px; }
 .aberto-tempo span:first-child { display: inline-flex; }
 .aberto-acoes { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+
+/* Aviso de versão nova: discreto, acima da barra inferior do celular */
+.aviso-versao {
+  position: fixed;
+  left: 50%;
+  bottom: calc(88px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 8px 8px 16px;
+  background: var(--bg-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-full);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  font-size: 13px;
+  color: var(--text-0);
+  white-space: nowrap;
+  animation: fade-in var(--dur-fast) var(--ease-out);
+}
+@media (min-width: 900px) {
+  .aviso-versao { left: auto; right: 24px; bottom: 24px; transform: none; }
+}
