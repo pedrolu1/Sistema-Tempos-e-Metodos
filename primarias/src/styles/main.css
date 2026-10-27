@@ -1,0 +1,17 @@
+@import '@fontsource/barlow/400.css';
+@import '@fontsource/barlow/500.css';
+@import '@fontsource/barlow/600.css';
+@import '@fontsource/barlow/700.css';
+@import '@fontsource/barlow-condensed/500.css';
+@import '@fontsource/barlow-condensed/600.css';
+@import '@fontsource/barlow-condensed/700.css';
+
+/* mesma base do Tempos & Métodos (botões, campos, modais, painel), com as cores e fontes do Primárias por cima */
+@import '../../../src/styles/tokens.css';
+@import './tokens.css';
+@import '../../../src/styles/base.css';
+@import '../../../src/styles/components.css';
+@import '../../../src/styles/layout.css';
+@import './app.css';
+@import './campo.css';
+@import './painel.css';

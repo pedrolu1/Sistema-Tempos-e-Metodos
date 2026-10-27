@@ -1,0 +1,51 @@
+name: Deploy Primárias
+
+# Publicação automática do app Primárias: cada push que mexe nele monta a
+# versão nova e a coloca no ar em https://reframax-primarias.netlify.app.
+# A Netlify troca a versão de uma vez só quando o envio termina.
+
+on:
+  push:
+    branches:
+      - main
+      - claude/gifted-johnson-dt0qa6
+    paths:
+      - 'primarias/**'
+      - 'src/utils/**'
+      - 'src/components/ui.js'
+      - 'src/lib/toast.js'
+      - 'src/styles/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/deploy-primarias.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: netlify-primarias
+  cancel-in-progress: false
+
+jobs:
+  publicar:
+    name: Publicar o Primárias
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build
+        run: npm run build:primarias
+
+      - name: Publicar na Netlify
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: 497192f5-083b-4633-b1d0-af935b286636
+        run: npx --yes netlify-cli@17 deploy --dir=dist-primarias --functions=netlify/functions --prod --message "${GITHUB_SHA::7}"

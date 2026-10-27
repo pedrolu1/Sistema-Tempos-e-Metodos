@@ -1,0 +1,50 @@
+/* Primárias: o fundo é carvão quente e a cor da marca é a brasa do forno.
+   A brasa aparece nas ações (lançar, confirmar) e nas recompensas (faíscas,
+   nível em °C, sequência de dias). As cores das etapas são outra coisa:
+   identificam a etapa no mapa e nos gráficos, e foram validadas para
+   daltonismo neste fundo (azul, laranja e amarelo vêm da planilha). */
+:root {
+  --bg-0: #14100e;
+  --bg-1: #1a1512;
+  --bg-2: #221c18;
+  --bg-3: #2c2420;
+  --bg-4: #382e29;
+
+  --border-soft: rgba(255, 226, 205, 0.06);
+  --border: rgba(255, 226, 205, 0.11);
+  --border-strong: rgba(255, 226, 205, 0.2);
+
+  --text-0: #f8efe7;
+  --text-1: #cdbfb3;
+  --text-2: #978a7f;
+  --text-3: #62564e;
+
+  --accent-500: #ff6a1a;
+  --accent-400: #ff8a3d;
+  --accent-300: #ffb27a;
+  --on-accent: #1d0e05;
+  --accent-glow: rgba(255, 106, 26, 0.36);
+  --accent-grad: linear-gradient(135deg, #ff5a14 0%, #ff8a1f 55%, #ffb02e 100%);
+  --brasa-clara: #ffb02e;
+
+  /* etapas (ordem do serviço) */
+  --e-andaime: #3987e5;
+  --e-demolicao: #d95926;
+  --e-sopragem: #199e70;
+  --e-assentamento: #c98500;
+  --e-siplate: #9085e9;
+  --e-massa1200: #1f9a3a;
+  --e-pendente: #2e2622;
+
+  --font-display: 'Barlow Condensed', 'Barlow', system-ui, sans-serif;
+  --font-body: 'Barlow', system-ui, -apple-system, sans-serif;
+  --font-mono: 'Barlow', system-ui, sans-serif;
+
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 18px;
+  --r-xl: 26px;
+
+  --campo-nav-h: 74px;
+  --mobile-nav-h: var(--campo-nav-h);
+}

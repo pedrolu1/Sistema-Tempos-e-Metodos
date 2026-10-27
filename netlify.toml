@@ -1,8 +1,11 @@
-# Netlify — https://reframax-tempos-e-metodos.netlify.app
+# Netlify — este repositório publica dois sites:
+#   https://reframax-tempos-e-metodos.netlify.app (Tempos & Métodos, raiz do repo)
+#   https://reframax-primarias.netlify.app        (Primárias, pasta primarias/)
 # Os cabeçalhos (cache e quem pode exibir o app dentro de outra página)
-# ficam em public/_headers, que vai junto no build.
+# ficam em public/_headers e primarias/public/_headers, que vão junto no build.
+# Quando a própria Netlify monta o site, o nome do site decide qual app sai em dist/.
 [build]
-  command = "npm run build"
+  command = "if [ \"$SITE_NAME\" = \"reframax-primarias\" ]; then PRIMARIAS_SAIDA=../dist npm run build:primarias; else npm run build; fi"
   publish = "dist"
   environment = { NODE_VERSION = "22" }
 

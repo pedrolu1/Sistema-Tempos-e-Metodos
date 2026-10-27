@@ -239,3 +239,57 @@ O Firestore é inicializado com cache local persistente
   apontamento como "Em andamento" (só no celular de quem lançou, funciona sem
   internet e não entra nos indicadores). Ao tocar em **Finalizar**, o término
   vem com o horário atual e ele vira um lançamento normal.
+
+---
+
+# REFRAMAX Primárias
+
+App de lançamento e acompanhamento da substituição das válvulas primárias dos
+fornos da coqueria. Mora na pasta `primarias/` deste repositório, reaproveita a
+base do Tempos & Métodos (`src/utils`, `src/components/ui.js`, estilos) e é
+publicado num site próprio: https://reframax-primarias.netlify.app (projeto
+`reframax-primarias`).
+
+- **Campo (líder e apontador):** Hoje (meta da semana, frente de serviço com a
+  próxima etapa a um toque, feed ao vivo), Mapa por bloco, Lançar
+  (etapa → onde → confirmar), Checklist de entrega e RDO do dia. Lançamento não
+  se altera no campo: quem errou pede correção ao planejador.
+- **Painel (planejador e administrador; gestor só olha):** Visão geral, Mapa
+  visual da bateria, Curva S (contratual por forno concluído e física pelas 6
+  etapas), RDO no formato PLAN-RFX-002 (imprime ou salva em PDF), Checklists e
+  relação por medição, Lançamentos, Aprovações, Desvios e Configuração.
+- **Etapas:** montagem de andaime (por cabeceira), demolição de manilhas (por
+  primária), 5S e sopragem (por forno), assentamento de manilhas, siplate e
+  massa 1200 (por primária), sempre nessa ordem.
+
+```bash
+npm run dev:primarias      # desenvolvimento
+npm run build:primarias    # gera dist-primarias/
+```
+
+## Etapa atual: só as telas
+
+Nesta etapa os dados ficam no navegador (`primarias/src/lib/store.js`) e passam
+de uma aba para outra na hora, para testar o tempo real abrindo o campo numa
+aba e o painel em outra. A tela de entrada deixa escolher o papel. O ponto de
+partida é o estado das planilhas de controle (Gestão Visual, Curva S do 3º
+contrato e resumo de desvios), gerado em `primarias/src/data/seed.js`. Para
+atualizar com planilhas novas:
+
+```bash
+python3 primarias/scripts/gerar-seed.py "Gestão Visual - Compilado.xlsx" "Curva S - Semanal.xlsm" primarias/src/data/seed.js
+```
+
+Na etapa 2 o `store.js` passa a usar o Firestore do mesmo projeto Firebase e o
+login por matrícula do Tempos & Métodos (as regras novas entram em
+`firestore.rules`, e o domínio `reframax-primarias.netlify.app` precisa ser
+incluído em *Authentication → Settings → Authorized domains*).
+
+## Publicação
+
+A cada push em `main` ou `claude/gifted-johnson-dt0qa6` que mexa no app, o
+workflow `.github/workflows/deploy-primarias.yml` monta e publica o site (usa o
+mesmo secret `NETLIFY_AUTH_TOKEN` do Tempos & Métodos). Se a própria Netlify
+montar o site, o `netlify.toml` escolhe o app pelo nome do site.
+
+Ícones: `node primarias/scripts/gerar-icones.mjs`.
