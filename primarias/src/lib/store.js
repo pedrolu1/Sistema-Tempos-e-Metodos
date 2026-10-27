@@ -75,7 +75,7 @@ export function assinar(cb) {
 export const estadoAtual = () => estado;
 
 // ---------------------------------------------------------------------------
-// Lançamentos — entram valendo na hora; quem é de campo não altera nem apaga,
+// Lançamentos: entram valendo na hora; quem é de campo não altera nem apaga,
 // só pede correção ao planejador.
 // ---------------------------------------------------------------------------
 export function lancar({ etapa, alvos, data, obs = '', autor }) {
