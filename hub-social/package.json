@@ -1,9 +1,9 @@
 {
-  "name": "pulso-hub",
+  "name": "termo-hub",
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Pulso: agência de marketing gerida por agentes de IA para Instagram e Facebook.",
+  "description": "Trupe: agência de marketing gerida por agentes de IA para Instagram e Facebook.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

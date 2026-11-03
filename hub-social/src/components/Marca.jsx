@@ -1,12 +1,22 @@
-// Logo do Pulso e ícones das redes (desenhados aqui para não depender de pacote de marcas).
+// Logo da Trupe e ícones das redes (desenhados aqui para não depender de pacote de marcas).
+// O símbolo são três gotas de tinta sobrepostas, como impressão em risografia:
+// a equipe de agentes trabalhando junto.
+
+export function Simbolo() {
+  return (
+    <svg viewBox="0 0 48 34" className="simbolo" aria-hidden="true">
+      <circle cx="13" cy="20" r="10" fill="var(--radar)" />
+      <circle cx="24" cy="12" r="10" fill="var(--traco)" />
+      <circle cx="35" cy="21" r="10" fill="var(--verbo)" />
+    </svg>
+  );
+}
 
 export function Logo({ tamanho = 28, animado = false }) {
   return (
     <span className={`logo ${animado ? 'logo-animado' : ''}`} style={{ '--tam': `${tamanho}px` }}>
-      <svg viewBox="0 0 48 32" aria-hidden="true">
-        <path d="M2 18h9l4.5-11 7 21 5-14 3 5H46" />
-      </svg>
-      <span className="logo-nome">Pulso</span>
+      <Simbolo />
+      <span className="logo-nome">Trupe</span>
     </span>
   );
 }

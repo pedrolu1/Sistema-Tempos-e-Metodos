@@ -42,7 +42,7 @@ export default function AppShell() {
   return (
     <div className="app">
       <aside className="lateral">
-        <Link to="/" className="lateral-logo" aria-label="Pulso, ir para o Painel">
+        <Link to="/" className="lateral-logo" aria-label="Trupe, ir para o Painel">
           <Logo tamanho={28} />
         </Link>
         <nav className="lateral-nav" aria-label="Principal">
@@ -87,7 +87,7 @@ export default function AppShell() {
       </aside>
 
       <header className="topo-movel">
-        <Link to="/" aria-label="Pulso, ir para o Painel">
+        <Link to="/" aria-label="Trupe, ir para o Painel">
           <Logo tamanho={24} />
         </Link>
         <div className="topo-movel-dir">

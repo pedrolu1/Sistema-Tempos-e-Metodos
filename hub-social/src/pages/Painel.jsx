@@ -3,10 +3,10 @@ import { Link, useNavigate } from 'react-router';
 import { motion } from 'motion/react';
 import { Play, Loader2, ArrowUpRight, ArrowDownRight, Flame, ChevronRight, Stamp, CalendarClock } from 'lucide-react';
 import { useBackend, useStore } from '../lib/store.jsx';
-import { LinhaPulso, Sparkline, MapaHorarios, Anel } from '../components/Graficos.jsx';
+import { LinhaSerie, Sparkline, MapaHorarios, Anel } from '../components/Graficos.jsx';
 import AgenteAvatar from '../components/AgenteAvatar.jsx';
 import PostCanvas from '../render/PostCanvas.jsx';
-import { calcularPulso, diagnostico } from '../lib/pulso.js';
+import { calcularTermometro, diagnostico } from '../lib/termometro.js';
 import { compacto, pct, quando } from '../lib/tempo.js';
 import { STATUS_POST } from '../lib/agents.js';
 
@@ -49,7 +49,7 @@ export default function Painel() {
   const ir = useNavigate();
   const [serie, setSerie] = useState('alcance');
   const rodando = Object.values(agentes).some((a) => a.status === 'trabalhando');
-  const pulso = useMemo(() => calcularPulso({ insights, posts, marca }), [insights, posts, marca]);
+  const termo = useMemo(() => calcularTermometro({ insights, posts, marca }), [insights, posts, marca]);
   const pendentes = posts.filter((p) => p.status === 'aguardando');
   const proximos = posts
     .filter((p) => ['aguardando', 'agendado'].includes(p.status) && new Date(p.agendadoPara) > new Date())
@@ -115,27 +115,27 @@ export default function Painel() {
 
       {insights.demo && <p className="aviso-demo">Os números abaixo são de exemplo. Com o Instagram conectado de verdade, a Lupa lê os dados reais da sua conta.</p>}
 
-      <section className="pulso painel-bloco" aria-labelledby="t-pulso">
-        <div className="pulso-nota">
-          <h2 id="t-pulso" className="rotulo-bloco">
-            Pulso da marca
+      <section className="termo painel-bloco" aria-labelledby="t-termo">
+        <div className="termo-nota">
+          <h2 id="t-termo" className="rotulo-bloco">
+            Termômetro da marca
           </h2>
-          <div className="pulso-numero">
+          <div className="termo-numero">
             <motion.strong className="num" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-              {pulso.nota}
+              {termo.nota}
             </motion.strong>
-            <span className="pulso-nivel" data-nivel={pulso.nivel}>
-              {pulso.nivel === 'Em chamas' && <Flame />}
-              {pulso.nivel}
+            <span className="termo-nivel" data-nivel={termo.nivel}>
+              {termo.nivel === 'Em chamas' && <Flame />}
+              {termo.nivel}
             </span>
           </div>
-          <p className="pulso-diag">{diagnostico(pulso, insights)}</p>
-          <ul className="pulso-partes">
+          <p className="termo-diag">{diagnostico(termo, insights)}</p>
+          <ul className="termo-partes">
             {[
-              ['Constância', pulso.partes.constancia],
-              ['Engajamento', pulso.partes.engajamento],
-              ['Crescimento', pulso.partes.crescimento],
-              ['Mesa em dia', pulso.partes.mesa]
+              ['Constância', termo.partes.constancia],
+              ['Engajamento', termo.partes.engajamento],
+              ['Crescimento', termo.partes.crescimento],
+              ['Mesa em dia', termo.partes.mesa]
             ].map(([r, v]) => (
               <li key={r}>
                 <span>{r}</span>
@@ -147,7 +147,7 @@ export default function Painel() {
             ))}
           </ul>
         </div>
-        <div className="pulso-grafico">
+        <div className="termo-grafico">
           <div className="chips" role="tablist" aria-label="Série do gráfico">
             {SERIES.map((s) => (
               <button key={s.id} role="tab" aria-selected={serie === s.id} className="chip" aria-pressed={serie === s.id} onClick={() => setSerie(s.id)}>
@@ -155,7 +155,7 @@ export default function Painel() {
               </button>
             ))}
           </div>
-          <LinhaPulso serie={insights.serie || []} chave={serie} rotulo={`${serieAtual.rotulo} por dia`} formatar={serieAtual.fmt} />
+          <LinhaSerie serie={insights.serie || []} chave={serie} rotulo={`${serieAtual.rotulo} por dia`} formatar={serieAtual.fmt} />
         </div>
       </section>
 
@@ -220,17 +220,17 @@ export default function Painel() {
           <h2 id="t-meta">Meta da semana</h2>
           <div className="meta-corpo">
             <div className="meta-anel">
-              <Anel valor={pulso.agendadosSemana} meta={pulso.meta} />
+              <Anel valor={termo.agendadosSemana} meta={termo.meta} />
               <span className="num">
-                {pulso.agendadosSemana}/{pulso.meta}
+                {termo.agendadosSemana}/{termo.meta}
               </span>
             </div>
             <p>
-              {pulso.agendadosSemana >= pulso.meta ? 'Semana garantida. Tudo que passar disso é bônus.' : `Faltam ${pulso.meta - pulso.agendadosSemana} posts no feed para fechar a semana.`}
+              {termo.agendadosSemana >= termo.meta ? 'Semana garantida. Tudo que passar disso é bônus.' : `Faltam ${termo.meta - termo.agendadosSemana} posts no feed para fechar a semana.`}
             </p>
           </div>
           <p className="sequencia">
-            <Flame /> {pulso.sequencia ? `${pulso.sequencia} ${pulso.sequencia === 1 ? 'semana' : 'semanas'} seguidas batendo a meta` : 'Bata a meta desta semana para começar uma sequência'}
+            <Flame /> {termo.sequencia ? `${termo.sequencia} ${termo.sequencia === 1 ? 'semana' : 'semanas'} seguidas batendo a meta` : 'Bata a meta desta semana para começar uma sequência'}
           </p>
         </section>
 

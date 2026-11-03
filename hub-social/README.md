@@ -1,4 +1,4 @@
-# Pulso
+# Trupe
 
 Agência de marketing gerida por agentes de IA para Instagram e Facebook. O cliente cadastra a marca, conecta as redes, manda fotos reais do dia a dia e aprova os posts numa mesa de aprovação. Os agentes pesquisam, planejam, criam arte e legenda e publicam no melhor horário. Nada vai ao ar sem o ok de quem gerencia o hub.
 
@@ -17,7 +17,7 @@ Agência de marketing gerida por agentes de IA para Instagram e Facebook. O clie
 
 - **Entrar, criar conta, esqueci a senha e redefinir senha.** E-mail e senha, entrar com Google (modo real), medidor de força de senha, "manter conectado".
 - **Onboarding em 5 etapas** com prévia ao vivo de um post: negócio, cara da marca (logo com extração automática de cores e 5 estilos de letra), jeito de falar, conexão com a Meta e ritmo de postagem, fotos.
-- **Painel:** nota "Pulso da marca", gráfico de 30 dias, seguidores, alcance, engajamento, visitas e cliques com variação da semana, mapa de horários do público, sugestões da Lupa com botão de ação, meta semanal e sequência de semanas batendo a meta.
+- **Painel:** nota "Termômetro da marca", gráfico de 30 dias, seguidores, alcance, engajamento, visitas e cliques com variação da semana, mapa de horários do público, sugestões da Lupa com botão de ação, meta semanal e sequência de semanas batendo a meta.
 - **Mesa de aprovação:** pilha de posts. Arrastar para a direita aprova (carimbo), para a esquerda descarta, "Ajustar" pede outra versão ("texto mais curto", "outra foto" ou pedido livre). Legenda, chamada, hashtags, texto da arte, redes e horário editáveis. Atalhos de teclado.
 - **Estúdio:** linha de produção ao vivo, cartão de cada agente com o que ele está fazendo agora e o que entregou, e o diário da equipe.
 - **Agenda:** semana e mês, com arrastar para remarcar.

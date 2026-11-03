@@ -2,7 +2,7 @@
 // Constância e engajamento pesam mais porque são o que o algoritmo mais recompensa.
 import { inicioDaSemana } from './tempo.js';
 
-export function calcularPulso({ insights, posts, marca }) {
+export function calcularTermometro({ insights, posts, marca }) {
   const meta = marca?.ritmo?.feed || 4;
   const semana = inicioDaSemana(new Date()).getTime();
   const fimSemana = semana + 7 * 864e5;

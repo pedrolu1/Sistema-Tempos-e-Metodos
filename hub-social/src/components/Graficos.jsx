@@ -23,7 +23,7 @@ export function Sparkline({ valores = [], largura = 120, altura = 36, rotulo }) 
   );
 }
 
-export function LinhaPulso({ serie = [], chave = 'alcance', rotulo = 'Alcance por dia', formatar = (v) => v }) {
+export function LinhaSerie({ serie = [], chave = 'alcance', rotulo = 'Alcance por dia', formatar = (v) => v }) {
   const W = 720;
   const H = 180;
   const m = { e: 8, d: 8, t: 16, b: 26 };
@@ -52,7 +52,7 @@ export function LinhaPulso({ serie = [], chave = 'alcance', rotulo = 'Alcance po
   };
 
   return (
-    <div className="linha-pulso">
+    <div className="linha-serie">
       <svg
         ref={ref}
         viewBox={`0 0 ${W} ${H}`}
@@ -73,19 +73,19 @@ export function LinhaPulso({ serie = [], chave = 'alcance', rotulo = 'Alcance po
         ))}
         <line x1={m.e} x2={W - m.d} y1={H - m.b} y2={H - m.b} className="eixo" />
         <path d={area} fill={`url(#${gid})`} />
-        <path d={linha} className="linha-pulso-traco" vectorEffect="non-scaling-stroke" />
+        <path d={linha} className="linha-serie-traco" vectorEffect="non-scaling-stroke" />
         {foco != null && <line x1={x(foco)} x2={x(foco)} y1={m.t} y2={H - m.b} className="mira" vectorEffect="non-scaling-stroke" />}
       </svg>
       {foco != null && (
         <>
-          <span className="linha-pulso-ponto" style={{ left: `${(x(foco) / W) * 100}%`, top: `${(y(valores[foco]) / H) * 100}%` }} />
+          <span className="linha-serie-ponto" style={{ left: `${(x(foco) / W) * 100}%`, top: `${(y(valores[foco]) / H) * 100}%` }} />
           <div className="dica-grafico" style={{ left: `${(x(foco) / W) * 100}%` }}>
             <strong className="num">{formatar(valores[foco])}</strong>
             <span>{fmtData(serie[foco].data)}</span>
           </div>
         </>
       )}
-      <div className="linha-pulso-eixo" aria-hidden="true">
+      <div className="linha-serie-eixo" aria-hidden="true">
         {marcas.map((i) => (
           <span key={i} style={{ left: `${(x(i) / W) * 100}%` }}>
             {fmtData(serie[i].data)}

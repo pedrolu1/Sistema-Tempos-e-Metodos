@@ -1,4 +1,4 @@
-// Cloud Functions do Pulso.
+// Cloud Functions da Trupe.
 // O app grava pedidos em usuarios/{uid}/execucoes e a equipe trabalha aqui.
 import { setGlobalOptions } from 'firebase-functions/v2';
 import { onDocumentCreated } from 'firebase-functions/v2/firestore';
@@ -103,9 +103,9 @@ export const metaUrlAutorizacao = onCall({ secrets: [TOKEN_KEY] }, async (req) =
 
 function paginaRetorno(ok, texto, origem) {
   const alvo = JSON.stringify(origem || '*');
-  const dados = JSON.stringify({ tipo: 'pulso-meta', ok, erro: ok ? null : texto });
+  const dados = JSON.stringify({ tipo: 'trupe-meta', ok, erro: ok ? null : texto });
   return `<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Pulso</title><body style="font-family:system-ui;background:#1c1644;color:#f4f0ff;display:grid;place-items:center;min-height:100vh;margin:0;padding:24px;text-align:center">
+<title>Trupe</title><body style="font-family:system-ui;background:#1c1644;color:#f4f0ff;display:grid;place-items:center;min-height:100vh;margin:0;padding:24px;text-align:center">
 <div><h1 style="font-size:22px">${ok ? 'Conectado' : 'Não deu certo'}</h1><p>${texto}</p><p style="opacity:.7">Pode fechar esta janela.</p></div>
 <script>try{window.opener&&window.opener.postMessage(${dados},${alvo})}catch(e){}setTimeout(function(){window.close()},1200)</script></body></html>`;
 }

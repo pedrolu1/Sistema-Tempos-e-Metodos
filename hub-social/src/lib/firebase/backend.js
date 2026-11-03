@@ -175,7 +175,7 @@ export class FirebaseBackend extends Backend {
   async conectarMeta() {
     const gerar = httpsCallable(this.functions, 'metaUrlAutorizacao');
     const { data } = await gerar({ origem: window.location.origin });
-    const janela = window.open(data.url, 'pulso-meta', 'width=620,height=760');
+    const janela = window.open(data.url, 'trupe-meta', 'width=620,height=760');
     if (!janela) throw Object.assign(new Error('O navegador bloqueou a janela. Libere pop-ups para este site.'), { code: 'auth/popup-blocked' });
     return new Promise((ok, falha) => {
       const fim = setTimeout(() => {
@@ -183,7 +183,7 @@ export class FirebaseBackend extends Backend {
         falha(new Error('A autorização demorou demais. Tente de novo.'));
       }, 5 * 60 * 1000);
       const aoMensagem = (e) => {
-        if (e.data?.tipo !== 'pulso-meta') return;
+        if (e.data?.tipo !== 'trupe-meta') return;
         sair();
         e.data.ok ? ok(this.estado.conexoes) : falha(new Error(e.data.erro || 'A Meta não autorizou a conexão.'));
       };

@@ -94,8 +94,10 @@ export function useStore() {
 export function TelaCarregando() {
   return (
     <div className="carregando" role="status" aria-live="polite">
-      <svg viewBox="0 0 120 40" width="120" height="40" aria-hidden="true">
-        <path className="carregando-linha" d="M2 22h26l8-16 12 30 10-24 6 10h54" />
+      <svg viewBox="0 0 48 34" width="96" height="68" className="simbolo carregando-gotas" aria-hidden="true">
+        <circle cx="13" cy="20" r="10" fill="var(--radar)" />
+        <circle cx="24" cy="12" r="10" fill="var(--traco)" />
+        <circle cx="35" cy="21" r="10" fill="var(--verbo)" />
       </svg>
       <span className="sr-only">Carregando</span>
     </div>

@@ -10,7 +10,7 @@
     ]
   },
   "functions": [
-    { "source": "functions", "codebase": "pulso", "runtime": "nodejs22", "ignore": ["node_modules", ".git", "*.local", "teste-offline.js", "verificar.js"] }
+    { "source": "functions", "codebase": "trupe", "runtime": "nodejs22", "ignore": ["node_modules", ".git", "*.local", "teste-offline.js", "verificar.js"] }
   ],
   "firestore": { "rules": "firestore.rules", "indexes": "firestore.indexes.json" },
   "storage": { "rules": "storage.rules" }

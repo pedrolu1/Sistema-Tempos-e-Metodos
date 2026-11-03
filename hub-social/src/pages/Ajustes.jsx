@@ -144,7 +144,7 @@ function AbaRedes() {
   }
   return (
     <div className="ajustes-form">
-      <p className="sub">A conexão é feita pela Meta com as permissões mínimas para ler métricas e publicar. O Pulso nunca vê a sua senha.</p>
+      <p className="sub">A conexão é feita pela Meta com as permissões mínimas para ler métricas e publicar. A Trupe nunca vê a sua senha.</p>
       <div className="redes">
         {[
           ['instagram', 'Instagram', IconeInstagram],

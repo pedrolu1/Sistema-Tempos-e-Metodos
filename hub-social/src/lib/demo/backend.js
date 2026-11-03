@@ -10,10 +10,10 @@ import { nichoDe } from './nichos.js';
 import { escreverLegenda, desenharArte, montarPautas, precisaDeFoto, hashTexto } from './redacao.js';
 import { gerarInsights, sugestoesDemo } from './metricas.js';
 
-const K_USUARIOS = 'pulso.demo.usuarios';
-const K_SESSAO = 'pulso.demo.sessao';
-const K_RESET = 'pulso.demo.reset';
-const kDados = (uid) => `pulso.demo.dados.${uid}`;
+const K_USUARIOS = 'trupe.demo.usuarios';
+const K_SESSAO = 'trupe.demo.sessao';
+const K_RESET = 'trupe.demo.reset';
+const kDados = (uid) => `trupe.demo.dados.${uid}`;
 
 const esperar = (ms) => new Promise((ok) => setTimeout(ok, ms));
 
@@ -190,7 +190,7 @@ export class DemoBackend extends Backend {
 
   // Atalho do modo demonstração: conta de exemplo já configurada, com fotos e redes simuladas.
   async entrarComExemplo() {
-    const email = 'exemplo@pulso.demo';
+    const email = 'exemplo@trupe.demo';
     const usuarios = ler(K_USUARIOS, {});
     if (usuarios[email]) {
       await this.entrar({ email, senha: 'exemplo123' });

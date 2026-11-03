@@ -1,6 +1,6 @@
 // Cliente mínimo da Graph API da Meta (Instagram profissional + Página do Facebook).
 // Conexão via Login do Facebook para Empresas: o usuário autoriza na janela oficial,
-// o Pulso nunca recebe a senha. Tokens ficam cifrados em "segredos/{uid}".
+// a Trupe nunca recebe a senha. Tokens ficam cifrados em "segredos/{uid}".
 import { META_APP_ID, META_APP_SECRET, META_REDIRECT_URI, versaoGraph } from './config.js';
 import { db, agora } from './banco.js';
 import { cifrar, decifrar } from './cripto.js';

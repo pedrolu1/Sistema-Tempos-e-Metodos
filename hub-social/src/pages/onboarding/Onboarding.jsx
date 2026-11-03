@@ -398,7 +398,7 @@ export default function Onboarding() {
                 <>
                   <h1>Conecte o Instagram e o Facebook</h1>
                   <p className="sub">
-                    A conexão é pela Meta, dona das duas redes. Você autoriza na janela oficial e o Pulso nunca vê nem guarda a sua senha. Dá para desconectar quando quiser.
+                    A conexão é pela Meta, dona das duas redes. Você autoriza na janela oficial e a Trupe nunca vê nem guarda a sua senha. Dá para desconectar quando quiser.
                   </p>
                   <div className="redes">
                     {[
