@@ -1,0 +1,21 @@
+{
+  "data": "2026-11-06",
+  "bateria": "B",
+  "avancos": [
+    { "etapa": "montagem_andaime", "locais": ["B6-F09", "B6-F10-LM"], "fonte": "Líder (07:42): andaime montado B6 F9 LM/LC e F10 lado máquina" },
+    { "etapa": "demolicao", "locais": ["B6-F09", "B6-F10-LM"], "fonte": "Líder (11:15): demolidas as manilhas do B6 F9 e F10 LM" },
+    { "etapa": "assentamento", "locais": ["B6-F07", "B6-F08-LC-P04", "B6-F08-LC-P05"], "fonte": "Líder (15:30): concretagem B6 F7 completo e F8 P4 e P5" },
+    { "etapa": "injetbar", "locais": ["B6-F05", "B6-F06"], "fonte": "Líder (14:02): injetbar aplicado F5 e F6 do B6" },
+    { "etapa": "massa1200", "locais": ["B6-F04"], "fonte": "Líder (16:10): massa 1200 finalizada no B6 F4" }
+  ],
+  "observacoesRdo": "A REFRAMAX INFORMA QUE A EQUIPE REALIZOU 5S (ORGANIZAÇÃO E LIMPEZA) NAS FRENTES DO BLOCO B6, COM SEGREGAÇÃO DO MATERIAL DEMOLIDO.",
+  "clima": "estavel",
+  "efetivo": {
+    "Líder de Manutenção": 3,
+    "Operador de Manutenção Refratária": 20,
+    "Montador de Andaimes": 6,
+    "Operador de Caminhão Munck": 1
+  },
+  "desvio": null,
+  "duvidas": []
+}

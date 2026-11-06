@@ -1,0 +1,14 @@
+{
+  "planilhas": {
+    "rdo": "C:\\CAMINHO\\PLAN-RFX-002-R0 - Relatório Diário de Obra - Primárias - 3º Contrato.xlsx",
+    "curvaS": "C:\\CAMINHO\\3º Contrato - Curva S - Subst. Válv. Prim. dos Fornos da Coq. (Semanal).xlsm",
+    "gestaoVisual": "C:\\CAMINHO\\Gestão Visual - Subst. Válv. Prim. dos Fornos da Coq. - Compilado.xlsx"
+  },
+  "pastaDias": "C:\\Primarias\\dias",
+  "pastaSaida": "C:\\Primarias\\saida",
+  "pastaBackup": "C:\\Primarias\\backup",
+  "grupoWhatsApp": "NOME DO GRUPO DAS PRIMÁRIAS",
+  "bateria": "B",
+  "contrato": "3º CONTRATO",
+  "metaFornosBm": 36
+}

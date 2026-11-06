@@ -293,3 +293,11 @@ mesmo secret `NETLIFY_AUTH_TOKEN` do Tempos & Métodos). Se a própria Netlify
 montar o site, o `netlify.toml` escolhe o app pelo nome do site.
 
 Ícones: `node primarias/scripts/gerar-icones.mjs`.
+
+## Rotina diária (WhatsApp → planilhas)
+
+`primarias/rotina/` tem o que roda no computador do planejador: o Claude lê o grupo
+das primárias no WhatsApp Web, mostra o avanço para conferir e roda
+`preencher-primarias.ps1`, que preenche o RDO, a Curva S e a Gestão Visual pelo próprio
+Excel (mantém gráfico, logo, macros e formatação). Instruções da rotina em
+`primarias/rotina/SKILL.md`; instalação em `primarias/rotina/LEIA-ME.md`.
