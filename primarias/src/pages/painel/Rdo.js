@@ -1,11 +1,14 @@
-// RDO no painel: o relatório no formato do PLAN-RFX-002, montado pelos
-// lançamentos e pelo que o apontador preencheu; o planejador fecha e imprime.
+// RDO no painel: o relatório no formato do PLAN-RFX-002. As atividades e os
+// materiais saem dos lançamentos; as observações, dos registros do diário do
+// campo (5S, ocorrências). O planejador confere o efetivo e o clima, fecha e
+// imprime ou salva em PDF.
 import { el } from '../../../../src/utils/dom.js';
+import { segmented } from '../../../../src/components/ui.js';
 import { statusChip } from '../../components/base.js';
 import { ic } from '../../lib/icones.js';
-import { CLIENTE, SERVICO, CODIGO_RDO, EFETIVO_MODELO, HORARIO } from '../../data/obra.js';
-import { rdoDoDia } from '../../lib/calculo.js';
-import { salvarRdo } from '../../lib/store.js';
+import { CLIENTE, SERVICO, CODIGO_RDO, EFETIVO_MODELO, HORARIO, TIPOS_OCORRENCIA } from '../../data/obra.js';
+import { rdoDoDia, observacoesSugeridas } from '../../lib/calculo.js';
+import { salvarRdo } from '../../lib/banco.js';
 import { hoje, somarDias, completa, nomeDia, semana, diaUtil } from '../../lib/datas.js';
 import { toast } from '../../../../src/lib/toast.js';
 
@@ -17,12 +20,14 @@ export function paginaRdo(ctx) {
   dia ||= hoje();
   const r = rdoDoDia(calc, dia);
   const s = r.salvo || {};
+  const sugerido = observacoesSugeridas(r);
+  const obsTexto = s.obs ? s.obs : sugerido;
   const ir = (d) => {
     dia = d;
-    document.querySelector('.painel-pagina').replaceChildren(...paginaRdo(ctx));
+    ctx.redesenhar();
   };
   const acoes = [];
-  if (!leitura && r.status === 'rascunho') acoes.push(el('button', { class: 'btn btn-primary btn-sm', type: 'button', onclick: () => { salvarRdo(dia, { status: 'fechado', numero: r.numero, fechadoPor: perfil.nome, fechadoEm: Date.now() }); toast(`RDO ${r.numero ? `nº ${r.numero} ` : ''}fechado. O campo não altera mais.`, 'ok'); } }, [el('span', { html: ic.lock(15) }), 'Fechar RDO']));
+  if (!leitura && r.status === 'rascunho') acoes.push(el('button', { class: 'btn btn-primary btn-sm', type: 'button', onclick: () => { salvarRdo(dia, { status: 'fechado', numero: r.numero, obs: obsTexto, fechadoPor: perfil.nome, fechadoEm: Date.now() }); toast(`RDO ${r.numero ? `nº ${r.numero} ` : ''}fechado. O campo não registra mais neste dia.`, 'ok'); } }, [el('span', { html: ic.lock(15) }), 'Fechar RDO']));
   if (!leitura && r.status === 'fechado') {
     acoes.push(el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: () => salvarRdo(dia, { status: 'rascunho', reabertoPor: perfil.nome }) }, 'Reabrir'));
     acoes.push(el('button', { class: 'btn btn-primary btn-sm', type: 'button', onclick: () => { salvarRdo(dia, { status: 'assinado', assinadoEm: Date.now() }); toast('Marcado como assinado no papel.', 'ok'); } }, 'Marcar como assinado'));
@@ -39,16 +44,65 @@ export function paginaRdo(ctx) {
       ]),
       el('div', { class: 'toolbar' }, acoes)
     ]),
-    documento(r, s),
-    leitura ? null : el('section', { class: 'cartao nao-imprimir' }, [
-      el('h3', {}, 'Textos do relatório'),
-      el('div', { class: 'rdo-edicao' }, [
-        campoTexto('Observações (Reframax)', s.obs, r.status !== 'rascunho', (v) => salvarRdo(dia, { obs: v })),
-        campoTexto('Observações da contratante', s.obsContratante, ['assinado', 'planilha'].includes(r.status), (v) => salvarRdo(dia, { obsContratante: v }))
-      ])
-    ]),
+    documento(r, s, obsTexto),
+    registrosDoCampo(r),
+    leitura ? null : edicao(r, s, obsTexto, sugerido, perfil),
     controle(calc, ir)
   ];
+}
+
+const NOME_TIPO = Object.fromEntries(TIPOS_OCORRENCIA.map((t) => [t.id, t.nome]));
+
+/** O que os líderes registraram no diário do dia (vira as observações). */
+function registrosDoCampo(r) {
+  return el('section', { class: 'cartao nao-imprimir' }, [
+    el('div', { class: 'cartao-topo' }, [el('div', {}, [el('h3', {}, 'Registros do campo'), el('p', {}, 'O que os líderes registraram no diário deste dia. Entram nas observações do RDO.')]), el('span', { class: 'num', style: { fontSize: '24px' } }, String(r.ocorrencias.length))]),
+    r.ocorrencias.length
+      ? el('div', { class: 'pilha', style: { gap: '8px' } }, r.ocorrencias.map((o) => el('div', { class: 'pedido' }, [
+          el('div', {}, [el('strong', {}, NOME_TIPO[o.tipo] || o.tipo), el('p', {}, `${o.texto} · ${o.autor?.nome || ''}`)])
+        ])))
+      : el('div', { class: 'vazio-convite' }, [el('strong', {}, 'Nenhum registro'), 'Os líderes registram o 5S e as ocorrências pela aba Diário do app.'])
+  ]);
+}
+
+/** Edição do planejador: efetivo, clima e textos. Salva sozinho. */
+function edicao(r, s, obsTexto, sugerido, perfil) {
+  const travado = r.status !== 'rascunho';
+  const efetivo = s.efetivo || {};
+  const clima = s.clima || { diurno: 'estavel' };
+  const salvar = (mud) => salvarRdo(r.data, { ...mud, atualizadoPor: perfil.nome, atualizadoEm: Date.now() });
+  const linhas = (lista) => lista.map(([f, prev]) => el('tr', {}, [
+    el('td', {}, f),
+    el('td', { class: 'n' }, String(prev)),
+    el('td', { class: 'n' }, el('input', {
+      class: 'input input-compact', type: 'number', min: 0, max: 99, disabled: travado, value: efetivo[f] ?? prev,
+      style: { width: '70px', height: '32px', textAlign: 'right' }, 'aria-label': `${f} realizado`,
+      onchange: (ev) => salvar({ efetivo: { ...efetivo, [f]: Math.max(0, Math.round(Number(ev.target.value) || 0)) } })
+    }))
+  ]));
+  const tabela = (titulo, lista) => el('table', { class: 'data-table tabela-compacta tabela-estreita' }, [
+    el('thead', {}, el('tr', {}, [el('th', {}, titulo), el('th', { class: 'n' }, 'Previsto'), el('th', { class: 'n' }, 'Realizado')])),
+    el('tbody', {}, linhas(lista))
+  ]);
+  return el('section', { class: 'cartao nao-imprimir' }, [
+    el('div', { class: 'cartao-topo' }, [el('div', {}, [el('h3', {}, 'Preencher o RDO'), el('p', {}, travado ? 'RDO fechado. Reabra para mudar.' : 'Efetivo, clima e textos. Salva sozinho a cada mudança.')])]),
+    el('div', { class: 'rdo-edicao' }, [
+      el('div', { class: 'pilha', style: { gap: '12px' } }, [
+        el('div', { class: 'field' }, [el('span', { class: 'field-label' }, 'Clima (turno diurno)'), segmented([{ value: 'estavel', label: 'Tempo estável' }, { value: 'chuvoso', label: 'Tempo chuvoso' }], clima.diurno, (v) => !travado && salvar({ clima: { ...clima, diurno: v } }))]),
+        el('div', { class: 'table-wrap' }, tabela('Mão de obra direta', EFETIVO_MODELO.mod)),
+        el('div', { class: 'table-wrap' }, tabela('Mão de obra indireta', EFETIVO_MODELO.moi)),
+        el('div', { class: 'table-wrap' }, tabela('Equipamentos', EFETIVO_MODELO.equipamentos))
+      ]),
+      el('div', { class: 'pilha', style: { gap: '12px' } }, [
+        el('div', { class: 'field' }, [
+          el('label', { class: 'field-label', for: 'rdo-obs' }, 'Observações (Reframax)'),
+          el('textarea', { id: 'rdo-obs', class: 'textarea', rows: 6, disabled: travado, value: obsTexto, placeholder: 'A REFRAMAX INFORMA QUE…', onchange: (ev) => salvar({ obs: ev.target.value }) }),
+          sugerido && !travado ? el('button', { class: 'btn btn-ghost btn-sm', type: 'button', style: { alignSelf: 'flex-start' }, onclick: () => salvar({ obs: sugerido }) }, 'Refazer pelos registros do campo') : null
+        ]),
+        campoTexto('Observações da contratante', s.obsContratante, ['assinado', 'planilha'].includes(r.status), (v) => salvar({ obsContratante: v }))
+      ])
+    ])
+  ]);
 }
 
 function campoTexto(rotulo, valor, travado, aoSalvar) {
@@ -58,7 +112,7 @@ function campoTexto(rotulo, valor, travado, aoSalvar) {
   ]);
 }
 
-function documento(r, s) {
+function documento(r, s, obsTexto) {
   const efetivo = s.efetivo || {};
   const tabelaEfetivo = (titulo, lista, cabFuncao = 'Funções') => {
     const real = (f, p) => (r.salvo ? efetivo[f] ?? p : '');
@@ -90,7 +144,7 @@ function documento(r, s) {
           ? el('div', { class: 'rdo-atividades' }, r.atividades.map((a) => el('div', {}, [el('b', {}, [el('i', { style: { background: a.etapa.cor } }), `${a.etapa.curto} (${a.prims.length})`]), el('ul', {}, a.linhas.map((l) => el('li', {}, l.replaceAll(' · ', ' - '))))])))
           : el('p', { class: 'rdo-vazio' }, diaUtil(r.data) ? 'Nenhuma atividade lançada neste dia.' : 'Fim de semana, sem atividades.'),
         el('h4', { style: { marginTop: '14px' } }, 'Observações'),
-        el('div', { class: 'rdo-obs' }, s.obs || '')
+        el('div', { class: 'rdo-obs' }, obsTexto || '')
       ]),
       el('div', { class: 'pilha', style: { gap: '10px' } }, [
         tabelaEfetivo('Mão de obra indireta', EFETIVO_MODELO.moi),

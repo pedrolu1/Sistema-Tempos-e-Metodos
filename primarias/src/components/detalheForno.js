@@ -1,11 +1,12 @@
-// Detalhe de um forno: as 6 etapas em linha do tempo, quem lançou e o
-// atalho para a próxima etapa (campo) ou para cancelar um lançamento (painel).
+// Detalhe de um forno para o painel: as etapas em linha do tempo, quem lançou,
+// o cancelamento de um lançamento (planejador) e as fotos do checklist.
 import { el } from '../../../src/utils/dom.js';
 import { abrirFolha, seis, statusChip } from './base.js';
 import { ic, iconeEtapa } from '../lib/icones.js';
 import { ETAPAS, fornoPorId, primariaPorId, noMeio } from '../data/obra.js';
 import { calcular, checklists, idxsDoForno, avancoFisico, situacaoAlvo } from '../lib/calculo.js';
-import { assinar } from '../lib/store.js';
+import { assinar } from '../lib/banco.js';
+import { NOME_STATUS } from './checklistFotos.js';
 import { completa, curta, haQuanto } from '../lib/datas.js';
 
 export function abrirForno(fid, { aoLancar = null, aoCancelar = null, aoChecklist = null } = {}) {
@@ -24,7 +25,7 @@ export function abrirForno(fid, { aoLancar = null, aoCancelar = null, aoChecklis
       titulo: fid.replace('-', ' · '),
       subtitulo: fc.concluidoEm ? `Concluído em ${completa(fc.concluidoEm)}` : `${Math.round(av * 100)}% do avanço físico do forno`,
       corpo: [
-        el('div', { class: 'entre' }, [seis(calc, fid), ck ? statusChip(ck.status, ck.status === 'aprovado' ? `Checklist nº ${ck.numero}` : ck.status === 'enviado' ? 'Checklist enviado' : 'Checklist pendente') : null]),
+        el('div', { class: 'entre' }, [seis(calc, fid), ck ? statusChip(ck.status, ck.status === 'aprovado' ? `Checklist nº ${ck.numero}` : `Checklist: ${NOME_STATUS[ck.status].toLowerCase()}`) : null]),
         el('div', { class: 'linha-tempo' }, ETAPAS.map((e, k) => {
           const datas = idxs.map((i) => calc.feitas[i][k]).filter(Boolean).sort();
           const feitas = datas.length;
@@ -43,14 +44,14 @@ export function abrirForno(fid, { aoLancar = null, aoCancelar = null, aoChecklis
                 return el('div', { class: `feed-item cor-${e.id}` }, [
                   el('span', { class: 'feed-icone', html: iconeEtapa(e.id, 18) }),
                   el('div', { class: 'feed-texto' }, [el('strong', {}, `${e.curto} · ${l.prims.filter((p) => primariaPorId[p].fornoId === fid).length} primária(s)`), el('span', {}, `${l.autor?.nome || ''} · dia ${curta(l.data)}${l.obs ? ` · ${l.obs}` : ''}`)]),
-                  aoCancelar ? el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: () => aoCancelar(l) }, 'Cancelar') : el('span', { class: 'feed-quando' }, haQuanto(l.criadoEm))
+                  aoCancelar ? el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: () => aoCancelar(l) }, 'Cancelar') : el('span', { class: 'feed-quando' }, haQuanto(l.criadoEmLocal))
                 ]);
               }))
             ])
           : el('p', { class: 'fraco', style: { fontSize: '13.5px' } }, fc.concluidoEm || fc.minimo >= 0 ? 'Etapas vindas da planilha de controle (antes do app).' : 'Nenhuma etapa lançada neste forno ainda.')
       ],
       pe: [
-        aoChecklist && fc.concluidoEm ? el('button', { class: 'btn btn-ghost', type: 'button', onclick: () => { folha.fechar(); aoChecklist(fid); } }, [el('span', { html: ic.prancheta(18) }), 'Checklist']) : null,
+        aoChecklist && ck ? el('button', { class: 'btn btn-ghost', type: 'button', onclick: () => { folha.fechar(); aoChecklist(fid); } }, [el('span', { html: ic.camera(18) }), `Fotos do checklist (${ck.origem === 'planilha' ? 'planilha' : `${ck.nFotos}/8`})`]) : null,
         aoLancar && proxima ? el('button', { class: `btn btn-brasa`, style: { flex: 1 }, type: 'button', onclick: () => { folha.fechar(); aoLancar(proxima.id, fid); } }, [el('span', { html: iconeEtapa(proxima.id, 20) }), `Lançar ${noMeio(proxima)}`]) : null
       ].filter(Boolean)
     });

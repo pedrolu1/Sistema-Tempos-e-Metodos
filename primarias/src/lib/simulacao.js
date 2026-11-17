@@ -1,10 +1,10 @@
 // Só na demonstração: líderes "virtuais" lançando de tempos em tempos, para
 // ver o painel e o mapa mudando sozinhos. Roda só na aba em que foi ligada.
 import { calcular, alvosDoForno } from './calculo.js';
-import { estadoAtual, lancar } from './store.js';
+import { estadoAtual, lancar } from './banco.js';
 import { FORNOS, ETAPAS, contratoAtivo, primariaPorId } from '../data/obra.js';
 import { hoje } from './datas.js';
-import { PERFIS_DEMO, autorDe } from './sessao.js';
+import { PERFIS_DEMO, autorDe } from './acesso.js';
 
 const CHAVE = 'prim.simular';
 let timer = null;
@@ -41,10 +41,12 @@ function passo() {
   const abertos = FORNOS.filter((f) => f.bateria === bat && !calc.fornos[f.id].concluidoEm);
   const candidatos = [];
   for (const f of abertos) {
-    for (let e = ETAPAS.length - 1; e >= 0; e--) {
-      const livres = alvosDoForno(calc, ETAPAS[e].id, f.id).filter((a) => a.ok);
+    // a desmontagem do andaime fica de fora: a equipe virtual só avança o serviço
+    const etapas = ETAPAS.filter((e) => !e.extra);
+    for (let e = etapas.length - 1; e >= 0; e--) {
+      const livres = alvosDoForno(calc, etapas[e].id, f.id).filter((a) => a.ok);
       if (livres.length) {
-        candidatos.push({ etapa: ETAPAS[e], livres });
+        candidatos.push({ etapa: etapas[e], livres });
         break;
       }
     }

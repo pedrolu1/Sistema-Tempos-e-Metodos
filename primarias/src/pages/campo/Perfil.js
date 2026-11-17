@@ -7,7 +7,7 @@ import { NIVEL_MAX, XP_POR_PRIMARIA, XP_FORNO, XP_BLOCO } from '../../lib/calcul
 import { somLigado, alternarSom, tocar } from '../../lib/efeitos.js';
 import { PAPEIS } from '../../data/obra.js';
 
-export function paginaPerfil({ perfil, stats, trocarVisao }) {
+export function paginaPerfil({ perfil, stats, trocarVisao, redesenhar }) {
   const som = somLigado();
   return [
     el('div', { class: 'perfil-topo' }, [
@@ -29,7 +29,7 @@ export function paginaPerfil({ perfil, stats, trocarVisao }) {
       el('p', { class: 'fraco', style: { fontSize: '13.5px', lineHeight: '1.55' } }, `Cada primária lançada numa etapa vale ${XP_POR_PRIMARIA} XP. Fechar um forno (a última massa 1200) vale mais ${XP_FORNO}, e fechar um bloco, mais ${XP_BLOCO}. A cada nível a temperatura sobe 100 °C, até 1200 °C. Lançar todo dia útil mantém a chama acesa.`)
     ]),
     el('div', { class: 'menu-list' }, [
-      el('button', { class: 'menu-item', type: 'button', onclick: (ev) => { alternarSom(!som); if (!som) tocar('ok'); ev.currentTarget.closest('.campo-conteudo').replaceChildren(...paginaPerfil({ perfil, stats, trocarVisao })); } }, [
+      el('button', { class: 'menu-item', type: 'button', onclick: () => { alternarSom(!som); if (!som) tocar('ok'); redesenhar(); } }, [
         el('span', { html: som ? ic.som(20) : ic.semSom(20) }),
         el('div', {}, [el('strong', {}, som ? 'Som ligado' : 'Som desligado'), el('small', {}, 'Um toque curto ao lançar e ao fechar forno.')])
       ]),

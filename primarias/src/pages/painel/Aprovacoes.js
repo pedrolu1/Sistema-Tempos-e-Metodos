@@ -4,14 +4,14 @@ import { el } from '../../../../src/utils/dom.js';
 import { etiquetaEtapa, statusChip } from '../../components/base.js';
 import { etapaPorId } from '../../data/obra.js';
 import { resumoAlvos } from '../../lib/calculo.js';
-import { decidirCorrecao } from '../../lib/store.js';
+import { decidirCorrecao } from '../../lib/banco.js';
 import { completa, haQuanto } from '../../lib/datas.js';
 import { toast } from '../../../../src/lib/toast.js';
 
 const TIPO = { excluir: 'Apagar o lançamento', data: 'Trocar o dia', outro: 'Outro ajuste' };
 
 export function paginaAprovacoes({ calc, perfil, leitura }) {
-  const pedidos = [...calc.estado.correcoes].sort((a, b) => b.criadoEm - a.criadoEm);
+  const pedidos = [...calc.estado.correcoes].sort((a, b) => b.criadoEmLocal - a.criadoEmLocal);
   const abertos = pedidos.filter((c) => c.status === 'pendente');
   const decididos = pedidos.filter((c) => c.status !== 'pendente').slice(0, 20);
   const cartao = (c) => {
@@ -21,7 +21,7 @@ export function paginaAprovacoes({ calc, perfil, leitura }) {
     const pedido = c.tipo === 'data' ? `${TIPO.data}: ${completa(l.data)} → ${completa(c.novaData)}` : TIPO[c.tipo];
     return el('div', { class: 'pedido' }, [
       el('div', {}, [
-        el('div', { class: 'linha', style: { flexWrap: 'wrap' } }, [el('strong', {}, pedido), etiquetaEtapa(e), el('small', {}, `${c.autor?.nome} · ${haQuanto(c.criadoEm)}`)]),
+        el('div', { class: 'linha', style: { flexWrap: 'wrap' } }, [el('strong', {}, pedido), etiquetaEtapa(e), el('small', {}, `${c.autor?.nome} · ${haQuanto(c.criadoEmLocal)}`)]),
         el('p', {}, `“${c.motivo}”`),
         el('small', {}, `Lançamento de ${completa(l.data)}: ${resumoAlvos(l.prims, l.etapa).join(', ')}`),
         c.status !== 'pendente' && c.resposta ? el('p', { class: 'fraco' }, `Resposta: ${c.resposta}`) : null

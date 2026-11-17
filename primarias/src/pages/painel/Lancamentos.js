@@ -4,7 +4,7 @@ import { el } from '../../../../src/utils/dom.js';
 import { etiquetaEtapa } from '../../components/base.js';
 import { ETAPAS, etapaPorId } from '../../data/obra.js';
 import { resumoAlvos } from '../../lib/calculo.js';
-import { cancelarLancamento, trocarDataLancamento } from '../../lib/store.js';
+import { cancelarLancamento, trocarDataLancamento } from '../../lib/banco.js';
 import { completa, haQuanto, hoje } from '../../lib/datas.js';
 import { toast } from '../../../../src/lib/toast.js';
 
@@ -12,10 +12,10 @@ const filtro = { etapa: '', pessoa: '', canceladas: false };
 
 export function paginaLancamentos(ctx) {
   const { calc, perfil, leitura } = ctx;
-  const todos = [...calc.estado.lancamentos].sort((a, b) => b.criadoEm - a.criadoEm);
+  const todos = [...calc.estado.lancamentos].sort((a, b) => b.criadoEmLocal - a.criadoEmLocal);
   const pessoas = [...new Map(todos.map((l) => [l.autor?.uid, l.autor?.nome])).entries()];
   const lista = todos.filter((l) => (!filtro.etapa || l.etapa === filtro.etapa) && (!filtro.pessoa || l.autor?.uid === filtro.pessoa) && (filtro.canceladas || l.status === 'valido'));
-  const redesenhar = () => document.querySelector('.painel-pagina').replaceChildren(...paginaLancamentos(ctx));
+  const redesenhar = () => ctx.redesenhar();
   const select = (valor, opcoes, aoMudar, rotulo) => el('select', { class: 'select', 'aria-label': rotulo, style: { width: 'auto', minWidth: '180px', height: '40px' }, onchange: (ev) => aoMudar(ev.target.value) }, opcoes.map(([v, t]) => el('option', { value: v, selected: v === valor }, t)));
 
   return [
@@ -34,7 +34,7 @@ export function paginaLancamentos(ctx) {
             el('td', { class: 'n strong' }, String(l.prims.length)),
             el('td', {}, completa(l.data)),
             el('td', {}, l.autor?.nome || ''),
-            el('td', {}, l.status === 'cancelado' ? `cancelado por ${l.canceladoPor}` : haQuanto(l.criadoEm)),
+            el('td', {}, l.status === 'cancelado' ? `cancelado por ${l.canceladoPor}` : haQuanto(l.criadoEmLocal)),
             leitura || l.status !== 'valido'
               ? el('td', {})
               : el('td', {}, el('div', { class: 'acoes-linha' }, [

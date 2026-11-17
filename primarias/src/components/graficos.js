@@ -1,5 +1,5 @@
-// Gráficos em SVG puro: Curva S, previsto × realizado por semana e produção
-// diária por etapa. Linhas finas, um eixo só, legenda e dica ao passar o mouse.
+// Gráficos em SVG puro: Curva S do BM, fornos por BM e produção diária por
+// etapa. Linhas finas, um eixo só, legenda e dica ao passar o mouse.
 import { el, svg } from '../../../src/utils/dom.js';
 import { ETAPAS } from '../data/obra.js';
 import { curta } from '../lib/datas.js';
@@ -52,127 +52,131 @@ function eixoY(W, h, m, maxV, passos, fmt) {
   return nos;
 }
 
-/** Curva S: previsto, replanejado, realizado (fornos) e físico ponderado, todos em % do escopo. */
-export function graficoCurvaS(curva, { altura = 300 } = {}) {
-  const temReplan = curva.pontos.some((p) => p.replanejado != null);
-  return el('div', { class: 'pilha' }, [legendaSeries(seriesCurva(temReplan)), responsivo((W) => svgCurvaS(curva, W, altura), 'Curva S do contrato')]);
+/**
+ * Curva S do BM (revestimento, em fornos): por semana, a meta e o realizado em
+ * barras, e o acumulado de cada um em linha. A semana atual fica num
+ * retângulo grande, para bater o olho e saber onde estamos.
+ */
+export function graficoCurvaBm(curva, { altura = 300 } = {}) {
+  return el('div', { class: 'pilha' }, [
+    el('div', { class: 'legenda-grafico' }, [
+      el('span', {}, [el('i', { style: { background: 'var(--bg-4)', outline: '1px solid var(--border-strong)', height: '10px', width: '12px' } }), 'Meta da semana']),
+      el('span', {}, [el('i', { style: { background: 'var(--accent-500)', height: '10px', width: '12px' } }), 'Revestidos na semana']),
+      el('span', { style: { color: 'var(--text-2)' } }, [el('i', { class: 'tracejado', style: { background: 'var(--text-2)' } }), el('span', { style: { color: 'var(--text-1)' } }, 'Meta acumulada')]),
+      el('span', { style: { color: 'var(--e-massa1200)' } }, [el('i', { style: { background: 'var(--e-massa1200)' } }), el('span', { style: { color: 'var(--text-1)' } }, 'Realizado acumulado')])
+    ]),
+    responsivo((W) => svgCurvaBm(curva, W, altura), `Curva S do BM ${curva.bm}`)
+  ]);
 }
 
-function seriesCurva(temReplan) {
-  return [
-    { id: 'prev', nome: 'Previsto', cor: 'var(--text-2)', tracejado: true, val: (p, e) => p.previstoAcum / e },
-    temReplan ? { id: 'rep', nome: 'Replanejado', cor: 'var(--accent-300)', tracejado: true, val: (p, e) => p.replanejadoAcum / e } : null,
-    { id: 'fis', nome: 'Físico pelas 6 etapas', cor: 'var(--text-0)', val: (p) => p.fisico },
-    { id: 'real', nome: 'Realizado (fornos concluídos)', cor: 'var(--accent-400)', grosso: true, val: (p, e) => (p.realizadoAcum == null ? null : p.realizadoAcum / e) }
-  ].filter(Boolean);
-}
-
-function svgCurvaS({ escopo, pontos }, W, altura) {
+function svgCurvaBm({ pontos, meta, realizado }, W, altura) {
   const h = altura;
-  const m = { t: 18, r: 54, b: 30, l: 44 };
+  const m = { t: 34, r: 40, b: 40, l: 34 };
   const n = pontos.length;
-  const x = (i) => m.l + ((W - m.l - m.r) * i) / (n - 1);
-  const y = (v) => h - m.b - (h - m.t - m.b) * v;
-  const series = seriesCurva(pontos.some((p) => p.replanejado != null)).map((s) => ({ ...s, val: (p) => s.val(p, escopo) }));
-  const passoRotulo = Math.max(1, Math.ceil(n / Math.floor((W - m.l - m.r) / 46)));
-  const caminho = (s) => {
+  const topo = Math.max(6, Math.ceil(Math.max(meta, realizado) / 6) * 6);
+  const larg = (W - m.l - m.r) / n;
+  const barra = Math.min(30, (larg - 18) / 2);
+  const cx = (i) => m.l + larg * i + larg / 2;
+  const y = (v) => h - m.b - ((h - m.t - m.b) * v) / topo;
+  const nos = [];
+  // retângulo grande da semana atual (atrás de tudo)
+  const iAtual = pontos.findIndex((p) => p.atual);
+  if (iAtual >= 0) {
+    nos.push(svg('rect', { class: 'semana-atual', x: m.l + larg * iAtual + 3, y: 4, width: larg - 6, height: h - 8, rx: 14 }));
+    nos.push(svg('text', { class: 'semana-atual-txt', x: cx(iAtual), y: 22, 'text-anchor': 'middle' }, 'SEMANA ATUAL'));
+  }
+  nos.push(...eixoY(W, h, m, topo, 6, (v) => String(Math.round(v))));
+  const r = 4;
+  const bar = (v, x0, cor, contorno) => {
+    if (!v) return null;
+    const yy = y(v);
+    const d = `M${x0},${h - m.b}V${yy + r}Q${x0},${yy} ${x0 + r},${yy}H${x0 + barra - r}Q${x0 + barra},${yy} ${x0 + barra},${yy + r}V${h - m.b}Z`;
+    return svg('path', { d, fill: cor, stroke: contorno || 'none', 'stroke-width': contorno ? 1.2 : 0 });
+  };
+  pontos.forEach((p, i) => {
+    const c = cx(i);
+    nos.push(bar(p.meta, c - barra - 2, 'var(--bg-4)', 'var(--border-strong)'));
+    if (p.realizado != null) {
+      nos.push(bar(p.realizado, c + 2, p.realizado >= p.meta && p.meta ? 'var(--e-massa1200)' : 'var(--accent-500)'));
+      nos.push(svg('text', { class: 'rotulo', x: c + 2 + barra / 2, y: (p.realizado ? y(p.realizado) : h - m.b) - 6, 'text-anchor': 'middle' }, String(p.realizado)));
+    }
+    nos.push(svg('text', { class: `eixo${p.atual ? ' forte' : ''}`, x: c, y: h - 22, 'text-anchor': 'middle' }, p.semana));
+    nos.push(svg('text', { class: 'eixo fino', x: c, y: h - 8, 'text-anchor': 'middle' }, `${curta(p.ini)}–${curta(p.fim)}`));
+  });
+  // acumulados
+  const linha = (campo, cor, tracejado) => {
     let d = '';
     pontos.forEach((p, i) => {
-      const v = s.val(p);
-      if (v == null) return;
-      d += `${d ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`;
+      if (p[campo] == null) return;
+      d += `${d ? 'L' : 'M'}${cx(i).toFixed(1)},${y(p[campo]).toFixed(1)}`;
     });
-    return d;
+    return svg('path', { d, fill: 'none', stroke: cor, 'stroke-width': tracejado ? 2 : 2.6, 'stroke-dasharray': tracejado ? '5 5' : null, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' });
   };
-  const iHoje = pontos.findIndex((p) => p.atual);
-  const nos = [
-    ...eixoY(W, h, m, 1, 4, (v) => `${Math.round(v * 100)}%`),
-    ...pontos.map((p, i) => (i % passoRotulo === 0 ? svg('text', { class: 'eixo', x: x(i), y: h - 8, 'text-anchor': 'middle' }, p.semana) : null)),
-    iHoje >= 0 ? svg('line', { class: 'hoje-linha', x1: x(iHoje), x2: x(iHoje), y1: m.t - 6, y2: h - m.b }) : null,
-    iHoje >= 0 ? svg('text', { class: 'hoje-txt', x: x(iHoje) + 5, y: m.t + 2 }, 'hoje') : null,
-    ...series.map((s) => svg('path', { d: caminho(s), fill: 'none', stroke: s.cor, 'stroke-width': s.grosso ? 2.6 : 2, 'stroke-dasharray': s.tracejado ? '5 5' : null, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }))
-  ];
-  // rótulos diretos no último ponto de cada série real
-  for (const s of series.filter((q) => !q.tracejado)) {
-    let ult = -1;
-    pontos.forEach((p, i) => s.val(p) != null && (ult = i));
-    if (ult < 0) continue;
-    const v = s.val(pontos[ult]);
-    nos.push(svg('circle', { cx: x(ult), cy: y(v), r: 4.5, fill: s.cor, stroke: 'var(--bg-2)', 'stroke-width': 2 }));
-    nos.push(svg('text', { class: 'rotulo', x: x(ult) + 8, y: y(v) + (s.id === 'real' ? 16 : -8) }, pct(v)));
+  nos.push(linha('metaAcum', 'var(--text-2)', true));
+  nos.push(linha('realizadoAcum', 'var(--e-massa1200)', false));
+  const ultMeta = pontos.length - 1;
+  nos.push(svg('text', { class: 'rotulo fraco', x: cx(ultMeta) + 8, y: y(pontos[ultMeta].metaAcum) + 4 }, String(pontos[ultMeta].metaAcum)));
+  let ult = -1;
+  pontos.forEach((p, i) => p.realizadoAcum != null && (ult = i));
+  if (ult >= 0) {
+    const v = pontos[ult].realizadoAcum;
+    nos.push(svg('circle', { cx: cx(ult), cy: y(v), r: 5, fill: 'var(--e-massa1200)', stroke: 'var(--bg-2)', 'stroke-width': 2 }));
+    nos.push(svg('text', { class: 'rotulo', x: cx(ult) + barra + 10, y: y(v) - 10 }, `${v} acum.`));
   }
-  const mira = svg('line', { class: 'mira', x1: 0, x2: 0, y1: m.t, y2: h - m.b, visibility: 'hidden' });
-  nos.push(mira);
-  const passo = (W - m.l - m.r) / (n - 1);
   pontos.forEach((p, i) => {
     nos.push(svg('rect', {
-      class: 'alvo', x: x(i) - passo / 2, y: m.t, width: passo, height: h - m.t - m.b,
-      onmousemove: (e) => {
-        mira.setAttribute('x1', x(i));
-        mira.setAttribute('x2', x(i));
-        mira.setAttribute('visibility', 'visible');
-        mostrarDica(e, `${p.semana} · ${curta(p.inicio)} a ${curta(p.fim)}`, [
-          ['Previsto', `${p.previstoAcum} fornos · ${pct(p.previstoAcum / escopo)}`, 'var(--text-2)'],
-          p.replanejado != null ? ['Replanejado', `${p.replanejadoAcum} fornos`, 'var(--accent-300)'] : null,
-          ['Realizado', p.realizadoAcum == null ? '—' : `${p.realizadoAcum} fornos · ${pct(p.realizadoAcum / escopo)}`, 'var(--accent-400)'],
-          ['Físico', p.fisico == null ? '—' : pct(p.fisico), 'var(--text-0)']
-        ].filter(Boolean));
-      },
-      onmouseleave: () => {
-        mira.setAttribute('visibility', 'hidden');
-        esconderDica();
-      }
+      class: 'alvo', x: m.l + larg * i, y: m.t, width: larg, height: h - m.t - m.b,
+      onmousemove: (e) => mostrarDica(e, `${p.semana} · ${curta(p.ini)} a ${curta(p.fim)}`, [
+        ['Meta da semana', `${p.meta} fornos`, 'var(--bg-4)'],
+        ['Revestidos', p.realizado == null ? 'semana futura' : `${p.realizado} fornos`, 'var(--accent-500)'],
+        ['Meta acumulada', `${p.metaAcum}`, 'var(--text-2)'],
+        ['Realizado acumulado', p.realizadoAcum == null ? '—' : `${p.realizadoAcum}`, 'var(--e-massa1200)'],
+        p.fornos?.length ? ['Fornos', p.fornos.map((f) => f.replace('-', ' ')).join(', ')] : null
+      ].filter(Boolean)),
+      onmouseleave: esconderDica
     }));
   });
   return svg('svg', { viewBox: `0 0 ${W} ${h}`, width: W, height: h }, nos);
 }
 
-function legendaSeries(series) {
-  return el('div', { class: 'legenda-grafico' }, series.map((s) => el('span', { style: { color: s.cor } }, [el('i', { class: s.tracejado ? 'tracejado' : '', style: { background: s.cor } }), el('span', { style: { color: 'var(--text-1)' } }, s.nome)])));
-}
-
-/** Previsto × realizado por semana (fornos concluídos), barras lado a lado. */
-export function graficoSemanal(curva, { altura = 220 } = {}) {
+/** Fornos revestidos por BM contra a meta do BM. */
+export function graficoBms(lista, { altura = 220 } = {}) {
   return el('div', { class: 'pilha' }, [
     el('div', { class: 'legenda-grafico' }, [
-      el('span', {}, [el('i', { style: { background: 'var(--bg-4)', outline: '1px solid var(--border-strong)', height: '10px', width: '12px' } }), 'Previsto']),
-      el('span', {}, [el('i', { style: { background: 'var(--accent-500)', height: '10px', width: '12px' } }), 'Realizado'])
+      el('span', {}, [el('i', { style: { background: 'var(--bg-4)', outline: '1px solid var(--border-strong)', height: '10px', width: '12px' } }), 'Meta do BM']),
+      el('span', {}, [el('i', { style: { background: 'var(--accent-500)', height: '10px', width: '12px' } }), 'Revestidos'])
     ]),
-    responsivo((W) => svgSemanal(curva, W, altura), 'Fornos concluídos por semana, previsto e realizado')
+    responsivo((W) => svgBms(lista, W, altura), 'Fornos revestidos por BM')
   ]);
 }
 
-function svgSemanal({ pontos }, W, altura) {
-  const lista = pontos.filter((p) => p.previsto || p.realizado);
+function svgBms(lista, W, altura) {
   const h = altura;
   const m = { t: 18, r: 12, b: 30, l: 34 };
-  const maxV = Math.max(4, ...lista.map((p) => Math.max(p.previsto, p.realizado || 0)));
-  const topo = Math.ceil(maxV / 5) * 5;
-  const larg = (W - m.l - m.r) / lista.length;
-  const barra = Math.min(16, (larg - 8) / 2);
+  const topo = Math.max(6, Math.ceil(Math.max(...lista.map((b) => Math.max(b.meta, b.realizado))) / 6) * 6);
+  const larg = (W - m.l - m.r) / Math.max(1, lista.length);
+  const barra = Math.min(26, (larg - 12) / 2);
   const y = (v) => h - m.b - ((h - m.t - m.b) * v) / topo;
-  const nos = [...eixoY(W, h, m, topo, 5, (v) => String(Math.round(v)))];
-  lista.forEach((p, i) => {
-    const cx = m.l + larg * i + larg / 2;
-    const r = 4;
-    const bar = (v, x0, cor, contorno) => {
-      if (!v) return null;
-      const yy = y(v);
-      const alt = h - m.b - yy;
-      // cantos arredondados só em cima (dado ancorado na base)
-      const d = `M${x0},${h - m.b}V${yy + r}Q${x0},${yy} ${x0 + r},${yy}H${x0 + barra - r}Q${x0 + barra},${yy} ${x0 + barra},${yy + r}V${h - m.b}Z`;
-      return alt > 0 ? svg('path', { d, fill: cor, stroke: contorno || 'none', 'stroke-width': contorno ? 1.2 : 0 }) : null;
-    };
-    nos.push(bar(p.previsto, cx - barra - 1, 'var(--bg-4)', 'var(--border-strong)'));
-    nos.push(bar(p.realizado, cx + 1, 'var(--accent-500)'));
-    if (p.realizado) nos.push(svg('text', { class: 'rotulo', x: cx + 1 + barra / 2, y: y(p.realizado) - 5, 'text-anchor': 'middle' }, String(p.realizado)));
-    if (i % Math.max(1, Math.ceil(46 / larg)) === 0) nos.push(svg('text', { class: 'eixo', x: cx, y: h - 9, 'text-anchor': 'middle' }, p.semana));
+  const nos = [...eixoY(W, h, m, topo, 6, (v) => String(Math.round(v)))];
+  const r = 4;
+  const bar = (v, x0, cor, contorno) => {
+    if (!v) return null;
+    const yy = y(v);
+    const d = `M${x0},${h - m.b}V${yy + r}Q${x0},${yy} ${x0 + r},${yy}H${x0 + barra - r}Q${x0 + barra},${yy} ${x0 + barra},${yy + r}V${h - m.b}Z`;
+    return svg('path', { d, fill: cor, stroke: contorno || 'none', 'stroke-width': contorno ? 1.2 : 0 });
+  };
+  lista.forEach((b, i) => {
+    const c = m.l + larg * i + larg / 2;
+    nos.push(bar(b.meta, c - barra - 1, 'var(--bg-4)', 'var(--border-strong)'));
+    nos.push(bar(b.realizado, c + 1, b.realizado >= b.meta ? 'var(--e-massa1200)' : 'var(--accent-500)'));
+    nos.push(svg('text', { class: 'rotulo', x: c + 1 + barra / 2, y: y(b.realizado) - 5, 'text-anchor': 'middle' }, String(b.realizado)));
+    nos.push(svg('text', { class: `eixo${b.atual ? ' forte' : ''}`, x: c, y: h - 9, 'text-anchor': 'middle' }, b.rotulo));
     nos.push(svg('rect', {
-      class: 'alvo', x: cx - larg / 2, y: m.t, width: larg, height: h - m.t - m.b,
-      onmousemove: (e) => mostrarDica(e, p.semana, [
-        ['Previsto', `${p.previsto} fornos`, 'var(--bg-4)'],
-        ['Realizado', p.realizado == null ? '—' : `${p.realizado} fornos`, 'var(--accent-500)'],
-        ['Aderência', p.previsto && p.realizado != null ? pct(p.realizado / p.previsto) : '—']
+      class: 'alvo', x: c - larg / 2, y: m.t, width: larg, height: h - m.t - m.b,
+      onmousemove: (e) => mostrarDica(e, `BM ${b.rotulo} · ${curta(b.inicio)} a ${curta(b.fim)}`, [
+        ['Meta', `${b.meta} fornos`, 'var(--bg-4)'],
+        ['Revestidos', `${b.realizado} fornos`, 'var(--accent-500)'],
+        ['Aderência', b.meta ? pct(b.realizado / b.meta) : '—']
       ]),
       onmouseleave: esconderDica
     }));

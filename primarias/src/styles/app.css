@@ -4,8 +4,8 @@ h1, h2, h3, h4 { font-weight: 700; letter-spacing: 0; }
 .btn { font-weight: 700; font-size: 15px; letter-spacing: 0.01em; }
 .btn-sm { font-size: 14px; }
 .data-table thead th { text-transform: none; letter-spacing: 0; font-size: 13px; font-family: var(--font-body); color: var(--text-2); }
-.desktop-topbar { background: rgba(20, 16, 14, 0.88); }
-.mobile-topbar { background: rgba(20, 16, 14, 0.88); }
+.desktop-topbar { background: rgba(12, 17, 29, 0.88); }
+.mobile-topbar { background: rgba(12, 17, 29, 0.88); }
 .card { background: var(--bg-2); }
 
 /* marca: a palavra Primárias em brasa */
@@ -14,7 +14,7 @@ h1, h2, h3, h4 { font-weight: 700; letter-spacing: 0; }
   font-weight: 700;
   line-height: 0.9;
   letter-spacing: 0.01em;
-  background: var(--accent-grad);
+  background: linear-gradient(135deg, #6f97ff 0%, #b9ccff 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -36,10 +36,10 @@ h1, h2, h3, h4 { font-weight: 700; letter-spacing: 0; }
 /* ===================== Etapas: cor, ponto e etiqueta ===================== */
 .cor-andaime { --cor: var(--e-andaime); }
 .cor-demolicao { --cor: var(--e-demolicao); }
-.cor-sopragem { --cor: var(--e-sopragem); }
 .cor-assentamento { --cor: var(--e-assentamento); }
-.cor-siplate { --cor: var(--e-siplate); }
+.cor-injetbar { --cor: var(--e-injetbar); }
 .cor-massa1200 { --cor: var(--e-massa1200); }
+.cor-desmontagem { --cor: var(--e-desmontagem); }
 .ponto { width: 10px; height: 10px; border-radius: 3px; background: var(--cor, var(--e-pendente)); flex-shrink: 0; }
 .etiqueta-etapa {
   display: inline-flex; align-items: center; gap: 6px;
@@ -72,10 +72,9 @@ h1, h2, h3, h4 { font-weight: 700; letter-spacing: 0; }
 }
 .cel.n0 { --cor: var(--e-andaime); }
 .cel.n1 { --cor: var(--e-demolicao); }
-.cel.n2 { --cor: var(--e-sopragem); }
-.cel.n3 { --cor: var(--e-assentamento); }
-.cel.n4 { --cor: var(--e-siplate); }
-.cel.n5 { --cor: var(--e-massa1200); }
+.cel.n2 { --cor: var(--e-assentamento); }
+.cel.n3 { --cor: var(--e-injetbar); }
+.cel.n4 { --cor: var(--e-massa1200); }
 .cel.vazia { background: var(--e-pendente); box-shadow: inset 0 0 0 1px rgba(255, 226, 205, 0.05); color: transparent; }
 .cel.apagada { opacity: 0.18; }
 .cel.nova { animation: cel-acende 1.2s var(--ease-out); }
@@ -130,22 +129,22 @@ canvas.faiscas { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer
 .xp-flutuante {
   position: fixed; z-index: 901; transform: translate(-50%, 0); pointer-events: none;
   font-family: var(--font-display); font-weight: 700; font-size: 26px; color: var(--brasa-clara);
-  text-shadow: 0 0 18px var(--accent-glow);
+  text-shadow: 0 0 18px var(--brasa-glow);
   animation: xp-sobe 1.3s var(--ease-out) forwards;
 }
 @keyframes xp-sobe { from { opacity: 0; transform: translate(-50%, 10px) scale(0.8); } 20% { opacity: 1; transform: translate(-50%, -10px) scale(1.1); } to { opacity: 0; transform: translate(-50%, -70px) scale(1); } }
 
 .festa {
   position: fixed; inset: 0; z-index: 800; display: flex; align-items: center; justify-content: center; padding: 24px;
-  background: radial-gradient(circle at 50% 50%, rgba(255, 106, 26, 0.22), rgba(10, 8, 7, 0.86) 60%);
+  background: radial-gradient(circle at 50% 50%, rgba(255, 159, 28, 0.2), rgba(6, 9, 16, 0.88) 60%);
   backdrop-filter: blur(4px); animation: fade-in 240ms var(--ease-out); cursor: pointer;
 }
 .festa.saindo { opacity: 0; transition: opacity 240ms ease; }
 .festa-cartao { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; max-width: 340px; animation: festa-entra 600ms var(--ease-spring); }
 .festa-icone {
   width: 112px; height: 112px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-  background: var(--accent-grad); color: var(--on-accent);
-  box-shadow: 0 0 0 10px rgba(255, 138, 31, 0.15), 0 0 60px 10px var(--accent-glow);
+  background: var(--brasa-grad); color: #2a1600;
+  box-shadow: 0 0 0 10px rgba(255, 138, 31, 0.15), 0 0 60px 10px var(--brasa-glow);
   animation: brilhar 1.6s ease-in-out infinite;
 }
 .festa-grande .festa-icone { width: 140px; height: 140px; }
@@ -153,7 +152,7 @@ canvas.faiscas { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer
 .festa-cartao p { color: var(--text-1); font-size: 16px; }
 .festa-cartao small { color: var(--text-3); font-size: 12.5px; margin-top: 8px; }
 @keyframes festa-entra { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: none; } }
-@keyframes brilhar { 0%, 100% { box-shadow: 0 0 0 10px rgba(255, 138, 31, 0.15), 0 0 50px 6px var(--accent-glow); } 50% { box-shadow: 0 0 0 16px rgba(255, 138, 31, 0.08), 0 0 80px 18px var(--accent-glow); } }
+@keyframes brilhar { 0%, 100% { box-shadow: 0 0 0 10px rgba(255, 138, 31, 0.15), 0 0 50px 6px var(--brasa-glow); } 50% { box-shadow: 0 0 0 16px rgba(255, 138, 31, 0.08), 0 0 80px 18px var(--brasa-glow); } }
 @keyframes pulsar { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.8); } }
 
 .conquista-aviso {
@@ -169,7 +168,7 @@ canvas.faiscas { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer
 .conquista-aviso.saindo { opacity: 0; transform: translate(-50%, -20px); transition: all 300ms ease; }
 .conquista-aviso small { display: block; font-size: 12px; color: var(--brasa-clara); font-weight: 700; }
 .conquista-aviso strong { font-family: var(--font-display); font-size: 19px; }
-.conquista-selo { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--accent-grad); color: var(--on-accent); }
+.conquista-selo { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--brasa-grad); color: #2a1600; }
 @keyframes conquista-desce { from { opacity: 0; transform: translate(-50%, -30px); } to { opacity: 1; transform: translate(-50%, 0); } }
 
 /* ===================== Feed ao vivo ===================== */
@@ -177,7 +176,7 @@ canvas.faiscas { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer
 .feed-item { display: grid; grid-template-columns: 36px 1fr auto; gap: 12px; align-items: center; padding: 11px 0; border-bottom: 1px solid var(--border-soft); }
 .feed-item:last-child { border-bottom: none; }
 .feed-item.novo { animation: feed-novo 1.4s var(--ease-out); }
-@keyframes feed-novo { from { background: rgba(255, 138, 31, 0.16); } to { background: transparent; } }
+@keyframes feed-novo { from { background: rgba(47, 98, 214, 0.22); } to { background: transparent; } }
 .feed-icone { width: 36px; height: 36px; border-radius: 11px; display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--cor) 22%, transparent); color: var(--cor); }
 .feed-texto { min-width: 0; }
 .feed-texto strong { font-size: 14.5px; font-weight: 600; display: block; }
@@ -226,3 +225,17 @@ canvas.faiscas { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer
 .somente-leitura { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700; color: var(--text-1); background: var(--bg-3); border: 1px solid var(--border); border-radius: var(--r-full); padding: 4px 10px; }
 .bloqueado-nota { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; color: var(--text-2); line-height: 1.45; }
 .bloqueado-nota svg { flex-shrink: 0; margin-top: 1px; }
+
+/* ===================== Login, cadastro e acesso ===================== */
+.acesso { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 28px 18px; }
+.acesso-caixa { width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 22px; }
+.acesso-topo { display: flex; flex-direction: column; gap: 8px; }
+.acesso-topo p { color: var(--text-1); font-size: 15px; line-height: 1.5; }
+.acesso-form { display: flex; flex-direction: column; gap: 14px; }
+.acesso-troca { text-align: center; font-size: 14px; color: var(--text-2); }
+.acesso-troca button { background: none; border: none; color: var(--accent-300); font-weight: 700; cursor: pointer; font-size: inherit; }
+.acesso-erro { font-size: 13.5px; color: #ff9aa5; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: var(--r-md); padding: 10px 12px; }
+.acesso-cartao { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; padding: 22px; border-radius: var(--r-lg); background: var(--bg-2); border: 1px solid var(--border-soft); }
+.acesso-cartao h3 { font-size: 24px; }
+.acesso-cartao p { color: var(--text-1); font-size: 14.5px; line-height: 1.5; }
+.marca-reframax { font-family: var(--font-display); font-weight: 700; letter-spacing: 0.14em; font-size: 13px; color: var(--accent-300); }

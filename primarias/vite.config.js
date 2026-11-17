@@ -11,6 +11,8 @@ const raiz = fileURLToPath(new URL('.', import.meta.url));
 
 export default defineConfig({
   root: raiz,
+  // as variáveis VITE_FIREBASE_* são as mesmas do Tempos & Métodos (.env na raiz)
+  envDir: '..',
   base: './',
   define: { __APP_VERSION__: JSON.stringify(new Date().toISOString().slice(0, 16).replace('T', ' ')) },
   server: { fs: { allow: ['..'] } },
@@ -29,8 +31,8 @@ export default defineConfig({
         name: 'REFRAMAX Primárias',
         short_name: 'Primárias',
         description: 'Lançamento e acompanhamento da substituição das válvulas primárias dos fornos da coqueria.',
-        theme_color: '#14100e',
-        background_color: '#14100e',
+        theme_color: '#0c111d',
+        background_color: '#0c111d',
         display: 'standalone',
         orientation: 'portrait-primary',
         start_url: '.',

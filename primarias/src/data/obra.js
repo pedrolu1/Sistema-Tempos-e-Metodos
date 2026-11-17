@@ -1,6 +1,5 @@
 // Estrutura da obra e cadastros fixos, tirados das planilhas de controle
-// (Gestão Visual, RDO PLAN-RFX-002 e Curva S). O que ainda depende de
-// confirmação está marcado com "a confirmar".
+// (Gestão Visual, RDO PLAN-RFX-002, Curva S e Resumo da medição).
 
 export const CLIENTE = 'Complexo Siderúrgico Ternium Brasil';
 export const SERVICO = 'Substituição das Válvulas Primárias dos Fornos das Baterias da Coqueria da Ternium';
@@ -24,31 +23,36 @@ export const CONTRATOS = [
 ];
 export const contratoAtivo = () => CONTRATOS.find((c) => c.ativo);
 
-// As 6 etapas, na ordem em que acontecem. `nivel` diz como o líder lança:
-// andaime por cabeceira (forno + lado), 5S e sopragem por forno, o resto por
-// primária. Cores validadas para daltonismo no fundo escuro do app; azul,
-// laranja e amarelo seguem as da planilha de Gestão Visual.
+// Meta de revestimento: fornos concluídos por boletim de medição (dia 16 ao dia 15).
+export const META_FORNOS_BM = 36;
+
+// As etapas, na ordem do serviço. Andaime é lançado por lado do forno
+// (cabeceira); o resto, por primária. A desmontagem do andaime fecha o
+// serviço no lado, mas não muda a cor do mapa (o forno já está revestido).
+// Cores validadas para daltonismo no fundo escuro; cada quadradinho do mapa
+// também leva o número da etapa.
 export const ETAPAS = [
-  { id: 'andaime', nome: 'Montagem de andaime', curto: 'Andaime', nivel: 'cabeceira', cor: '#3987e5' },
-  { id: 'demolicao', nome: 'Demolição de manilhas', curto: 'Demolição', nivel: 'primaria', cor: '#d95926' },
-  { id: 'sopragem', nome: '5S e sopragem dos fornos', curto: '5S e sopragem', nivel: 'forno', cor: '#199e70' },
-  { id: 'assentamento', nome: 'Assentamento de manilhas', curto: 'Assentamento', nivel: 'primaria', cor: '#c98500' },
-  { id: 'siplate', nome: 'Aplicação de siplate', curto: 'Siplate', nivel: 'primaria', cor: '#9085e9' },
-  { id: 'massa1200', nome: 'Aplicação de massa 1200', curto: 'Massa 1200', nivel: 'primaria', cor: '#1f9a3a' }
+  { id: 'andaime', nome: 'Montagem de andaime', curto: 'Montagem de andaime', rdo: 'MONTAGEM DE ANDAIME', nivel: 'cabeceira', cor: '#3987e5' },
+  { id: 'demolicao', nome: 'Demolição de manilhas', curto: 'Demolição', rdo: 'DEMOLIÇÃO DAS MANILHAS', nivel: 'primaria', cor: '#d95926' },
+  { id: 'assentamento', nome: 'Assentamento / concretagem de manilhas', curto: 'Assentamento', rdo: 'ASSENTAMENTO / CONCRETAGEM DAS MANILHAS', nivel: 'primaria', cor: '#9085e9' },
+  { id: 'injetbar', nome: 'Revestimento com Injetbar', curto: 'Injetbar', rdo: 'REVESTIMENTO COM INJETBAR', nivel: 'primaria', cor: '#d55181' },
+  { id: 'massa1200', nome: 'Revestimento com massa 1200', curto: 'Massa 1200', rdo: 'REVESTIMENTO COM MASSA 1200', nivel: 'primaria', cor: '#1f9a3a' },
+  { id: 'desmontagem', nome: 'Desmontagem de andaime', curto: 'Desmontagem de andaime', rdo: 'DESMONTAGEM DE ANDAIME', nivel: 'cabeceira', cor: '#7f8aa3', extra: true }
 ];
 export const etapaPorId = Object.fromEntries(ETAPAS.map((e, i) => [e.id, { ...e, ordem: i }]));
-/** Nome curto no meio de uma frase: "Lançar massa 1200", mas "Lançar 5S e sopragem". */
-export const noMeio = (e) => (/^[0-9A-Z]{2}/.test(e.curto) ? e.curto : e.curto[0].toLowerCase() + e.curto.slice(1));
-export const NIVEL_NOME = { primaria: 'por primária', cabeceira: 'por cabeceira (forno + lado)', forno: 'por forno' };
+/** Etapas que fazem a primária avançar no mapa (todas menos a desmontagem). */
+export const ETAPAS_MAPA = ETAPAS.filter((e) => !e.extra);
+/** Nome curto no meio de uma frase: "Lançar massa 1200", mas "Lançar Injetbar". */
+export const noMeio = (e) => (/^[0-9A-Z]{2}|^Injetbar/.test(e.curto) ? e.curto : e.curto[0].toLowerCase() + e.curto.slice(1));
+export const NIVEL_NOME = { primaria: 'por primária', cabeceira: 'por lado do forno', forno: 'por forno' };
 
-// Consumo por primária (aba RASCUNHO do RDO). A etapa em que cada material
-// é aplicado ainda está a confirmar para siplate e massa 1200.
+// Consumo por primária (aba RASCUNHO do RDO) e a etapa em que é aplicado.
 export const MATERIAIS = [
   { id: 'manilha', nome: 'Manilha refratária (monolítica)', unidade: 'PÇ', porPrimaria: 1, etapa: 'assentamento' },
   { id: 'castfire', nome: 'Concreto isolante (Cast Fire I RC)', unidade: 'KG', porPrimaria: 50, etapa: 'assentamento' },
   { id: 'didurit', nome: 'Concreto refratário denso (Didurit F55-5-BR)', unidade: 'KG', porPrimaria: 25, etapa: 'assentamento' },
-  { id: 'injetbar', nome: 'Sílica líquida (Injetbar CK)', unidade: 'KG', porPrimaria: 30, etapa: 'siplate', aConfirmar: true },
-  { id: 'silplate', nome: 'Massa de fibra isolante (Silplate 1200 WR)', unidade: 'KG', porPrimaria: 100, etapa: 'massa1200', aConfirmar: true }
+  { id: 'injetbar', nome: 'Sílica líquida (Injetbar CK)', unidade: 'KG', porPrimaria: 30, etapa: 'injetbar' },
+  { id: 'silplate', nome: 'Massa de fibra isolante (Silplate 1200 WR)', unidade: 'KG', porPrimaria: 100, etapa: 'massa1200' }
 ];
 
 // Efetivo previsto do modelo de RDO (turno diurno).
@@ -85,29 +89,35 @@ export const MOTIVOS_DESVIO = [
 ];
 export const EMPRESAS_DESVIO = ['Reframax', 'Ternium', 'Não aplicável'];
 
-// Checklist de entrega do forno. Modelo provisório montado a partir das
-// etapas; o planejador troca pelos itens oficiais em Configuração.
-export const CHECKLIST_MODELO = [
-  'Andaime montado e liberado nos dois lados',
-  'Manilhas antigas demolidas e entulho retirado',
-  '5S feito e forno soprado',
-  'Manilhas novas assentadas e alinhadas (P01 a P06)',
-  'Siplate aplicado',
-  'Massa 1200 aplicada e acabamento conferido',
-  'Área limpa e organizada',
-  'Fotos do antes e depois registradas',
-  'Forno liberado pela operação Ternium'
+// Registros do dia que vão para as observações do RDO.
+export const TIPOS_OCORRENCIA = [
+  { id: '5s', nome: '5S (organização e limpeza)' },
+  { id: 'ocorrencia', nome: 'Ocorrência' },
+  { id: 'material', nome: 'Material / abastecimento' },
+  { id: 'seguranca', nome: 'Segurança' }
 ];
 
-// RDO: um por dia; a numeração continua a da planilha atual.
+// Fotos do checklist de entrega: por lado do forno, uma da abóbada inteira e
+// uma de cada manilha instalada e revestida. 4 por lado, 8 por forno.
+export const SLOTS_FOTO = [
+  { id: 'LM-abobada', lado: 'LM', nome: 'Abóbada', desc: 'Abóbada inteira, lado máquina' },
+  { id: 'LM-P01', lado: 'LM', nome: 'P01', desc: 'Manilha P01 instalada e revestida' },
+  { id: 'LM-P02', lado: 'LM', nome: 'P02', desc: 'Manilha P02 instalada e revestida' },
+  { id: 'LM-P03', lado: 'LM', nome: 'P03', desc: 'Manilha P03 instalada e revestida' },
+  { id: 'LC-abobada', lado: 'LC', nome: 'Abóbada', desc: 'Abóbada inteira, lado coque' },
+  { id: 'LC-P04', lado: 'LC', nome: 'P04', desc: 'Manilha P04 instalada e revestida' },
+  { id: 'LC-P05', lado: 'LC', nome: 'P05', desc: 'Manilha P05 instalada e revestida' },
+  { id: 'LC-P06', lado: 'LC', nome: 'P06', desc: 'Manilha P06 instalada e revestida' }
+];
+
+// RDO: um por dia útil; a numeração continua a da planilha (ajustável em Configuração).
 export const RDO_ULTIMO = { numero: 234, data: '2026-10-23' };
 
 export const PAPEIS = {
-  apontador: { nome: 'Apontador', campo: true },
-  lider: { nome: 'Líder', campo: true },
-  planejador: { nome: 'Planejador', gestao: true },
-  gestor: { nome: 'Gestor', somenteLeitura: true },
-  admin: { nome: 'Administrador', gestao: true }
+  lider: { nome: 'Líder', desc: 'Lança o avanço e tira as fotos do checklist', campo: true },
+  planejador: { nome: 'Planejador', desc: 'Acompanha tudo, aprova e gera os documentos', gestao: true },
+  admin: { nome: 'Administrador', desc: 'Tudo do planejador e a liberação de usuários', gestao: true, admin: true },
+  gestor: { nome: 'Gestor', desc: 'Só acompanha painel, curva, mapa e documentos', somenteLeitura: true }
 };
 
 // ---------------------------------------------------------------------------
@@ -151,3 +161,5 @@ export function primariasDoAlvo(alvo) {
 
 /** "B6-F07-LM-P01" → "B6 · F07 · LM · P01" (como aparece na tela). */
 export const rotulo = (id) => id.replaceAll('-', ' · ');
+/** "B6-F07" → "B6 - 7 - LC/LM" (como na relação da medição). */
+export const localMedicao = (fid) => `${fornoPorId[fid].bloco} - ${fornoPorId[fid].forno} - LC/LM`;

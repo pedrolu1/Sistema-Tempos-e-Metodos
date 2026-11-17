@@ -3,15 +3,16 @@ import { el } from '../../../../src/utils/dom.js';
 import { legendaEtapas, statusChip } from '../../components/base.js';
 import { mapaBateria } from '../../components/mapa.js';
 import { feed } from '../../components/feed.js';
-import { graficoCurvaS, graficoProducao } from '../../components/graficos.js';
+import { graficoCurvaBm, graficoProducao } from '../../components/graficos.js';
 import { abrirForno } from '../../components/detalheForno.js';
+import { abrirChecklistFotos } from '../../components/checklistFotos.js';
 import { FORNOS, contratoAtivo } from '../../data/obra.js';
-import { avancoFisico, idxsDaBateria, semanaAtual, curvaS, producaoDiaria, rdoDoDia, checklists } from '../../lib/calculo.js';
-import { hoje, somarDias } from '../../lib/datas.js';
+import { avancoFisico, idxsDaBateria, semanaAtual, producaoDiaria, rdoDoDia, checklists } from '../../lib/calculo.js';
+import { hoje, somarDias, rotuloBm, curta } from '../../lib/datas.js';
 
 const pct = (v, casas = 1) => `${(v * 100).toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas })}%`;
 
-export function paginaVisao({ calc, mudou, ir }) {
+export function paginaVisao({ calc, perfil, leitura, mudou, ir }) {
   const contrato = contratoAtivo();
   const bat = contrato.bateria;
   const fornosBat = FORNOS.filter((f) => f.bateria === bat);
@@ -23,15 +24,15 @@ export function paginaVisao({ calc, mudou, ir }) {
   const pessoas = new Set(deHoje.map((l) => l.autor?.uid)).size;
   const pedidos = calc.estado.correcoes.filter((c) => c.status === 'pendente').length;
   const ckEnviados = Object.values(checklists(calc)).filter((c) => c.status === 'enviado').length;
-  const curva = curvaS(calc);
-  const ultimas4 = curva.pontos.filter((p) => p.realizado != null && p.previsto && !p.atual).slice(-4);
-  const ader = ultimas4.length ? ultimas4.reduce((s, p) => s + p.realizado, 0) / ultimas4.reduce((s, p) => s + p.previsto, 0) : null;
+  const curva = sem.bm;
   const rdo = rdoDoDia(calc, hj);
+  const abrir = (fid) => abrirForno(fid, { aoChecklist: (f) => abrirChecklistFotos(f, { perfil, modo: leitura ? 'leitura' : 'gestao' }) });
 
   const indicadores = el('div', { class: 'indicadores' }, [
-    indicador('Avanço físico', pct(fisico), fisico, `pelas 6 etapas · bateria ${bat}`),
+    indicador('Avanço físico', pct(fisico), fisico, `pelas etapas do serviço · bateria ${bat}`),
     indicador('Fornos concluídos', [String(concluidos), el('small', {}, `de ${fornosBat.length}`)], concluidos / fornosBat.length, `${pct(concluidos / fornosBat.length, 0)} do ${contrato.nome}`),
-    indicador(`Semana ${sem.semana}`, [String(sem.fechados), el('small', {}, `de ${sem.meta}`)], sem.meta ? sem.fechados / sem.meta : 0, ader == null ? 'fornos fechados × meta' : `aderência das últimas 4 semanas: ${pct(ader, 0)}`, sem.meta && sem.fechados >= sem.meta ? 'bom' : ''),
+    indicador(`BM ${rotuloBm(curva.bm)}`, [String(curva.realizado), el('small', {}, `de ${curva.meta}`)], curva.meta ? curva.realizado / curva.meta : 0, curva.faltam ? `faltam ${curva.faltam} fornos até ${curta(curva.fim)}` : 'meta do BM batida', curva.realizado >= curva.meta ? 'bom' : ''),
+    indicador(`Semana ${sem.semana}`, [String(sem.fechados), el('small', {}, `de ${sem.meta}`)], sem.meta ? sem.fechados / sem.meta : 0, 'fornos revestidos na semana', sem.meta && sem.fechados >= sem.meta ? 'bom' : ''),
     indicador('Lançado hoje', [String(deHoje.reduce((s, l) => s + l.prims.length, 0)), el('small', {}, 'etapas')], null, deHoje.length ? `${deHoje.length} lançamento${deHoje.length > 1 ? 's' : ''} de ${pessoas} pessoa${pessoas > 1 ? 's' : ''}` : 'nenhum lançamento ainda'),
     indicador('Pendências', String(pedidos + ckEnviados), null, pedidos + ckEnviados ? `${pedidos} correç${pedidos === 1 ? 'ão' : 'ões'} · ${ckEnviados} checklist${ckEnviados === 1 ? '' : 's'}` : 'nada esperando você', pedidos + ckEnviados ? 'alerta' : '')
   ]);
@@ -41,7 +42,7 @@ export function paginaVisao({ calc, mudou, ir }) {
       el('div', {}, [el('h3', {}, `Bateria ${bat}`), el('p', {}, 'Cada quadrado é uma primária; a cor é a etapa mais avançada. Clique num forno.')]),
       el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: () => ir('mapa') }, 'Abrir o mapa')
     ]),
-    mapaBateria(calc, bat, { mudou, aoClicarForno: (fid) => abrirForno(fid) }),
+    mapaBateria(calc, bat, { mudou, aoClicarForno: abrir }),
     legendaEtapas()
   ]);
   const aoVivo = el('section', { class: 'cartao' }, [
@@ -61,8 +62,8 @@ export function paginaVisao({ calc, mudou, ir }) {
     cartaoMapa,
     el('div', { class: 'painel-grade' }, [
       el('section', { class: 'cartao' }, [
-        el('div', { class: 'cartao-topo' }, [el('div', {}, [el('h3', {}, 'Curva S'), el('p', {}, `${contrato.nome} · ${curva.escopo} fornos`)]), el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: () => ir('curva') }, 'Detalhes')]),
-        graficoCurvaS(curva, { altura: 280 })
+        el('div', { class: 'cartao-topo' }, [el('div', {}, [el('h3', {}, `Curva S · BM ${rotuloBm(curva.bm)}`), el('p', {}, `Fornos revestidos contra a meta de ${curva.meta} no BM`)]), el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: () => ir('curva') }, 'Detalhes')]),
+        graficoCurvaBm(curva, { altura: 300 })
       ]),
       el('div', { class: 'pilha', style: { gap: '18px' } }, [aoVivo, cartaoRdo])
     ]),

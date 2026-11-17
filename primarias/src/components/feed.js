@@ -21,7 +21,7 @@ export function feed(lancs, { vazio = null, limite = 10 } = {}) {
         el('strong', {}, `${l.autor?.nome || 'Alguém'} · ${e.curto}`),
         el('span', {}, `${linhas.slice(0, 2).join(', ')}${linhas.length > 2 ? ` e mais ${linhas.length - 2}` : ''}${l.data !== hoje() ? ` · dia ${curta(l.data)}` : ''}`)
       ]),
-      el('span', { class: 'feed-quando' }, haQuanto(l.criadoEm))
+      el('span', { class: 'feed-quando' }, haQuanto(l.criadoEmLocal))
     ]);
   });
   lancs.forEach((l) => vistos.add(l.id));

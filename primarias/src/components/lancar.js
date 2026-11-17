@@ -5,10 +5,10 @@ import { abrirFolha, seis, etiquetaEtapa } from './base.js';
 import { ic, iconeEtapa } from '../lib/icones.js';
 import { ETAPAS, etapaPorId, FORNOS, blocosDa, contratoAtivo, fornoPorId, primariaPorId, primariasDoAlvo, NIVEL_NOME, noMeio } from '../data/obra.js';
 import { calcular, alvosDoForno, resumoAlvos, statsPessoa, efeitosDoLancamento, XP_POR_PRIMARIA, XP_FORNO, XP_BLOCO } from '../lib/calculo.js';
-import { estadoAtual, lancar } from '../lib/store.js';
+import { estadoAtual, lancar } from '../lib/banco.js';
 import { hoje, somarDias, completa } from '../lib/datas.js';
 import { faiscas, vibrar, tocar, xpFlutuante, comemorar, anunciarConquista } from '../lib/efeitos.js';
-import { autorDe } from '../lib/sessao.js';
+import { autorDe } from '../lib/acesso.js';
 
 const liberadosNoForno = (calc, etapaId, fid) => alvosDoForno(calc, etapaId, fid).filter((a) => a.ok);
 const primariasLiberadas = (calc, etapaId, fornos) => fornos.reduce((s, f) => s + liberadosNoForno(calc, etapaId, f.id).reduce((t, a) => t + primariasDoAlvo(a.id).length, 0), 0);
@@ -20,12 +20,16 @@ export function mostrarBlocoAtivo(raiz) {
   if (trilho) trilho.scrollLeft = ativo.offsetLeft - trilho.clientWidth / 2 + ativo.offsetWidth / 2;
 }
 
-export function abrirLancamento({ perfil, etapa = null, fornoId = null }) {
+/**
+ * Abre o lançamento. Com `etapa` e `fornoId` já vem no passo "onde", com o
+ * forno escolhido; `alvos` restringe a seleção (ex.: só o lado máquina).
+ */
+export function abrirLancamento({ perfil, etapa = null, fornoId = null, alvos = null, aoLancar = null }) {
   const bat = contratoAtivo().bateria;
   const fornosBat = FORNOS.filter((f) => f.bateria === bat);
   const st = { passo: etapa ? 2 : 1, etapa, bloco: fornoId ? fornoPorId[fornoId].bloco : null, sel: new Map(), data: hoje(), obs: '' };
   if (etapa && fornoId) {
-    const lib = liberadosNoForno(calcular(estadoAtual()), etapa, fornoId).map((a) => a.id);
+    const lib = liberadosNoForno(calcular(estadoAtual()), etapa, fornoId).map((a) => a.id).filter((id) => !alvos || alvos.includes(id));
     if (lib.length) st.sel.set(fornoId, new Set(lib));
   }
   const folha = abrirFolha({ titulo: '', corpo: [], classe: 'folha-lancar' });
@@ -205,6 +209,7 @@ export function abrirLancamento({ perfil, etapa = null, fornoId = null }) {
 
     vibrar([18, 30, 26]);
     tocar('ok');
+    aoLancar?.(lanc);
     faiscas(botao, { quantidade: 40 });
     xpFlutuante(botao, `+${lanc.prims.length * XP_POR_PRIMARIA + ef.fornos.length * XP_FORNO + ef.blocos.length * XP_BLOCO} XP`);
     setTimeout(() => {

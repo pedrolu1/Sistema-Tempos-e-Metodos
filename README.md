@@ -250,40 +250,64 @@ base do Tempos & Métodos (`src/utils`, `src/components/ui.js`, estilos) e é
 publicado num site próprio: https://reframax-primarias.netlify.app (projeto
 `reframax-primarias`).
 
-- **Campo (líder e apontador):** Hoje (meta da semana, frente de serviço com a
-  próxima etapa a um toque, feed ao vivo), Mapa por bloco, Lançar
-  (etapa → onde → confirmar), Checklist de entrega e RDO do dia. Lançamento não
-  se altera no campo: quem errou pede correção ao planejador.
-- **Painel (planejador e administrador; gestor só olha):** Visão geral, Mapa
-  visual da bateria, Curva S (contratual por forno concluído e física pelas 6
-  etapas), RDO no formato PLAN-RFX-002 (imprime ou salva em PDF), Checklists e
-  relação por medição, Lançamentos, Aprovações, Desvios e Configuração.
-- **Etapas:** montagem de andaime (por cabeceira), demolição de manilhas (por
-  primária), 5S e sopragem (por forno), assentamento de manilhas, siplate e
-  massa 1200 (por primária), sempre nessa ordem.
+- **Login:** a mesma conta do Tempos & Métodos (matrícula + senha). O acesso ao
+  Primárias é separado (coleção `prim_usuarios`): quem entra pela primeira vez
+  pede acesso e o administrador libera com um papel. Administrador do T&M entra
+  direto como administrador.
+- **Papéis:** líder (lança o avanço e tira as fotos), planejador (acompanha,
+  aprova, fecha o RDO e gera os documentos), administrador (tudo do planejador e
+  a tela de Usuários) e gestor (só leitura).
+- **Líder (celular):** Hoje, Mapa, Lançar, Fotos e Diário. Toca no forno, vê os
+  dois lados e lança a próxima etapa de cada lado; com o forno concluído, tira as
+  8 fotos do checklist (por lado: a abóbada inteira e as 3 manilhas instaladas e
+  revestidas) e envia. No Diário registra 5S, ocorrências, material e segurança,
+  que viram as observações do RDO. Lançamento não se altera no campo: quem errou
+  pede correção ao planejador.
+- **Painel:** Visão geral, Mapa visual, Curva S por BM (revestimento em fornos,
+  meta de 36 por BM do dia 16 ao 15, com a semana atual destacada), RDO no
+  formato PLAN-RFX-002, Checklists (aprovar ou devolver as fotos; o número segue
+  a sequência da medição), Documentos, Lançamentos, Correções, Desvios, Usuários
+  e Configuração.
+- **Documentos:** PDF do mapa, da Curva S, do espelho da medição e do checklist
+  com as fotos (por forno ou o BM inteiro), e as planilhas de controle
+  preenchidas pelo app: Gestão Visual (datas, andaime e medição de cada
+  primária), Curva S (realizado da semana e, se marcado, a meta no previsto) e o
+  Resumo da medição (aba nova do BM). O app mexe só nas células de dados;
+  fórmulas, gráficos, tabelas dinâmicas e macros ficam como estavam, e o Excel
+  recalcula ao abrir. A planilha é escolhida uma vez e fica guardada no aparelho.
+- **Sem internet:** o Firestore guarda no aparelho o que for lançado (fotos
+  inclusive) e envia sozinho quando a rede volta. O chip no topo mostra "Sem
+  internet", "Enviando" ou "Em dia".
+- **Etapas:** montagem de andaime e desmontagem de andaime (por lado do forno),
+  demolição de manilhas, assentamento/concretagem de manilhas, revestimento com
+  Injetbar e revestimento com massa 1200 (por primária).
 
 ```bash
-npm run dev:primarias      # desenvolvimento
+npm run dev:primarias      # desenvolvimento (sem Firebase: modo demonstração)
 npm run build:primarias    # gera dist-primarias/
 ```
 
-## Etapa atual: só as telas
-
-Nesta etapa os dados ficam no navegador (`primarias/src/lib/store.js`) e passam
-de uma aba para outra na hora, para testar o tempo real abrindo o campo numa
-aba e o painel em outra. A tela de entrada deixa escolher o papel. O ponto de
-partida é o estado das planilhas de controle (Gestão Visual, Curva S do 3º
-contrato e resumo de desvios), gerado em `primarias/src/data/seed.js`. Para
-atualizar com planilhas novas:
+Sem as variáveis `VITE_FIREBASE_*` o app abre no modo demonstração, com os dados
+só no navegador e perfis prontos para testar. A base histórica (antes do app)
+vem da planilha de Gestão Visual: pela tela Configuração ("Atualizar pela Gestão
+Visual") ou, no código, com
 
 ```bash
-python3 primarias/scripts/gerar-seed.py "Gestão Visual - Compilado.xlsx" "Curva S - Semanal.xlsm" primarias/src/data/seed.js
+python3 primarias/scripts/gerar-seed.py "Gestão Visual - Compilado.xlsx" primarias/src/data/seed.js
 ```
 
-Na etapa 2 o `store.js` passa a usar o Firestore do mesmo projeto Firebase e o
-login por matrícula do Tempos & Métodos (as regras novas entram em
-`firestore.rules`, e o domínio `reframax-primarias.netlify.app` precisa ser
-incluído em *Authentication → Settings → Authorized domains*).
+### Passos manuais (uma vez)
+
+1. Publicar as regras: Firebase console → Firestore → Regras → colar o
+   `firestore.rules` deste repositório → Publicar.
+2. Firebase console → Authentication → Settings → Authorized domains → adicionar
+   `reframax-primarias.netlify.app`.
+3. Se o App Check estiver ligado, incluir o mesmo domínio na chave do reCAPTCHA.
+4. Para gerar senha provisória pela tela Usuários, a variável
+   `FIREBASE_SERVICE_ACCOUNT` precisa estar no site `reframax-primarias` da
+   Netlify (a mesma do Tempos & Métodos).
+5. O site ainda está com a proteção de equipe da Netlify ligada; com o login
+   pronto, ela pode ser desligada em Site configuration → Access & security.
 
 ## Publicação
 

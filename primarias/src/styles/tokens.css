@@ -1,40 +1,45 @@
-/* Primárias: o fundo é carvão quente e a cor da marca é a brasa do forno.
-   A brasa aparece nas ações (lançar, confirmar) e nas recompensas (faíscas,
-   nível em °C, sequência de dias). As cores das etapas são outra coisa:
-   identificam a etapa no mapa e nos gráficos, e foram validadas para
-   daltonismo neste fundo (azul, laranja e amarelo vêm da planilha). */
+/* Primárias: cores da Reframax. O azul do logo (#1C4497) é a cor das ações
+   (botões, lançar, confirmar) e da marca; o fundo é um azul-marinho bem
+   escuro, da mesma família. As cores das etapas são outra coisa: identificam
+   a etapa no mapa e nos gráficos e foram validadas para daltonismo neste fundo.
+   O âmbar fica para as recompensas (sequência de dias, nível em °C). */
 :root {
-  --bg-0: #14100e;
-  --bg-1: #1a1512;
-  --bg-2: #221c18;
-  --bg-3: #2c2420;
-  --bg-4: #382e29;
+  --bg-0: #0c111d;
+  --bg-1: #111829;
+  --bg-2: #161f33;
+  --bg-3: #1d2840;
+  --bg-4: #26334f;
 
-  --border-soft: rgba(255, 226, 205, 0.06);
-  --border: rgba(255, 226, 205, 0.11);
-  --border-strong: rgba(255, 226, 205, 0.2);
+  --border-soft: rgba(196, 214, 255, 0.07);
+  --border: rgba(196, 214, 255, 0.12);
+  --border-strong: rgba(196, 214, 255, 0.22);
 
-  --text-0: #f8efe7;
-  --text-1: #cdbfb3;
-  --text-2: #978a7f;
-  --text-3: #62564e;
+  --text-0: #eef3ff;
+  --text-1: #c1cbe0;
+  --text-2: #8995b0;
+  --text-3: #58637d;
 
-  --accent-500: #ff6a1a;
-  --accent-400: #ff8a3d;
-  --accent-300: #ffb27a;
-  --on-accent: #1d0e05;
-  --accent-glow: rgba(255, 106, 26, 0.36);
-  --accent-grad: linear-gradient(135deg, #ff5a14 0%, #ff8a1f 55%, #ffb02e 100%);
+  --reframax: #1c4497;
+  --accent-500: #2f62d6;
+  --accent-400: #5a86f0;
+  --accent-300: #9db8ff;
+  --on-accent: #ffffff;
+  --accent-glow: rgba(47, 98, 214, 0.4);
+  --accent-grad: linear-gradient(135deg, #1c4497 0%, #2a5bcc 55%, #3d74ef 100%);
+
+  /* recompensa (sequência, nível, conquista) */
   --brasa-clara: #ffb02e;
+  --brasa-glow: rgba(255, 159, 28, 0.38);
+  --brasa-grad: linear-gradient(135deg, #ff7a1a 0%, #ffb02e 100%);
 
-  /* etapas (ordem do serviço) */
+  /* etapas, na ordem do serviço */
   --e-andaime: #3987e5;
   --e-demolicao: #d95926;
-  --e-sopragem: #199e70;
-  --e-assentamento: #c98500;
-  --e-siplate: #9085e9;
+  --e-assentamento: #9085e9;
+  --e-injetbar: #d55181;
   --e-massa1200: #1f9a3a;
-  --e-pendente: #2e2622;
+  --e-desmontagem: #7f8aa3;
+  --e-pendente: #222d45;
 
   --font-display: 'Barlow Condensed', 'Barlow', system-ui, sans-serif;
   --font-body: 'Barlow', system-ui, -apple-system, sans-serif;
@@ -47,4 +52,5 @@
 
   --campo-nav-h: 74px;
   --mobile-nav-h: var(--campo-nav-h);
+  --chart-grid: rgba(196, 214, 255, 0.08);
 }

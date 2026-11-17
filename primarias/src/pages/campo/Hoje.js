@@ -4,9 +4,11 @@ import { el } from '../../../../src/utils/dom.js';
 import { anel, seis, statusChip } from '../../components/base.js';
 import { feed } from '../../components/feed.js';
 import { abrirPedidoCorrecao } from '../../components/correcao.js';
+import { abrirTelaForno } from '../../components/telaForno.js';
+import { abrirLancamento } from '../../components/lancar.js';
 import { iconeEtapa, ic } from '../../lib/icones.js';
-import { ETAPAS, FORNOS, contratoAtivo, etapaPorId, noMeio } from '../../data/obra.js';
-import { semanaAtual, alvosDoForno, resumoAlvos, NIVEL_MAX } from '../../lib/calculo.js';
+import { ETAPAS_MAPA, FORNOS, LADOS, contratoAtivo, etapaPorId, noMeio, rotulo } from '../../data/obra.js';
+import { semanaAtual, proximaDoLado, resumoAlvos, checklists, NIVEL_MAX } from '../../lib/calculo.js';
 import { hoje, porExtenso } from '../../lib/datas.js';
 
 export function paginaHoje({ calc, perfil, stats, lancar, ir }) {
@@ -47,7 +49,8 @@ export function paginaHoje({ calc, perfil, stats, lancar, ir }) {
     hero,
     termometro,
     numeros,
-    frente(calc, fornosBat, lancar),
+    fotosPendentes(calc, ir),
+    frente(calc, fornosBat, perfil),
     el('section', { class: 'pilha' }, [
       el('div', { class: 'titulo-secao' }, ['Ao vivo na bateria', el('span', { class: 'ao-vivo' }, 'tempo real')]),
       feed(calc.validos, {
@@ -58,8 +61,10 @@ export function paginaHoje({ calc, perfil, stats, lancar, ir }) {
   ];
 }
 
-/** Fornos com serviço começado e ainda não concluídos, com a próxima etapa pronta para lançar. */
-function frente(calc, fornosBat, lancar) {
+/** Fornos com serviço começado e ainda não concluídos. Toque no forno abre a
+ *  tela dele; o botão lança direto a próxima etapa do lado mais atrasado. */
+function frente(calc, fornosBat, perfil) {
+  const ultimo = ETAPAS_MAPA.length - 1;
   const abertos = fornosBat
     .filter((f) => !calc.fornos[f.id].concluidoEm && calc.fornos[f.id].niveis.some((n) => n >= 0))
     .map((f) => ({ f, soma: calc.fornos[f.id].niveis.reduce((s, n) => s + n + 1, 0) }))
@@ -72,26 +77,47 @@ function frente(calc, fornosBat, lancar) {
   }
   if (!lista.length) return null;
   return el('section', { class: 'pilha' }, [
-    el('div', { class: 'titulo-secao' }, [titulo, el('small', {}, abertos.length > 4 ? `${abertos.length} fornos abertos` : '')]),
+    el('div', { class: 'titulo-secao' }, [titulo, el('small', {}, abertos.length > 4 ? `${abertos.length} fornos abertos` : 'toque para abrir')]),
     el('div', { class: 'frente' }, lista.map((f) => {
-      const proxima = ETAPAS.find((e) => alvosDoForno(calc, e.id, f.id).some((a) => a.ok));
-      const prontas = calc.fornos[f.id].niveis.filter((n) => n === ETAPAS.length - 1).length;
-      const faltam = calc.fornos[f.id].niveis.reduce((s, n) => s + (ETAPAS.length - 1 - n), 0);
-      return el('div', { class: 'forno-linha' }, [
+      const niveis = calc.fornos[f.id].niveis;
+      const prontas = niveis.filter((n) => n === ultimo).length;
+      const faltam = niveis.reduce((s, n) => s + (ultimo - n), 0);
+      // a próxima etapa do lado mais atrasado (é o que segura o forno)
+      const prox = LADOS.map((l) => proximaDoLado(calc, f.id, l.id)).filter(Boolean).sort((a, b) => etapaPorId[a.etapa.id].ordem - etapaPorId[b.etapa.id].ordem)[0];
+      return el('div', { class: 'forno-linha', role: 'button', tabindex: '0', 'aria-label': `Abrir ${rotulo(f.id)}`, onclick: () => abrirTelaForno(f.id, { perfil }), onkeydown: (ev) => ev.key === 'Enter' && abrirTelaForno(f.id, { perfil }) }, [
         el('div', { class: 'nome' }, [`F${String(f.forno).padStart(2, '0')}`, el('small', {}, `bloco ${f.bloco}`)]),
         seis(calc, f.id),
         el('div', { class: 'rodape' }, [
           el('span', {}, prontas ? `${prontas} de 6 prontas · faltam ${faltam} etapas` : `faltam ${faltam} etapas para fechar`),
-          proxima ? el('button', { class: `proxima cor-${proxima.id}`, type: 'button', onclick: () => lancar(proxima.id, f.id) }, [el('span', { html: iconeEtapa(proxima.id, 16), style: { display: 'inline-flex', color: 'var(--cor)' } }), `Lançar ${noMeio(proxima)}`]) : null
+          prox ? el('button', {
+            class: `proxima cor-${prox.etapa.id}`, type: 'button',
+            onclick: (ev) => { ev.stopPropagation(); abrirLancamento({ perfil, etapa: prox.etapa.id, fornoId: f.id, alvos: prox.alvos }); }
+          }, [el('span', { html: iconeEtapa(prox.etapa.id, 16), style: { display: 'inline-flex', color: 'var(--cor)' } }), `Lançar ${noMeio(prox.etapa)}`]) : null
         ])
       ]);
     }))
   ]);
 }
 
+/** Fornos que esperam as fotos do checklist (devolvidos primeiro). */
+function fotosPendentes(calc, ir) {
+  const ck = checklists(calc);
+  const devolvidos = Object.values(ck).filter((c) => c.status === 'devolvido').length;
+  const semFotos = Object.values(ck).filter((c) => c.concluidoEm && ['pendente', 'rascunho'].includes(c.status)).length;
+  if (!devolvidos && !semFotos) return null;
+  return el('button', { type: 'button', class: 'cartao-fotos', onclick: () => ir('fotos') }, [
+    el('span', { class: 'cartao-fotos-icone', html: ic.camera(26) }),
+    el('div', {}, [
+      el('strong', {}, devolvidos ? `${devolvidos} checklist${devolvidos > 1 ? 's' : ''} devolvido${devolvidos > 1 ? 's' : ''}` : `${semFotos} forno${semFotos > 1 ? 's' : ''} esperando fotos`),
+      el('small', {}, devolvidos ? 'O planejador pediu ajuste nas fotos.' : 'Forno concluído precisa das 8 fotos para entrar na medição.')
+    ]),
+    el('span', { html: ic.chevronLeft(18), style: { transform: 'scaleX(-1)', display: 'inline-flex' } })
+  ]);
+}
+
 function meusLancamentos(calc, perfil) {
   const hj = hoje();
-  const meus = calc.estado.lancamentos.filter((l) => l.autor?.uid === perfil.uid && (l.data === hj || l.criadoEm > Date.now() - 36 * 3600 * 1000)).sort((a, b) => b.criadoEm - a.criadoEm);
+  const meus = calc.estado.lancamentos.filter((l) => l.autor?.uid === perfil.uid && (l.data === hj || l.criadoEmLocal > Date.now() - 36 * 3600 * 1000)).sort((a, b) => b.criadoEmLocal - a.criadoEmLocal);
   if (!meus.length) return null;
   const pedidos = calc.estado.correcoes;
   return el('section', { class: 'pilha' }, [

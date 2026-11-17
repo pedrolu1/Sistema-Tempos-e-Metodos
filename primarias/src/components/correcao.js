@@ -4,10 +4,10 @@ import { el } from '../../../src/utils/dom.js';
 import { abrirFolha, etiquetaEtapa } from './base.js';
 import { etapaPorId } from '../data/obra.js';
 import { resumoAlvos } from '../lib/calculo.js';
-import { pedirCorrecao } from '../lib/store.js';
+import { pedirCorrecao } from '../lib/banco.js';
 import { toast } from '../../../src/lib/toast.js';
 import { completa, hoje, somarDias } from '../lib/datas.js';
-import { autorDe } from '../lib/sessao.js';
+import { autorDe } from '../lib/acesso.js';
 
 export function abrirPedidoCorrecao(lanc, perfil) {
   const e = etapaPorId[lanc.etapa];

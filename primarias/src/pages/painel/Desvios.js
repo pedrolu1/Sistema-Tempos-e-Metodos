@@ -3,7 +3,7 @@
 import { el } from '../../../../src/utils/dom.js';
 import { MOTIVOS_DESVIO, EMPRESAS_DESVIO, contratoAtivo } from '../../data/obra.js';
 import { primariasDoDia } from '../../lib/calculo.js';
-import { salvarDesvio } from '../../lib/store.js';
+import { salvarDesvio } from '../../lib/banco.js';
 import { hoje, somarDias, completa, curta, nomeDia, semana, diaUtil } from '../../lib/datas.js';
 
 let dias = 30;
@@ -25,7 +25,7 @@ export function paginaDesvios(ctx) {
   };
   const motivos = contar('motivo');
   const empresas = contar('empresa');
-  const redesenhar = () => document.querySelector('.painel-pagina').replaceChildren(...paginaDesvios(ctx));
+  const redesenhar = () => ctx.redesenhar();
 
   return [
     el('div', { class: 'painel-grade' }, [

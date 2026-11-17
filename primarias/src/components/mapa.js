@@ -2,7 +2,7 @@
 // com os lados coque virados para a via do carro de apagamento no meio.
 import { el } from '../../../src/utils/dom.js';
 import { cel } from './base.js';
-import { ETAPAS, FORNOS, blocosDa, fornoPorId, primariaPorId, FORNOS_POR_BLOCO } from '../data/obra.js';
+import { ETAPAS_MAPA, FORNOS, blocosDa, fornoPorId, primariaPorId, FORNOS_POR_BLOCO } from '../data/obra.js';
 
 const ordemPrim = (lado, invertido) => {
   const lm = [1, 2, 3];
@@ -62,10 +62,10 @@ function colunaForno(calc, fid, ordem, { aoClicarForno, etapasVisiveis, mudou, f
   const celula = (p) => {
     const pr = primariaPorId[f.prims[p - 1]];
     const n = calc.nivel[pr.idx];
-    const apagada = etapasVisiveis && (n < 0 || !etapasVisiveis.has(ETAPAS[n].id));
+    const apagada = etapasVisiveis && (n < 0 || !etapasVisiveis.has(ETAPAS_MAPA[n].id));
     return cel(n, { nova: mudou?.has(pr.idx), apagada });
   };
-  const resumo = fc.concluidoEm ? 'concluído' : `${fc.niveis.filter((n) => n === ETAPAS.length - 1).length} de 6 primárias prontas`;
+  const resumo = fc.concluidoEm ? 'concluído' : `${fc.niveis.filter((n) => n === ETAPAS_MAPA.length - 1).length} de 6 primárias prontas`;
   return el('button', {
     type: 'button',
     class: `mf${fc.concluidoEm ? ' fechado' : ''}${foco === fid ? ' foco' : ''}`,

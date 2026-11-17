@@ -1,7 +1,7 @@
 // Peças pequenas usadas no campo e no painel.
 import { el, svg } from '../../../src/utils/dom.js';
 import { ic } from '../lib/icones.js';
-import { ETAPAS, fornoPorId, primariaPorId } from '../data/obra.js';
+import { ETAPAS_MAPA, fornoPorId, primariaPorId } from '../data/obra.js';
 
 /** Folha que sobe de baixo (no computador vira um modal no centro). Devolve { fechar }. */
 export function abrirFolha({ titulo, subtitulo = '', corpo, pe = null, aoFechar = null, classe = '' }) {
@@ -76,7 +76,7 @@ export function seis(calc, fornoId, mudou) {
   const f = fornoPorId[fornoId];
   return el('div', { class: 'seis', 'aria-label': `Primárias do ${fornoId}` }, f.prims.flatMap((pid, k) => {
     const p = primariaPorId[pid];
-    const c = cel(calc.nivel[p.idx], { nova: mudou?.has(p.idx), titulo: `P0${p.p} · ${calc.nivel[p.idx] < 0 ? 'pendente' : ETAPAS[calc.nivel[p.idx]].curto}` });
+    const c = cel(calc.nivel[p.idx], { nova: mudou?.has(p.idx), titulo: `P0${p.p} · ${calc.nivel[p.idx] < 0 ? 'pendente' : ETAPAS_MAPA[calc.nivel[p.idx]].curto}` });
     return k === 3 ? [el('span', { class: 'sep' }), c] : [c];
   }));
 }
@@ -88,7 +88,7 @@ export function etiquetaEtapa(etapa) {
 export function legendaEtapas({ ativas = null, aoAlternar = null } = {}) {
   const itens = [
     el('span', {}, [el('span', { class: 'ponto vazio' }), 'Pendente']),
-    ...ETAPAS.map((e, i) => {
+    ...ETAPAS_MAPA.map((e, i) => {
       const conteudo = [el('span', { class: `ponto cor-${e.id}` }), `${i + 1} ${e.curto}`];
       if (!aoAlternar) return el('span', {}, conteudo);
       return el('button', { type: 'button', class: ativas && !ativas.has(e.id) ? 'apagada' : '', 'aria-pressed': String(!ativas || ativas.has(e.id)), onclick: () => aoAlternar(e.id) }, conteudo);

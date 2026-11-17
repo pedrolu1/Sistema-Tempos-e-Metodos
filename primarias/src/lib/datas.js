@@ -36,9 +36,15 @@ export const inicioDaSemana = (s) => somarDias(s, -((diaDaSemana(s) + 6) % 7));
 
 /** Período do boletim de medição: do dia 16 ao dia 15 do mês seguinte. "2026_11" = 16/10 a 15/11. */
 export function bm(s) {
-  const d = paraData(s);
-  if (d.getDate() >= 16) d.setMonth(d.getMonth() + 1);
-  return `${d.getFullYear()}_${p2(d.getMonth() + 1)}`;
+  // sem Date.setMonth: no dia 31 ele pularia dois meses
+  let a = Number(s.slice(0, 4));
+  let m = Number(s.slice(5, 7));
+  if (Number(s.slice(8, 10)) >= 16) m++;
+  if (m > 12) {
+    m = 1;
+    a++;
+  }
+  return `${a}_${p2(m)}`;
 }
 export function periodoBm(id) {
   const [a, m] = id.split('_').map(Number);
@@ -70,4 +76,51 @@ export function haQuanto(ms) {
   if (dia === hoje()) return `hoje ${hora}`;
   if (dia === somarDias(hoje(), -1)) return `ontem ${hora}`;
   return `${curta(dia)} ${hora}`;
+}
+
+// ---------------------------------------------------------------------------
+// Semanas e boletins de medição (BM). Como na planilha e na medição, a semana
+// inteira (segunda a domingo) pertence ao BM da sua segunda-feira: um forno que
+// fecha no dia 16, numa sexta, ainda conta na semana que começou antes do corte.
+// ---------------------------------------------------------------------------
+export const bmDaSemana = (s) => bm(inicioDaSemana(s));
+
+/** Semanas de um BM: as que começam (segunda-feira) entre o dia 16 e o dia 15. */
+export function semanasDoBm(id) {
+  const { inicio, fim } = periodoBm(id);
+  let seg = inicioDaSemana(inicio);
+  if (seg < inicio) seg = somarDias(seg, 7);
+  const semanas = [];
+  for (; seg <= fim; seg = somarDias(seg, 7)) semanas.push({ semana: semana(seg), ini: seg, fim: somarDias(seg, 6) });
+  return semanas;
+}
+
+/** BMs de `de` até `ate` (inclusive), em ordem. */
+export function bmsEntre(de, ate) {
+  const lista = [];
+  let [a, m] = de.split('_').map(Number);
+  const [a2, m2] = ate.split('_').map(Number);
+  while (a < a2 || (a === a2 && m <= m2)) {
+    lista.push(`${a}_${p2(m)}`);
+    m++;
+    if (m > 12) {
+      m = 1;
+      a++;
+    }
+  }
+  return lista;
+}
+
+/** "2026_11" → "Out - Nov_2026" (como no resumo da medição). */
+const MESES_CURTOS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+export function referenciaBm(id) {
+  const [a, m] = id.split('_').map(Number);
+  const anterior = MESES_CURTOS[(m + 10) % 12];
+  return `${anterior} - ${MESES_CURTOS[m - 1]}_${a}`;
+}
+
+/** "2026_11" → "Out-Nov/26" (16/10 a 15/11), como nas abas do resumo da medição. */
+export function rotuloBm(id) {
+  const [a, m] = id.split('_').map(Number);
+  return `${MESES_CURTOS[(m + 10) % 12]}-${MESES_CURTOS[m - 1]}/${String(a).slice(2)}`;
 }

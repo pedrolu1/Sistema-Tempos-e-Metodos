@@ -1,16 +1,19 @@
-// App de campo (líder e apontador): Hoje, Mapa, Lançar, Checklist e RDO.
+// App do líder: Hoje, Mapa, Lançar, Fotos do checklist e Diário.
+// Tudo funciona sem internet: o que for lançado fica no aparelho e sobe
+// sozinho quando a conexão voltar (o chip no topo mostra isso).
 import { el, mount } from '../../../../src/utils/dom.js';
 import { ic } from '../../lib/icones.js';
-import { assinar } from '../../lib/store.js';
-import { calcular, statsPessoa } from '../../lib/calculo.js';
+import { assinar } from '../../lib/banco.js';
+import { calcular, statsPessoa, checklists } from '../../lib/calculo.js';
 import { abrirLancamento, mostrarBlocoAtivo } from '../../components/lancar.js';
+import { chipSinc } from '../../components/sinc.js';
 import { paginaHoje } from './Hoje.js';
 import { paginaMapa } from './Mapa.js';
-import { paginaChecklist } from './Checklist.js';
-import { paginaRdo } from './Rdo.js';
+import { paginaFotos } from './Fotos.js';
+import { paginaDiario } from './Diario.js';
 import { paginaPerfil } from './Perfil.js';
 
-const PAGINAS = { hoje: paginaHoje, mapa: paginaMapa, checklist: paginaChecklist, rdo: paginaRdo, perfil: paginaPerfil };
+const PAGINAS = { hoje: paginaHoje, mapa: paginaMapa, fotos: paginaFotos, diario: paginaDiario, perfil: paginaPerfil };
 
 export function montarCampo(root, { perfil, menuDemo, trocarVisao }) {
   let rota = PAGINAS[location.hash.slice(2)] ? location.hash.slice(2) : 'hoje';
@@ -21,13 +24,14 @@ export function montarCampo(root, { perfil, menuDemo, trocarVisao }) {
 
   const conteudo = el('main', { class: 'campo-conteudo entrando' });
   setTimeout(() => conteudo.classList.remove('entrando'), 600);
+  const sinc = chipSinc();
   const chama = el('span', { class: 'chama-chip', title: 'Dias úteis seguidos lançando' });
   const nivelBotao = el('button', { class: 'nivel-botao', type: 'button', 'aria-label': 'Meu perfil', onclick: () => ir('perfil') }, el('span'));
   const navItens = {
     hoje: navItem('hoje', ic.casa(22), 'Hoje'),
     mapa: navItem('mapa', ic.mapa(22), 'Mapa'),
-    checklist: navItem('checklist', ic.prancheta(22), 'Checklist'),
-    rdo: navItem('rdo', ic.diario(22), 'RDO')
+    fotos: navItem('fotos', ic.camera(22), 'Fotos'),
+    diario: navItem('diario', ic.diario(22), 'Diário')
   };
   const fab = el('button', { class: 'fab', type: 'button', 'aria-label': 'Lançar', onclick: () => abrirLancamento({ perfil }), html: ic.plus(30) });
 
@@ -35,12 +39,13 @@ export function montarCampo(root, { perfil, menuDemo, trocarVisao }) {
     el('div', { class: 'campo' }, [
       el('header', { class: 'campo-topo' }, [
         el('div', { class: 'marca marca-sm' }, 'Primárias'),
-        el('button', { class: 'demo-pilula', type: 'button', onclick: menuDemo }, [el('span', { class: 'vivo' }), 'Demo']),
+        menuDemo ? el('button', { class: 'demo-pilula', type: 'button', onclick: menuDemo }, [el('span', { class: 'vivo' }), 'Demo']) : null,
+        sinc.no,
         chama,
         nivelBotao
       ]),
       conteudo,
-      el('nav', { class: 'campo-nav', 'aria-label': 'Navegação' }, [navItens.hoje, navItens.mapa, fab, navItens.checklist, navItens.rdo])
+      el('nav', { class: 'campo-nav', 'aria-label': 'Navegação' }, [navItens.hoje, navItens.mapa, fab, navItens.fotos, navItens.diario])
     ])
   ]);
 
@@ -63,9 +68,9 @@ export function montarCampo(root, { perfil, menuDemo, trocarVisao }) {
   window.addEventListener('hashchange', aoMudarHash);
 
   // redesenha a cada mudança no banco, mas não enquanto alguém digita
+  const digitando = () => conteudo.contains(document.activeElement) && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
   const aoSairDoCampo = () => pendente && setTimeout(() => !digitando() && desenhar(), 0);
   conteudo.addEventListener('focusout', aoSairDoCampo);
-  const digitando = () => conteudo.contains(document.activeElement) && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
 
   const parar = assinar((estado) => {
     calc = calcular(estado);
@@ -73,6 +78,7 @@ export function montarCampo(root, { perfil, menuDemo, trocarVisao }) {
     mudou = new Set();
     if (nivelAnterior) calc.nivel.forEach((n, i) => n > nivelAnterior[i] && mudou.add(i));
     nivelAnterior = calc.nivel.slice();
+    sinc.atualizar(estado);
     if (digitando()) pendente = true;
     else desenhar();
   });
@@ -86,8 +92,13 @@ export function montarCampo(root, { perfil, menuDemo, trocarVisao }) {
     nivelBotao.firstChild.textContent = `${s.graus}°`;
     nivelBotao.title = `${s.graus} °C · ${s.xp} XP`;
     Object.entries(navItens).forEach(([id, b]) => b.classList.toggle('ativo', id === rota));
+    // fotos que esperam o líder: devolvidas e fornos concluídos sem checklist enviado
+    const ck = checklists(calc);
+    const aFazer = Object.values(ck).filter((c) => c.status === 'devolvido' || (c.concluidoEm && ['pendente', 'rascunho'].includes(c.status))).length;
+    navItens.fotos.querySelector('.badge')?.remove();
+    if (aFazer) navItens.fotos.appendChild(el('span', { class: 'badge' }, String(aFazer)));
     fab.classList.toggle('chamando', s.hojeEtapas === 0);
-    const ctx = { calc, perfil, stats: s, mudou, ir, lancar: (etapa, fornoId) => abrirLancamento({ perfil, etapa, fornoId }), trocarVisao };
+    const ctx = { calc, perfil, stats: s, mudou, ir, redesenhar: () => desenhar(), lancar: (etapa, fornoId) => abrirLancamento({ perfil, etapa, fornoId }), trocarVisao };
     mount(conteudo, PAGINAS[rota](ctx));
     mostrarBlocoAtivo(conteudo);
   }

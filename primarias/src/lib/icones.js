@@ -9,9 +9,10 @@ export const ic = {
   // etapas
   andaime: (sz) => s('<path d="M5 3v18M19 3v18M5 8h14M5 14h14M5 8l14 6M19 8 5 14"/><path d="M3 21h18"/>', sz),
   demolicao: (sz) => s('<path d="M14.5 4.5 19.5 9.5 17 12l-5-5z"/><path d="M14.7 9.8 5 19.5a1.4 1.4 0 0 1-2-2l9.7-9.7"/><path d="M19 15l1.5 1.5M16.5 17.5 18 19M21 12h1.5"/>', sz),
-  sopragem: (sz) => s('<path d="M3 8h10.5a2.5 2.5 0 1 0-2.5-2.5"/><path d="M3 12h15.5a2.5 2.5 0 1 1-2.5 2.5"/><path d="M3 16h7"/>', sz),
+  sopro: (sz) => s('<path d="M3 8h10.5a2.5 2.5 0 1 0-2.5-2.5"/><path d="M3 12h15.5a2.5 2.5 0 1 1-2.5 2.5"/><path d="M3 16h7"/>', sz),
   assentamento: (sz) => s('<rect x="3" y="4" width="18" height="5" rx="1"/><rect x="3" y="15" width="18" height="5" rx="1"/><path d="M8 9v6M16 9v6M12 4v5M12 15v5"/>', sz),
-  siplate: (sz) => s('<path d="M4 20c3-1 5-3 6-6l4-4"/><path d="m13 7 4 4"/><path d="M17 3l4 4-3 3-4-4z"/><path d="M4 14c1.5.5 2.5 1.5 3 3"/>', sz),
+  injetbar: (sz) => s('<path d="M4 20c3-1 5-3 6-6l4-4"/><path d="m13 7 4 4"/><path d="M17 3l4 4-3 3-4-4z"/><path d="M4 14c1.5.5 2.5 1.5 3 3"/>', sz),
+  desmontagem: (sz) => s('<path d="M5 3v8M19 3v8M5 8h14"/><path d="M8 14l-3 7M16 14l3 7"/><path d="M3 21h18"/><path d="m10 14 2-2 2 2"/>', sz),
   massa1200: (sz) => s('<path d="M12 3c.5 3 4 5 4 9a4 4 0 0 1-8 0c0-2 1-3 1.5-4.5C10.5 9 12 7 12 3z"/><path d="M12 20.5V22M6.5 19.5l-1 1M17.5 19.5l1 1"/>', sz),
   // navegação e coisas do app
   chama: (sz) => s('<path d="M12 2.5c1 3.5 5.5 6 5.5 11a5.5 5.5 0 0 1-11 0c0-2.8 1.6-4.3 2.4-6.3.5 1.5 1.4 2.4 2.4 2.8C11.7 7.5 12.3 5 12 2.5z"/>', sz),
@@ -27,7 +28,13 @@ export const ic = {
   semSom: (sz) => s('<path d="M4 9.5v5h3.5L12 19V5L7.5 9.5z"/><path d="m16 9.5 5 5M21 9.5l-5 5"/>', sz),
   olho: (sz) => s('<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>', sz),
   engrenagem: (sz) => s('<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M4.2 6.2l2.1 2.1M17.7 15.7l2.1 2.1M2.5 12h3M18.5 12h3M4.2 17.8l2.1-2.1M17.7 8.3l2.1-2.1"/>', sz),
-  imprimir: (sz) => s('<path d="M7 9V3h10v6"/><rect x="3.5" y="9" width="17" height="8" rx="1.5"/><path d="M7 14h10v7H7z"/>', sz)
+  imprimir: (sz) => s('<path d="M7 9V3h10v6"/><rect x="3.5" y="9" width="17" height="8" rx="1.5"/><path d="M7 14h10v7H7z"/>', sz),
+  camera: (sz) => s('<path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.6"/>', sz),
+  nuvem: (sz) => s('<path d="M7 18a4.5 4.5 0 1 1 .9-8.9A6 6 0 0 1 19.5 11 3.5 3.5 0 0 1 18 18z"/>', sz),
+  semNuvem: (sz) => s('<path d="M7 18a4.5 4.5 0 1 1 .9-8.9A6 6 0 0 1 19.5 11 3.5 3.5 0 0 1 18 18z"/><path d="M3 3l18 18"/>', sz),
+  documento: (sz) => s('<path d="M6 3h9l5 5v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v5h5"/><path d="M8.5 13h7M8.5 16.5h7"/>', sz),
+  planilha: (sz) => s('<path d="M6 3h9l5 5v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v5h5"/><path d="M8 12.5h8M8 16h8M11 12.5v6.5"/>', sz),
+  usuarios: (sz) => s('<path d="M17 20v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 5 18.5V20"/><circle cx="9.5" cy="7.5" r="3.5"/><path d="M17.5 20v-1.5a3.5 3.5 0 0 0-2.3-3.29"/><path d="M14.3 4.2a3.5 3.5 0 0 1 0 6.6"/>', sz)
 };
 
 export const iconeEtapa = (id, sz) => ic[id](sz);
