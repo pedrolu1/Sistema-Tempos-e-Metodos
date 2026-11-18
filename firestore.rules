@@ -307,7 +307,8 @@ service cloud.firestore {
         || (primCampo()
           && (resource == null || resource.data.get('status', '') != 'aprovado')
           && request.resource.data.get('status', 'rascunho') in ['rascunho', 'enviado', 'devolvido']
-          && request.resource.data.get('numero', null) == (resource == null ? null : resource.data.get('numero', null)));
+          && ((resource == null && request.resource.data.get('numero', null) == null)
+            || (resource != null && request.resource.data.get('numero', null) == resource.data.get('numero', null))));
     }
 
     // RDO: o planejador monta e fecha; o campo não mexe
