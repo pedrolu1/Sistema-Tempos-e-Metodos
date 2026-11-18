@@ -5,9 +5,6 @@ import { randomInt } from 'node:crypto';
 
 /**
  * POST /api/senha — o administrador redefine a senha de outra pessoa.
- * Serve ao Tempos & Métodos e ao Primárias (mesmas contas): o administrador do
- * T&M redefine qualquer um; o administrador só do Primárias, apenas quem tem
- * acesso ao Primárias.
  *
  * O navegador não pode trocar a senha de outra conta no Firebase; só um
  * servidor com a chave da conta de serviço (Admin SDK). Esta função:
@@ -55,10 +52,7 @@ export default async (req) => {
     return resposta(401, { erro: 'sessao' });
   }
   const eu = (await db.doc(`usuarios/${quem.uid}`).get()).data();
-  const euPrim = (await db.doc(`prim_usuarios/${quem.uid}`).get()).data();
-  const adminTM = Boolean(eu && eu.role === 'admin' && eu.status === 'aprovado');
-  const adminPrim = Boolean(euPrim && euPrim.papel === 'admin' && euPrim.status === 'aprovado');
-  if (!adminTM && !adminPrim) return resposta(403, { erro: 'sem-permissao' });
+  if (!eu || eu.role !== 'admin' || eu.status !== 'aprovado') return resposta(403, { erro: 'sem-permissao' });
 
   let pedido;
   try {
@@ -74,30 +68,16 @@ export default async (req) => {
   const principal = (await db.doc('config/admin').get()).data()?.principal;
   if (uid === principal) return resposta(403, { erro: 'principal' });
   const alvo = db.doc(`usuarios/${uid}`);
-  const alvoPrim = db.doc(`prim_usuarios/${uid}`);
-  const [docTM, docPrim] = await Promise.all([alvo.get(), alvoPrim.get()]);
-  const temTM = docTM.exists;
-  const temPrim = docPrim.exists;
-  if (!temTM && !temPrim) return resposta(404, { erro: 'usuario' });
-  if (!adminTM) {
-    // administrador só do Primárias: apenas quem está no Primárias, nunca outro
-    // administrador e nunca quem tem papel de gestão no Tempos & Métodos (a
-    // senha é a mesma nos dois apps)
-    if (!temPrim) return resposta(403, { erro: 'sem-permissao' });
-    if (docPrim.data()?.papel === 'admin') return resposta(403, { erro: 'sem-permissao' });
-    if (temTM && ['admin', 'planejador'].includes(docTM.data()?.role)) return resposta(403, { erro: 'sem-permissao' });
-  }
+  if (!(await alvo.get()).exists) return resposta(404, { erro: 'usuario' });
 
   const senha = novaSenha || senhaProvisoria();
   await auth.updateUser(uid, { password: senha });
   await auth.revokeRefreshTokens(uid);
-  const marca = {
+  await alvo.update({
     trocarSenha: !novaSenha || pedido?.exigirTroca !== false,
     senhaRedefinidaEm: FieldValue.serverTimestamp(),
     senhaRedefinidaPor: quem.uid
-  };
-  if (temTM) await alvo.update(marca);
-  if (temPrim) await alvoPrim.update(marca);
+  });
   return resposta(200, novaSenha ? { ok: true } : { ok: true, senha });
 };
 

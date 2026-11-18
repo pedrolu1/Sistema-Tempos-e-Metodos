@@ -46,9 +46,9 @@ service cloud.firestore {
     }
 
     // ---------------------------------------------------------------
-    // usuarios: cada pessoa lê o próprio perfil; só o admin lê a lista,
+    // usuarios — cada pessoa lê o próprio perfil; só o admin lê a lista,
     // aprova, nega ou muda papéis/contratos. O cadastro nasce sempre como
-    // "pendente" e "lider", e é isso que impede autoaprovação. A conta do
+    // "pendente" e "lider" — é isso que impede autoaprovação. A conta do
     // administrador principal não pode ser alterada nem apagada pelo app.
     // A própria pessoa só pode marcar que já trocou a senha provisória.
     // ---------------------------------------------------------------
@@ -75,7 +75,7 @@ service cloud.firestore {
     }
 
     // ---------------------------------------------------------------
-    // catálogo e planejamento: todo aprovado lê (o apontador precisa do
+    // catálogo e planejamento — todo aprovado lê (o apontador precisa do
     // planejado em campo); só admin/planejador escreve.
     // ---------------------------------------------------------------
     match /colaboradores/{id} {
@@ -111,7 +111,7 @@ service cloud.firestore {
     }
 
     // ---------------------------------------------------------------
-    // lancamentos: cada apontador cria e mantém os seus; admin/planejador
+    // lancamentos — cada apontador cria e mantém os seus; admin/planejador
     // acessam todos. O servidor recusa formatos inválidos e não deixa
     // trocar o dono de um lançamento.
     // ---------------------------------------------------------------
@@ -148,7 +148,7 @@ service cloud.firestore {
         && (isGestor() || resource.data.criadoPorUid == request.auth.uid);
     }
 
-    // estudos de tempos: quem faz é dono; admin/planejador veem e mantêm todos
+    // estudos de tempos — quem faz é dono; admin/planejador veem e mantêm todos
     match /estudos/{id} {
       allow read: if isAprovado() && (isGestor() || resource.data.criadoPorUid == request.auth.uid);
       allow create: if isAprovado()
@@ -162,7 +162,7 @@ service cloud.firestore {
     }
 
     // ---------------------------------------------------------------
-    // auditoria: só acrescenta, ninguém edita nem apaga um registro
+    // auditoria — só acrescenta: ninguém edita nem apaga um registro
     // ---------------------------------------------------------------
     match /auditoria/{id} {
       allow read: if isGestor();
@@ -172,7 +172,7 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
-    // saúde do app: qualquer usuário logado registra falhas/recuperações
+    // saúde do app — qualquer usuário logado registra falhas/recuperações
     // dele mesmo; só admin/planejador leem (e podem limpar)
     match /saude/{id} {
       allow read, delete: if isGestor();
@@ -197,135 +197,6 @@ service cloud.firestore {
     // configurações do sistema (ex.: data do último backup)
     match /config/{id} {
       allow read, write: if isGestor() && id != 'admin';
-    }
-
-    // ===============================================================
-    // PRIMÁRIAS (app reframax-primarias). Mesmas contas do T&M; o acesso
-    // e o papel ficam em prim_usuarios: lider, planejador, admin, gestor.
-    // O administrador aprovado do T&M é administrador aqui também.
-    // ===============================================================
-    function tmAdmin() {
-      return isSignedIn()
-        && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
-        && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.role == 'admin'
-        && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.status == 'aprovado';
-    }
-    function primMe() {
-      return get(/databases/$(database)/documents/prim_usuarios/$(request.auth.uid)).data;
-    }
-    function primAprovado() {
-      return isSignedIn()
-        && exists(/databases/$(database)/documents/prim_usuarios/$(request.auth.uid))
-        && primMe().status == 'aprovado';
-    }
-    function primAdmin() { return (primAprovado() && primMe().papel == 'admin') || tmAdmin(); }
-    function primGestao() { return (primAprovado() && primMe().papel in ['admin', 'planejador']) || tmAdmin(); }
-    // quem lança avanço e tira fotos (o gestor só olha)
-    function primCampo() { return (primAprovado() && primMe().papel in ['lider', 'planejador', 'admin']) || tmAdmin(); }
-    function primLeitura() { return primAprovado() || tmAdmin(); }
-    function primAutor(d) { return d.autor.uid == request.auth.uid; }
-    function dataValida(v) { return v is string && v.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}'); }
-
-    match /prim_usuarios/{uid} {
-      allow get: if isSignedIn() && (request.auth.uid == uid || primLeitura());
-      allow list: if primAdmin();
-      // cadastro: nasce líder pendente; o admin do T&M pode se liberar como admin
-      allow create: if isSignedIn() && request.auth.uid == uid
-        && texto(request.resource.data.nome, 120)
-        && request.resource.data.matricula is string
-        && request.resource.data.matricula.matches('[0-9]{6}')
-        && ((request.resource.data.papel == 'lider' && request.resource.data.status == 'pendente')
-          || (tmAdmin() && request.resource.data.papel == 'admin' && request.resource.data.status == 'aprovado'));
-      allow update: if (primAdmin() && request.auth.uid != uid
-          && request.resource.data.papel in ['lider', 'planejador', 'admin', 'gestor']
-          && request.resource.data.status in ['pendente', 'aprovado', 'negado'])
-        || (isSignedIn() && request.auth.uid == uid
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['trocarSenha'])
-          && request.resource.data.trocarSenha == false);
-      allow delete: if primAdmin() && request.auth.uid != uid;
-    }
-
-    function primLancamentoValido(d) {
-      return d.etapa in ['andaime', 'demolicao', 'assentamento', 'injetbar', 'massa1200', 'desmontagem']
-        && dataValida(d.data)
-        && d.prims is list && d.prims.size() > 0 && d.prims.size() <= 900
-        && d.status in ['valido', 'cancelado']
-        && texto(d.get('obs', ''), 1000);
-    }
-    match /prim_lancamentos/{id} {
-      allow read: if primLeitura();
-      allow create: if primCampo() && primAutor(request.resource.data)
-        && request.resource.data.status == 'valido'
-        && primLancamentoValido(request.resource.data);
-      // só o planejador/admin altera (cancela ou troca o dia); o autor não muda
-      allow update: if primGestao()
-        && request.resource.data.autor.uid == resource.data.autor.uid
-        && primLancamentoValido(request.resource.data);
-      allow delete: if false;
-    }
-
-    match /prim_correcoes/{id} {
-      allow read: if primLeitura();
-      allow create: if primCampo() && primAutor(request.resource.data)
-        && request.resource.data.status == 'pendente'
-        && texto(request.resource.data.motivo, 1000);
-      allow update: if primGestao();
-      allow delete: if false;
-    }
-
-    match /prim_ocorrencias/{id} {
-      allow read: if primLeitura();
-      allow create: if primCampo() && primAutor(request.resource.data)
-        && dataValida(request.resource.data.data)
-        && texto(request.resource.data.texto, 2000);
-      allow update: if primGestao()
-        || (primCampo() && primAutor(resource.data)
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']));
-      allow delete: if false;
-    }
-
-    // fotos do checklist: imagem comprimida dentro do documento (até ~1 MB)
-    match /prim_fotos/{id} {
-      allow read: if primLeitura();
-      allow create, update: if primCampo()
-        && request.resource.data.fornoId is string
-        && request.resource.data.slot is string
-        && request.resource.data.imagem is string
-        && request.resource.data.imagem.size() < 1000000
-        && primAutor(request.resource.data)
-        && (resource == null
-          || !exists(/databases/$(database)/documents/prim_checklists/$(request.resource.data.fornoId))
-          || get(/databases/$(database)/documents/prim_checklists/$(request.resource.data.fornoId)).data.get('status', '') != 'aprovado');
-      allow delete: if primGestao();
-    }
-
-    // checklist: o campo junta as fotos e envia; só o planejador/admin aprova
-    // (e só ele numera)
-    match /prim_checklists/{fornoId} {
-      allow read: if primLeitura();
-      allow write: if primGestao()
-        || (primCampo()
-          && (resource == null || resource.data.get('status', '') != 'aprovado')
-          && request.resource.data.get('status', 'rascunho') in ['rascunho', 'enviado', 'devolvido']
-          && ((resource == null && request.resource.data.get('numero', null) == null)
-            || (resource != null && request.resource.data.get('numero', null) == resource.data.get('numero', null))));
-    }
-
-    // RDO: o planejador monta e fecha; o campo não mexe
-    match /prim_rdos/{data} {
-      allow read: if primLeitura();
-      allow write: if primGestao();
-    }
-
-    match /prim_desvios/{data} {
-      allow read: if primLeitura();
-      allow write: if primGestao();
-    }
-
-    // configuração (meta, pesos, último RDO), base da planilha e contadores
-    match /prim_config/{id} {
-      allow read: if primLeitura();
-      allow write: if primGestao();
     }
   }
 }
