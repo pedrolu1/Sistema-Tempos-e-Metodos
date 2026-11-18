@@ -46,9 +46,9 @@ service cloud.firestore {
     }
 
     // ---------------------------------------------------------------
-    // usuarios — cada pessoa lê o próprio perfil; só o admin lê a lista,
+    // usuarios: cada pessoa lê o próprio perfil; só o admin lê a lista,
     // aprova, nega ou muda papéis/contratos. O cadastro nasce sempre como
-    // "pendente" e "lider" — é isso que impede autoaprovação. A conta do
+    // "pendente" e "lider", e é isso que impede autoaprovação. A conta do
     // administrador principal não pode ser alterada nem apagada pelo app.
     // A própria pessoa só pode marcar que já trocou a senha provisória.
     // ---------------------------------------------------------------
@@ -75,7 +75,7 @@ service cloud.firestore {
     }
 
     // ---------------------------------------------------------------
-    // catálogo e planejamento — todo aprovado lê (o apontador precisa do
+    // catálogo e planejamento: todo aprovado lê (o apontador precisa do
     // planejado em campo); só admin/planejador escreve.
     // ---------------------------------------------------------------
     match /colaboradores/{id} {
@@ -111,7 +111,7 @@ service cloud.firestore {
     }
 
     // ---------------------------------------------------------------
-    // lancamentos — cada apontador cria e mantém os seus; admin/planejador
+    // lancamentos: cada apontador cria e mantém os seus; admin/planejador
     // acessam todos. O servidor recusa formatos inválidos e não deixa
     // trocar o dono de um lançamento.
     // ---------------------------------------------------------------
@@ -148,7 +148,7 @@ service cloud.firestore {
         && (isGestor() || resource.data.criadoPorUid == request.auth.uid);
     }
 
-    // estudos de tempos — quem faz é dono; admin/planejador veem e mantêm todos
+    // estudos de tempos: quem faz é dono; admin/planejador veem e mantêm todos
     match /estudos/{id} {
       allow read: if isAprovado() && (isGestor() || resource.data.criadoPorUid == request.auth.uid);
       allow create: if isAprovado()
@@ -162,7 +162,7 @@ service cloud.firestore {
     }
 
     // ---------------------------------------------------------------
-    // auditoria — só acrescenta: ninguém edita nem apaga um registro
+    // auditoria: só acrescenta, ninguém edita nem apaga um registro
     // ---------------------------------------------------------------
     match /auditoria/{id} {
       allow read: if isGestor();
@@ -172,7 +172,7 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
-    // saúde do app — qualquer usuário logado registra falhas/recuperações
+    // saúde do app: qualquer usuário logado registra falhas/recuperações
     // dele mesmo; só admin/planejador leem (e podem limpar)
     match /saude/{id} {
       allow read, delete: if isGestor();
@@ -198,7 +198,7 @@ service cloud.firestore {
     match /config/{id} {
       allow read, write: if isGestor() && id != 'admin';
     }
-  
+
     // ===============================================================
     // PRIMÁRIAS (app reframax-primarias). Mesmas contas do T&M; o acesso
     // e o papel ficam em prim_usuarios: lider, planejador, admin, gestor.
